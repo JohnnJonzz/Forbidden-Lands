@@ -113,6 +113,17 @@
             font-weight: bold;
         }
 
+        .attribute-spinner { display: flex; justify-content: center; align-items: stretch; gap: 4px; margin: 8px auto; max-width: 110px; }
+        .attribute-spinner input { font-size: 2.3rem; width: 70px; padding: 4px; appearance: textfield; -moz-appearance: textfield; }
+        .attribute-spinner input::-webkit-inner-spin-button, .attribute-spinner input::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+        .attribute-arrows { display: flex; flex-direction: column; gap: 3px; }
+        .attribute-arrows button { padding: 4px 7px; font-size: .75rem; flex: 1; background: #444; }
+        .damage-track { display: flex; flex-wrap: wrap; justify-content: center; gap: 4px; min-height: 32px; }
+        .damage-skull { padding: 3px; width: 30px; height: 32px; font-size: 1.3rem; background: #303030; color: #999; border: 1px solid #666; }
+        .damage-skull[aria-pressed="true"] { background: #681f25; color: #ffe1b0; border-color: #dc8b74; }
+        .attribute-current { font-size: .8rem; color: #ccc; margin-top: 6px; }
+        @media print { .damage-skull { display: inline-block !important; } }
+
         .skill-row {
             display: flex;
             justify-content: space-between;
@@ -309,34 +320,59 @@
     <!-- Attributes & Trackers -->
     <div class="panel col-4">
         <h3>Attributes</h3>
+        <p class="save-note">Use arrows for the regular value. Click skulls to mark damage; click a marked skull to heal.</p>
         <div class="grid-2">
             <div class="attr-box">
                 <label>Strength</label>
-                <div class="grid-2">
-                    <div><label for="attr-strength-regular">Regular</label><input type="number" id="attr-strength-regular" min="1" max="6" value="2" onchange="app.updateAttribute('strength')"></div>
-                    <div><label for="attr-strength">Current</label><input type="number" id="attr-strength" min="0" max="6" value="2" onchange="app.updateAttribute('strength')"></div>
+                <div class="attribute-spinner">
+                    <input type="number" aria-label="Regular strength" id="attr-strength-regular" min="1" max="6" value="2" onchange="app.updateAttribute('strength')">
+                    <div class="attribute-arrows">
+                        <button type="button" aria-label="Increase strength" onclick="app.stepAttribute('strength', 1)">▲</button>
+                        <button type="button" aria-label="Decrease strength" onclick="app.stepAttribute('strength', -1)">▼</button>
+                    </div>
                 </div>
+                <input type="number" hidden id="attr-strength" min="0" max="6" value="2">
+                <div class="damage-track" id="damage-strength" role="group" aria-label="Strength damage"></div>
+                <div class="attribute-current" id="current-strength" aria-live="polite"></div>
             </div>
             <div class="attr-box">
                 <label>Agility</label>
-                <div class="grid-2">
-                    <div><label for="attr-agility-regular">Regular</label><input type="number" id="attr-agility-regular" min="1" max="6" value="2" onchange="app.updateAttribute('agility')"></div>
-                    <div><label for="attr-agility">Current</label><input type="number" id="attr-agility" min="0" max="6" value="2" onchange="app.updateAttribute('agility')"></div>
+                <div class="attribute-spinner">
+                    <input type="number" aria-label="Regular agility" id="attr-agility-regular" min="1" max="6" value="2" onchange="app.updateAttribute('agility')">
+                    <div class="attribute-arrows">
+                        <button type="button" aria-label="Increase agility" onclick="app.stepAttribute('agility', 1)">▲</button>
+                        <button type="button" aria-label="Decrease agility" onclick="app.stepAttribute('agility', -1)">▼</button>
+                    </div>
                 </div>
+                <input type="number" hidden id="attr-agility" min="0" max="6" value="2">
+                <div class="damage-track" id="damage-agility" role="group" aria-label="Agility damage"></div>
+                <div class="attribute-current" id="current-agility" aria-live="polite"></div>
             </div>
             <div class="attr-box">
                 <label>Wits</label>
-                <div class="grid-2">
-                    <div><label for="attr-wits-regular">Regular</label><input type="number" id="attr-wits-regular" min="1" max="6" value="2" onchange="app.updateAttribute('wits')"></div>
-                    <div><label for="attr-wits">Current</label><input type="number" id="attr-wits" min="0" max="6" value="2" onchange="app.updateAttribute('wits')"></div>
+                <div class="attribute-spinner">
+                    <input type="number" aria-label="Regular wits" id="attr-wits-regular" min="1" max="6" value="2" onchange="app.updateAttribute('wits')">
+                    <div class="attribute-arrows">
+                        <button type="button" aria-label="Increase wits" onclick="app.stepAttribute('wits', 1)">▲</button>
+                        <button type="button" aria-label="Decrease wits" onclick="app.stepAttribute('wits', -1)">▼</button>
+                    </div>
                 </div>
+                <input type="number" hidden id="attr-wits" min="0" max="6" value="2">
+                <div class="damage-track" id="damage-wits" role="group" aria-label="Wits damage"></div>
+                <div class="attribute-current" id="current-wits" aria-live="polite"></div>
             </div>
             <div class="attr-box">
                 <label>Empathy</label>
-                <div class="grid-2">
-                    <div><label for="attr-empathy-regular">Regular</label><input type="number" id="attr-empathy-regular" min="1" max="6" value="2" onchange="app.updateAttribute('empathy')"></div>
-                    <div><label for="attr-empathy">Current</label><input type="number" id="attr-empathy" min="0" max="6" value="2" onchange="app.updateAttribute('empathy')"></div>
+                <div class="attribute-spinner">
+                    <input type="number" aria-label="Regular empathy" id="attr-empathy-regular" min="1" max="6" value="2" onchange="app.updateAttribute('empathy')">
+                    <div class="attribute-arrows">
+                        <button type="button" aria-label="Increase empathy" onclick="app.stepAttribute('empathy', 1)">▲</button>
+                        <button type="button" aria-label="Decrease empathy" onclick="app.stepAttribute('empathy', -1)">▼</button>
+                    </div>
                 </div>
+                <input type="number" hidden id="attr-empathy" min="0" max="6" value="2">
+                <div class="damage-track" id="damage-empathy" role="group" aria-label="Empathy damage"></div>
+                <div class="attribute-current" id="current-empathy" aria-live="polite"></div>
             </div>
         </div>
 
@@ -566,13 +602,52 @@ class ForbiddenLandsApp {
             this.loadCharacter(this.activeCharId);
         }
         this.updateRosterSelect();
+        this.renderAttributes();
+    }
+
+    renderAttributes() {
+        for (const attribute of ['strength', 'agility', 'wits', 'empathy']) {
+            const regular = document.getElementById(`attr-${attribute}-regular`);
+            const current = document.getElementById(`attr-${attribute}`);
+            const total = Math.max(1, Math.min(6, Number(regular.value) || 1));
+            const remaining = Math.max(0, Math.min(total, Number(current.value) || 0));
+            const damage = total - remaining;
+            regular.dataset.previous = total;
+            const track = document.getElementById('damage-' + attribute);
+            track.replaceChildren();
+            for (let index = 1; index <= total; index++) {
+                const button = document.createElement('button');
+                button.type = 'button';
+                button.className = 'damage-skull';
+                button.textContent = '☠';
+                button.setAttribute('aria-pressed', String(index <= damage));
+                button.setAttribute('aria-label', `${attribute} damage ${index} of ${total}`);
+                button.title = index <= damage ? 'Heal to ' + (index - 1) + ' damage' : 'Mark ' + index + ' damage';
+                button.onclick = () => {
+                    current.value = total - (index <= damage ? index - 1 : index);
+                    this.saveState();
+                };
+                track.appendChild(button);
+            }
+            document.getElementById('current-' + attribute).textContent = `Current ${remaining} / ${total}` + (remaining === 0 ? ' · Broken' : '');
+            const box = regular.closest('.attr-box');
+            box.querySelector('.attribute-arrows button:first-child').disabled = total >= 6;
+            box.querySelector('.attribute-arrows button:last-child').disabled = total <= 1;
+        }
+    }
+
+    stepAttribute(attribute, step) {
+        const regular = document.getElementById(`attr-${attribute}-regular`);
+        regular.value = Number(regular.value) + step;
+        this.updateAttribute(attribute);
     }
 
     updateAttribute(attribute) {
         const regular = document.getElementById(`attr-${attribute}-regular`);
         const current = document.getElementById(`attr-${attribute}`);
+        const previous = Number(regular.dataset.previous) || Number(regular.value);
         regular.value = Math.max(1, Math.min(6, Number(regular.value) || 1));
-        current.value = Math.max(0, Math.min(Number(regular.value), Number(current.value) || 0));
+        current.value = Math.max(0, Math.min(Number(regular.value), Number(current.value) + Number(regular.value) - previous));
         this.saveState();
     }
 
@@ -698,6 +773,7 @@ class ForbiddenLandsApp {
     }
 
     saveState() {
+        this.renderAttributes();
         if (!this.activeCharId) return;
         const data = {};
         
@@ -773,6 +849,7 @@ class ForbiddenLandsApp {
 
         document.querySelector('#gear-table tbody').innerHTML = '';
         if (data.gear) data.gear.forEach(g => this.addGearRow(g.item, g.weight, g.notes));
+        this.renderAttributes();
     }
 
     escapeHTML(value) {
@@ -1000,7 +1077,7 @@ const app = new ForbiddenLandsApp();
 window.addEventListener('DOMContentLoaded', () => {
     app.init();
     document.addEventListener('input', event => {
-        if (event.target.matches('input:not([type=file]), textarea')) app.saveState();
+        if (event.target.matches('input:not([type=file]):not([id$="-regular"]), textarea')) app.saveState();
     });
     document.querySelectorAll('input[id], select[id], textarea[id]').forEach(el => el.setAttribute('aria-label', el.id.replaceAll('-', ' ')));
 });
