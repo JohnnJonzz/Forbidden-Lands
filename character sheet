@@ -1,0 +1,585 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Forbidden Lands Character Sheet</title>
+    <style>
+        :root {
+            --bg-color: #121212;
+            --panel-bg: #1e1e1e;
+            --accent-color: #8b0000;
+            --accent-hover: #a00000;
+            --text-color: #e0e0e0;
+            --border-color: #333;
+            --input-bg: #2a2a2a;
+        }
+
+        body {
+            font-family: 'Times New Roman', Times, serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: repeat(12, 1fr);
+            gap: 15px;
+        }
+
+        .panel {
+            background-color: var(--panel-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            padding: 15px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+        }
+
+        h2, h3 {
+            margin-top: 0;
+            color: #d4af37;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 5px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .col-12 { grid-column: span 12; }
+        .col-8 { grid-column: span 8; }
+        .col-6 { grid-column: span 6; }
+        .col-4 { grid-column: span 4; }
+        .col-3 { grid-column: span 3; }
+
+        @media (max-width: 768px) {
+            .col-8, .col-6, .col-4, .col-3 { grid-column: span 12; }
+        }
+
+        label {
+            display: block;
+            margin-bottom: 3px;
+            font-size: 0.85em;
+            text-transform: uppercase;
+            color: #aaa;
+        }
+
+        input[type="text"], input[type="number"], select, textarea {
+            width: 100%;
+            background-color: var(--input-bg);
+            border: 1px solid var(--border-color);
+            color: var(--text-color);
+            padding: 8px;
+            border-radius: 3px;
+            box-sizing: border-box;
+            font-family: inherit;
+        }
+
+        textarea {
+            resize: vertical;
+            height: 60px;
+        }
+
+        .grid-2 {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+
+        .grid-4 {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 10px;
+        }
+
+        .attr-box {
+            text-align: center;
+            background: #252525;
+            padding: 10px;
+            border-radius: 4px;
+            border: 1px solid #3a3a3a;
+        }
+
+        .attr-box input {
+            text-align: center;
+            font-size: 1.2em;
+            font-weight: bold;
+        }
+
+        .skill-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 6px;
+            font-size: 0.9em;
+        }
+
+        .skill-row input {
+            width: 50px;
+            text-align: center;
+        }
+
+        .resource-box {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+
+        .resource-box select {
+            width: 80px;
+        }
+
+        .checkbox-group {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-top: 5px;
+        }
+
+        .checkbox-group label {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            cursor: pointer;
+            color: var(--text-color);
+            text-transform: none;
+        }
+
+        button {
+            background-color: var(--accent-color);
+            color: white;
+            border: none;
+            padding: 8px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+
+        button:hover {
+            background-color: var(--accent-hover);
+        }
+
+        .btn-add {
+            margin-top: 10px;
+            width: 100%;
+        }
+
+        .dynamic-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 5px;
+        }
+
+        .dynamic-table th, .dynamic-table td {
+            border: 1px solid var(--border-color);
+            padding: 4px;
+            text-align: left;
+            font-size: 0.85em;
+        }
+
+        .dynamic-table input {
+            padding: 2px 4px;
+        }
+
+        .btn-del {
+            background: #444;
+            padding: 2px 6px;
+            font-size: 0.8em;
+        }
+
+        .btn-del:hover {
+            background: #a00000;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <!-- Header / Basic Info -->
+    <div class="panel col-12">
+        <h2>Forbidden Lands Adventurer</h2>
+        <div class="grid-4">
+            <div>
+                <label>Name</label>
+                <input type="text" id="name">
+            </div>
+            <div>
+                <label>Kin</label>
+                <select id="kin">
+                    <option>Human</option>
+                    <option>Elf</option>
+                    <option>Half-Elf</option>
+                    <option>Dwarf</option>
+                    <option>Halfling</option>
+                    <option>Wolfkin</option>
+                    <option>Orc</option>
+                    <option>Goblin</option>
+                </select>
+            </div>
+            <div>
+                <label>Profession</label>
+                <select id="profession">
+                    <option>Druid</option>
+                    <option>Fighter</option>
+                    <option>Hunter</option>
+                    <option>Minstrel</option>
+                    <option>Peddler</option>
+                    <option>Rider</option>
+                    <option>Rogue</option>
+                    <option>Sorcerer</option>
+                </select>
+            </div>
+            <div>
+                <label>Age</label>
+                <select id="age">
+                    <option>Young</option>
+                    <option>Adult</option>
+                    <option>Old</option>
+                </select>
+            </div>
+        </div>
+    </div>
+
+    <!-- Attributes & Meta Stats -->
+    <div class="panel col-4">
+        <h3>Attributes</h3>
+        <div class="grid-2">
+            <div class="attr-box">
+                <label>Strength</label>
+                <input type="number" id="attr-strength" min="0" max="6" value="2">
+            </div>
+            <div class="attr-box">
+                <label>Agility</label>
+                <input type="number" id="attr-agility" min="0" max="6" value="2">
+            </div>
+            <div class="attr-box">
+                <label>Wits</label>
+                <input type="number" id="attr-wits" min="0" max="6" value="2">
+            </div>
+            <div class="attr-box">
+                <label>Empathy</label>
+                <input type="number" id="attr-empathy" min="0" max="6" value="2">
+            </div>
+        </div>
+
+        <h3 style="margin-top: 15px;">Pools & Trackers</h3>
+        <div class="grid-2">
+            <div>
+                <label>Willpower (Max 10)</label>
+                <input type="number" id="willpower" min="0" max="10" value="0">
+            </div>
+            <div>
+                <label>Experience (XP)</label>
+                <input type="number" id="xp" min="0" value="0">
+            </div>
+            <div>
+                <label>Reputation</label>
+                <input type="number" id="reputation" min="0" value="0">
+            </div>
+            <div>
+                <label>Armor Rating</label>
+                <input type="number" id="armor-rating" min="0" value="0">
+            </div>
+        </div>
+
+        <h3 style="margin-top: 15px;">Conditions</h3>
+        <div class="checkbox-group">
+            <label><input type="checkbox" id="cond-hungry"> Hungry</label>
+            <label><input type="checkbox" id="cond-thirsty"> Thirsty</label>
+            <label><input type="checkbox" id="cond-sleepy"> Sleepy</label>
+            <label><input type="checkbox" id="cond-cold"> Cold</label>
+        </div>
+    </div>
+
+    <!-- Skills -->
+    <div class="panel col-4">
+        <h3>Skills</h3>
+        <div class="skill-row"><label>Might (STR)</label><input type="number" class="skill-val" id="skill-might" min="0" max="5" value="0"></div>
+        <div class="skill-row"><label>Endurance (STR)</label><input type="number" class="skill-val" id="skill-endurance" min="0" max="5" value="0"></div>
+        <div class="skill-row"><label>Melee (STR)</label><input type="number" class="skill-val" id="skill-melee" min="0" max="5" value="0"></div>
+        <div class="skill-row"><label>Crafting (STR)</label><input type="number" class="skill-val" id="skill-crafting" min="0" max="5" value="0"></div>
+        <div class="skill-row"><label>Stealth (AGI)</label><input type="number" class="skill-val" id="skill-stealth" min="0" max="5" value="0"></div>
+        <div class="skill-row"><label>Sleight of Hand (AGI)</label><input type="number" class="skill-val" id="skill-sleightofhand" min="0" max="5" value="0"></div>
+        <div class="skill-row"><label>Move (AGI)</label><input type="number" class="skill-val" id="skill-move" min="0" max="5" value="0"></div>
+        <div class="skill-row"><label>Marksmanship (AGI)</label><input type="number" class="skill-val" id="skill-marksmanship" min="0" max="5" value="0"></div>
+        <div class="skill-row"><label>Scouting (WIT)</label><input type="number" class="skill-val" id="skill-scouting" min="0" max="5" value="0"></div>
+        <div class="skill-row"><label>Lore (WIT)</label><input type="number" class="skill-val" id="skill-lore" min="0" max="5" value="0"></div>
+        <div class="skill-row"><label>Survival (WIT)</label><input type="number" class="skill-val" id="skill-survival" min="0" max="5" value="0"></div>
+        <div class="skill-row"><label>Insight (WIT)</label><input type="number" class="skill-val" id="skill-insight" min="0" max="5" value="0"></div>
+        <div class="skill-row"><label>Manipulation (EMP)</label><input type="number" class="skill-val" id="skill-manipulation" min="0" max="5" value="0"></div>
+        <div class="skill-row"><label>Performance (EMP)</label><input type="number" class="skill-val" id="skill-performance" min="0" max="5" value="0"></div>
+        <div class="skill-row"><label>Healing (EMP)</label><input type="number" class="skill-val" id="skill-healing" min="0" max="5" value="0"></div>
+        <div class="skill-row"><label>Animal Handling (EMP)</label><input type="number" class="skill-val" id="skill-animalhandling" min="0" max="5" value="0"></div>
+    </div>
+
+    <!-- Personal & Lore Narrative -->
+    <div class="panel col-4">
+        <h3>Personal Details</h3>
+        <div style="margin-bottom: 8px;">
+            <label>Pride</label>
+            <input type="text" id="pride">
+        </div>
+        <div style="margin-bottom: 8px;">
+            <label>Dark Secret</label>
+            <input type="text" id="dark-secret">
+        </div>
+        <div style="margin-bottom: 8px;">
+            <label>Relationships</label>
+            <textarea id="relationships" placeholder="PC 1: ...&#10;PC 2: ..."></textarea>
+        </div>
+        <div style="margin-bottom: 8px;">
+            <label>Appearance (Face, Body, Clothing)</label>
+            <textarea id="appearance"></textarea>
+        </div>
+        <div>
+            <label>Critical Injuries</label>
+            <textarea id="critical-injuries" placeholder="Injury, lethal time, duration..."></textarea>
+        </div>
+    </div>
+
+    <!-- Consumables & Purse -->
+    <div class="panel col-4">
+        <h3>Consumables & Purse</h3>
+        <div class="resource-box">
+            <label>Food</label>
+            <select id="res-food">
+                <option>None</option><option>D6</option><option>D8</option><option>D10</option><option>D12</option>
+            </select>
+        </div>
+        <div class="resource-box">
+            <label>Water</label>
+            <select id="res-water">
+                <option>None</option><option>D6</option><option>D8</option><option>D10</option><option>D12</option>
+            </select>
+        </div>
+        <div class="resource-box">
+            <label>Arrows</label>
+            <select id="res-arrows">
+                <option>None</option><option>D6</option><option>D8</option><option>D10</option><option>D12</option>
+            </select>
+        </div>
+        <div class="resource-box">
+            <label>Torches</label>
+            <select id="res-torches">
+                <option>None</option><option>D6</option><option>D8</option><option>D10</option><option>D12</option>
+            </select>
+        </div>
+        <hr style="border-color: var(--border-color); margin: 10px 0;">
+        <div class="grid-3" style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap: 5px;">
+            <div>
+                <label>Copper</label>
+                <input type="number" id="coin-copper" min="0" value="0">
+            </div>
+            <div>
+                <label>Silver</label>
+                <input type="number" id="coin-silver" min="0" value="0">
+            </div>
+            <div>
+                <label>Gold</label>
+                <input type="number" id="coin-gold" min="0" value="0">
+            </div>
+        </div>
+    </div>
+
+    <!-- Talents Table -->
+    <div class="panel col-8">
+        <h3>Talents</h3>
+        <table class="dynamic-table" id="talents-table">
+            <thead>
+                <tr>
+                    <th>Talent Name</th>
+                    <th style="width: 60px;">Rank</th>
+                    <th>Type / Description</th>
+                    <th style="width: 30px;"></th>
+                </tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+        <button class="btn-add" onclick="addTalentRow()">+ Add Talent</button>
+    </div>
+
+    <!-- Weapons Table -->
+    <div class="panel col-6">
+        <h3>Weapons</h3>
+        <table class="dynamic-table" id="weapons-table">
+            <thead>
+                <tr>
+                    <th>Weapon</th>
+                    <th style="width: 50px;">Bonus</th>
+                    <th style="width: 50px;">Dmg</th>
+                    <th style="width: 60px;">Range</th>
+                    <th>Features</th>
+                    <th style="width: 30px;"></th>
+                </tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+        <button class="btn-add" onclick="addWeaponRow()">+ Add Weapon</button>
+    </div>
+
+    <!-- Gear / Inventory Table -->
+    <div class="panel col-6">
+        <h3>Gear & Carrying Capacity</h3>
+        <table class="dynamic-table" id="gear-table">
+            <thead>
+                <tr>
+                    <th>Item</th>
+                    <th style="width: 80px;">Weight</th>
+                    <th>Notes</th>
+                    <th style="width: 30px;"></th>
+                </tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+        <button class="btn-add" onclick="addGearRow()">+ Add Gear</button>
+    </div>
+
+</div>
+
+<script>
+    // Utility functions to handle dynamic table rows
+    function createRow(tableId, cellHTMLs) {
+        const tbody = document.getElementById(tableId).querySelector('tbody');
+        const tr = document.createElement('tr');
+        cellHTMLs.forEach(html => {
+            const td = document.createElement('td');
+            td.innerHTML = html;
+            tr.appendChild(td);
+        });
+        const delTd = document.createElement('td');
+        delTd.innerHTML = '<button class="btn-del" onclick="this.closest(\'tr\').remove()">X</button>';
+        tr.appendChild(delTd);
+        tbody.appendChild(tr);
+    }
+
+    function addTalentRow(name = '', rank = 1, desc = '') {
+        createRow('talents-table', [
+            `<input type="text" value="${name}" class="t-name">`,
+            `<input type="number" value="${rank}" min="1" max="3" class="t-rank">`,
+            `<input type="text" value="${desc}" class="t-desc">`
+        ]);
+    }
+
+    function addWeaponRow(name = '', bonus = 0, dmg = 1, range = 'Arm', feat = '') {
+        createRow('weapons-table', [
+            `<input type="text" value="${name}" class="w-name">`,
+            `<input type="number" value="${bonus}" class="w-bonus">`,
+            `<input type="number" value="${dmg}" class="w-dmg">`,
+            `<input type="text" value="${range}" class="w-range">`,
+            `<input type="text" value="${feat}" class="w-feat">`
+        ]);
+    }
+
+    function addGearRow(item = '', weight = 'Normal', notes = '') {
+        createRow('gear-table', [
+            `<input type="text" value="${item}" class="g-item">`,
+            `<select class="g-weight">
+                <option ${weight==='Tiny'?'selected':''}>Tiny</option>
+                <option ${weight==='Light'?'selected':''}>Light</option>
+                <option ${weight==='Normal'?'selected':''}>Normal</option>
+                <option ${weight==='Heavy'?'selected':''}>Heavy</option>
+            </select>`,
+            `<input type="text" value="${notes}" class="g-notes">`
+        ]);
+    }
+
+    // Auto-save & LocalStorage Logic
+    const fieldIds = [
+        'name', 'kin', 'profession', 'age',
+        'attr-strength', 'attr-agility', 'attr-wits', 'attr-empathy',
+        'willpower', 'xp', 'reputation', 'armor-rating',
+        'cond-hungry', 'cond-thirsty', 'cond-sleepy', 'cond-cold',
+        'skill-might', 'skill-endurance', 'skill-melee', 'skill-crafting',
+        'skill-stealth', 'skill-sleightofhand', 'skill-move', 'skill-marksmanship',
+        'skill-scouting', 'skill-lore', 'skill-survival', 'skill-insight',
+        'skill-manipulation', 'skill-performance', 'skill-healing', 'skill-animalhandling',
+        'pride', 'dark-secret', 'relationships', 'appearance', 'critical-injuries',
+        'res-food', 'res-water', 'res-arrows', 'res-torches',
+        'coin-copper', 'coin-silver', 'coin-gold'
+    ];
+
+    function saveCharacter() {
+        const data = {};
+        fieldIds.forEach(id => {
+            const el = document.getElementById(id);
+            if (el) {
+                data[id] = el.type === 'checkbox' ? el.checked : el.value;
+            }
+        });
+
+        // Dynamic Tables Data
+        data.talents = Array.from(document.querySelectorAll('#talents-table tbody tr')).map(tr => ({
+            name: tr.querySelector('.t-name').value,
+            rank: tr.querySelector('.t-rank').value,
+            desc: tr.querySelector('.t-desc').value
+        }));
+
+        data.weapons = Array.from(document.querySelectorAll('#weapons-table tbody tr')).map(tr => ({
+            name: tr.querySelector('.w-name').value,
+            bonus: tr.querySelector('.w-bonus').value,
+            dmg: tr.querySelector('.w-dmg').value,
+            range: tr.querySelector('.w-range').value,
+            feat: tr.querySelector('.w-feat').value
+        }));
+
+        data.gear = Array.from(document.querySelectorAll('#gear-table tbody tr')).map(tr => ({
+            item: tr.querySelector('.g-item').value,
+            weight: tr.querySelector('.g-weight').value,
+            notes: tr.querySelector('.g-notes').value
+        }));
+
+        localStorage.setItem('fbl_character_sheet', JSON.stringify(data));
+    }
+
+    function loadCharacter() {
+        const raw = localStorage.getItem('fbl_character_sheet');
+        if (!raw) return;
+        const data = JSON.parse(raw);
+
+        fieldIds.forEach(id => {
+            const el = document.getElementById(id);
+            if (el && data[id] !== undefined) {
+                if (el.type === 'checkbox') el.checked = data[id];
+                else el.value = data[id];
+            }
+        });
+
+        if (data.talents) {
+            document.querySelector('#talents-table tbody').innerHTML = '';
+            data.talents.forEach(t => addTalentRow(t.name, t.rank, t.desc));
+        }
+        if (data.weapons) {
+            document.querySelector('#weapons-table tbody').innerHTML = '';
+            data.weapons.forEach(w => addWeaponRow(w.name, w.bonus, w.dmg, w.range, w.feat));
+        }
+        if (data.gear) {
+            document.querySelector('#gear-table tbody').innerHTML = '';
+            data.gear.forEach(g => addGearRow(g.item, g.weight, g.notes));
+        }
+    }
+
+    // Attach listener for real-time auto-saving
+    document.addEventListener('input', saveCharacter);
+    document.addEventListener('change', saveCharacter);
+
+    // Initialize with default rows if empty
+    window.addEventListener('DOMContentLoaded', () => {
+        loadCharacter();
+        if (document.querySelectorAll('#talents-table tbody tr').length === 0) {
+            addTalentRow('Kin Talent', 1, '');
+        }
+        if (document.querySelectorAll('#weapons-table tbody tr').length === 0) {
+            addWeaponRow('Dagger', 1, 1, 'Arm', 'Light, Edged, Pointed');
+        }
+        if (document.querySelectorAll('#gear-table tbody tr').length === 0) {
+            addGearRow('Waterskin', 'Normal', '');
+        }
+    });
+</script>
+
+</body>
+</html>
