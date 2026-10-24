@@ -2,6 +2,8 @@
 
 Open `index.html` in a modern browser, or run `python3 -m http.server 8000` from this directory and open the server in your browser. No build or dependencies are required.
 
+- Track regular and current (damaged) attributes separately; skill and weapon rolls use the current value, and pushed banes reduce only that value. Older sheets migrate their single value into both fields.
+- Roll Food, Water, Arrows, or Torches when used. Rolls of 1–2 reduce D12 → D10 → D8 → D6 → None; other rolls keep the die. Resource rolls cannot be pushed.
 - Edit attributes, all 16 skills, conditions, resources, relationships, talents, weapons, and gear.
 - Keep multiple characters in the roster; changes save automatically in browser storage.
 - Choose common weapon presets to fill name, bonus, damage, range, features, and attack skill; every field stays editable and custom values persist in backups.

@@ -134,6 +134,8 @@
         }
 
         .resource-box select { width: 80px; }
+        .resource-box { gap: 6px; }
+        .resource-box label { flex: 1; }
 
         .checkbox-group {
             display: flex;
@@ -310,19 +312,31 @@
         <div class="grid-2">
             <div class="attr-box">
                 <label>Strength</label>
-                <input type="number" id="attr-strength" min="0" max="6" value="2" onchange="app.saveState()">
+                <div class="grid-2">
+                    <div><label for="attr-strength-regular">Regular</label><input type="number" id="attr-strength-regular" min="1" max="6" value="2" onchange="app.updateAttribute('strength')"></div>
+                    <div><label for="attr-strength">Current</label><input type="number" id="attr-strength" min="0" max="6" value="2" onchange="app.updateAttribute('strength')"></div>
+                </div>
             </div>
             <div class="attr-box">
                 <label>Agility</label>
-                <input type="number" id="attr-agility" min="0" max="6" value="2" onchange="app.saveState()">
+                <div class="grid-2">
+                    <div><label for="attr-agility-regular">Regular</label><input type="number" id="attr-agility-regular" min="1" max="6" value="2" onchange="app.updateAttribute('agility')"></div>
+                    <div><label for="attr-agility">Current</label><input type="number" id="attr-agility" min="0" max="6" value="2" onchange="app.updateAttribute('agility')"></div>
+                </div>
             </div>
             <div class="attr-box">
                 <label>Wits</label>
-                <input type="number" id="attr-wits" min="0" max="6" value="2" onchange="app.saveState()">
+                <div class="grid-2">
+                    <div><label for="attr-wits-regular">Regular</label><input type="number" id="attr-wits-regular" min="1" max="6" value="2" onchange="app.updateAttribute('wits')"></div>
+                    <div><label for="attr-wits">Current</label><input type="number" id="attr-wits" min="0" max="6" value="2" onchange="app.updateAttribute('wits')"></div>
+                </div>
             </div>
             <div class="attr-box">
                 <label>Empathy</label>
-                <input type="number" id="attr-empathy" min="0" max="6" value="2" onchange="app.saveState()">
+                <div class="grid-2">
+                    <div><label for="attr-empathy-regular">Regular</label><input type="number" id="attr-empathy-regular" min="1" max="6" value="2" onchange="app.updateAttribute('empathy')"></div>
+                    <div><label for="attr-empathy">Current</label><input type="number" id="attr-empathy" min="0" max="6" value="2" onchange="app.updateAttribute('empathy')"></div>
+                </div>
             </div>
         </div>
 
@@ -389,21 +403,26 @@
     <!-- Consumables & Purse -->
     <div class="panel col-4">
         <h3>Consumables & Purse</h3>
+        <p class="save-note">Roll when a resource is used. On 1–2, step down one die; D6 becomes None.</p>
         <div class="resource-box">
             <label>Food</label>
             <select id="res-food" onchange="app.saveState()"><option>None</option><option>D6</option><option>D8</option><option>D10</option><option>D12</option></select>
+            <button class="btn-roll" aria-label="Roll food" onclick="app.rollConsumable('food')">Roll</button>
         </div>
         <div class="resource-box">
             <label>Water</label>
             <select id="res-water" onchange="app.saveState()"><option>None</option><option>D6</option><option>D8</option><option>D10</option><option>D12</option></select>
+            <button class="btn-roll" aria-label="Roll water" onclick="app.rollConsumable('water')">Roll</button>
         </div>
         <div class="resource-box">
             <label>Arrows</label>
             <select id="res-arrows" onchange="app.saveState()"><option>None</option><option>D6</option><option>D8</option><option>D10</option><option>D12</option></select>
+            <button class="btn-roll" aria-label="Roll arrows" onclick="app.rollConsumable('arrows')">Roll</button>
         </div>
         <div class="resource-box">
             <label>Torches</label>
             <select id="res-torches" onchange="app.saveState()"><option>None</option><option>D6</option><option>D8</option><option>D10</option><option>D12</option></select>
+            <button class="btn-roll" aria-label="Roll torches" onclick="app.rollConsumable('torches')">Roll</button>
         </div>
         <hr style="border-color: var(--border-color); margin: 10px 0;">
         <div class="grid-3">
@@ -524,7 +543,7 @@ class ForbiddenLandsApp {
 
         this.fieldIds = [
             'name', 'kin', 'profession', 'age',
-            'attr-strength', 'attr-agility', 'attr-wits', 'attr-empathy',
+            'attr-strength', 'attr-strength-regular', 'attr-agility', 'attr-agility-regular', 'attr-wits', 'attr-wits-regular', 'attr-empathy', 'attr-empathy-regular',
             'willpower', 'xp', 'reputation', 'armor-rating',
             'cond-hungry', 'cond-thirsty', 'cond-sleepy', 'cond-cold',
             'pride', 'dark-secret', 'relationships', 'appearance', 'critical-injuries',
@@ -547,6 +566,40 @@ class ForbiddenLandsApp {
             this.loadCharacter(this.activeCharId);
         }
         this.updateRosterSelect();
+    }
+
+    updateAttribute(attribute) {
+        const regular = document.getElementById(`attr-${attribute}-regular`);
+        const current = document.getElementById(`attr-${attribute}`);
+        regular.value = Math.max(1, Math.min(6, Number(regular.value) || 1));
+        current.value = Math.max(0, Math.min(Number(regular.value), Number(current.value) || 0));
+        this.saveState();
+    }
+
+    rollConsumable(resource) {
+        const input = document.getElementById('res-' + resource);
+        const steps = ['None', 'D6', 'D8', 'D10', 'D12'];
+        const index = steps.indexOf(input.value);
+        this.currentRoll = null; // Resource rolls cannot be pushed.
+        document.getElementById('btn-push').style.display = 'none';
+        const results = document.getElementById('dice-results');
+        const summary = document.getElementById('dice-summary');
+        results.replaceChildren();
+        const label = resource[0].toUpperCase() + resource.slice(1);
+        if (index <= 0) {
+            summary.textContent = `${label}: no resource die remaining.`;
+            return;
+        }
+        const die = input.value;
+        const value = Math.floor(Math.random() * Number(die.slice(1))) + 1;
+        const depleted = value <= 2;
+        if (depleted) input.value = steps[index - 1];
+        const result = document.createElement('div');
+        result.className = 'die die-base' + (depleted ? ' die-bane' : '');
+        result.textContent = value;
+        results.appendChild(result);
+        summary.textContent = `${label}: ${die} rolled ${value}. ${depleted ? `Resource reduced to ${input.value}.` : `Keep ${die}.`}`;
+        this.saveState();
     }
 
     renderSkills() {
@@ -698,6 +751,14 @@ class ForbiddenLandsApp {
                 else el.value = data[fid];
             }
         });
+
+        // Older backups have only a single attribute value; preserve it as both values.
+        for (const attribute of ['strength', 'agility', 'wits', 'empathy']) {
+            const key = 'attr-' + attribute;
+            if (data[key + '-regular'] === undefined && data[key] !== undefined) {
+                document.getElementById(key + '-regular').value = Math.max(1, Number(data[key]) || 1);
+            }
+        }
 
         this.skillsConfig.forEach(s => {
             const el = document.getElementById(`skill-${s.id}`);

@@ -25,6 +25,8 @@ const backup=path.join(temp,'character.json');
    assert.equal(await page.locator('#name').inputValue(),'Onboarding Adventurer');
    assert.equal(await page.locator('#gear-table tbody tr').last().locator('input').first().inputValue(),'Rope');
    if(name==='index.html'){
+    await page.locator('#attr-strength-regular').fill('4');
+    await page.locator('#attr-strength-regular').blur();
     await page.locator('#attr-strength').fill('3');
     await page.locator('#attr-strength').blur();
     await page.locator('#skills-list .btn-roll').first().click();
@@ -40,6 +42,7 @@ const backup=path.join(temp,'character.json');
    assert.equal(await page.locator('#gear-table tbody tr').last().locator('input').first().inputValue(),'A \"quoted\" <rope>');
    await page.evaluate(()=>{app.currentRoll={label:'Might', attribute:'strength', isPushed:false, dice:[{type:'base',value:1},{type:'base',value:6},{type:'skill',value:6}]}; document.getElementById('attr-strength').value=3;document.getElementById('willpower').value=0;app.pushRoll();});
    assert.equal(await page.locator('#attr-strength').inputValue(),'2');
+   assert.equal(await page.locator('#attr-strength-regular').inputValue(),'4');
    assert.equal(await page.locator('#willpower').inputValue(),'1');
    await page.setViewportSize({width:1440,height:900});
    const sheet = await page.locator('main').boundingBox();
@@ -53,6 +56,8 @@ const backup=path.join(temp,'character.json');
    assert.equal(await weapon.locator('.w-dmg').inputValue(),'2');
    await weapon.locator('.w-preset').selectOption({label:'Short bow'});
    assert.equal(await weapon.locator('.w-skill').inputValue(),'marksmanship');
+   await page.locator('#attr-agility-regular').fill('5');
+   await page.locator('#attr-agility-regular').blur();
    await page.locator('#attr-agility').fill('4');
    await page.locator('#skill-marksmanship').fill('2');
    await weapon.locator('.btn-roll').click();
@@ -66,6 +71,33 @@ const backup=path.join(temp,'character.json');
    assert.equal(await weapon.locator('.w-bonus').inputValue(),'3');
    assert.equal(await weapon.locator('.w-feat').inputValue(),'Custom features');
    assert.equal(await weapon.locator('.w-skill').inputValue(),'marksmanship');
+   assert.equal(await page.locator('#attr-strength-regular').inputValue(),'4');
+   assert.equal(await page.locator('#attr-strength').inputValue(),'2');
+   await page.locator('#skill-might').fill('0');
+   await page.locator('#skills-list .btn-roll').first().click();
+   assert.equal(await page.locator('#dice-results .die').count(),2, 'Roll uses damaged current attribute');
+   // Force rolls to the minimum, then maximum, without changing production randomness.
+   await page.evaluate(()=>{window.savedRandom = Math.random; Math.random = () => 0;});
+   for (const resource of ['food','water','arrows','torches']) {
+    await page.locator('#res-' + resource).selectOption('D12');
+    for (const next of ['D10','D8','D6','None']) {
+     await page.getByRole('button',{name:'Roll ' + resource,exact:true}).click();
+     assert.equal(await page.locator('#res-' + resource).inputValue(),next);
+     assert.equal(await page.locator('#btn-push').isVisible(),false);
+    }
+    await page.getByRole('button',{name:'Roll ' + resource,exact:true}).click();
+    assert.match(await page.locator('#dice-summary').textContent(),/no resource die/);
+    assert.equal(await page.locator('#dice-results .die').count(),0);
+   }
+   await page.evaluate(()=>{Math.random=()=>0.999;});
+   await page.locator('#res-food').selectOption('D8');
+   await page.getByRole('button',{name:'Roll food',exact:true}).click();
+   assert.equal(await page.locator('#res-food').inputValue(),'D8');
+   assert.match(await page.locator('#dice-summary').textContent(),/rolled 8.*Keep D8/);
+   await page.evaluate(()=>{Math.random = window.savedRandom;});
+   await page.reload();
+   assert.equal(await page.locator('#res-food').inputValue(),'D8');
+   assert.equal(await page.locator('#res-water').inputValue(),'None');
    const download=page.waitForEvent('download'); await page.getByRole('button',{name:'Export JSON'}).click();
    await (await download).saveAs(backup);
    await page.locator('#import-file').setInputFiles(backup);
@@ -73,6 +105,12 @@ const backup=path.join(temp,'character.json');
    assert.equal(await page.locator('#name').inputValue(),'Onboarding Adventurer');
    assert.equal(await page.locator('#weapons-table .w-name').first().inputValue(),'My custom bow');
    assert.equal(await page.locator('#weapons-table .w-skill').first().inputValue(),'marksmanship');
+   assert.equal(await page.locator('#attr-strength-regular').inputValue(),'4');
+   assert.equal(await page.locator('#attr-strength').inputValue(),'2');
+   // Legacy backups gain a regular value without overwriting their current value.
+   await page.evaluate(()=>{const id='legacy';app.roster[id]={name:'Legacy', 'attr-strength':'3'};app.activeCharId=id;app.loadCharacter(id);});
+   assert.equal(await page.locator('#attr-strength-regular').inputValue(),'3');
+   assert.equal(await page.locator('#attr-strength').inputValue(),'3');
    await page.setViewportSize({width:390,height:844});
    await page.evaluate(()=>window.scrollTo(0,0));
    assert.ok((await page.locator('#dice-panel').boundingBox()).y < (await page.locator('main').boundingBox()).y);
@@ -82,7 +120,7 @@ const backup=path.join(temp,'character.json');
    await page.emulateMedia({media:'screen'});
    assert.ok(await page.locator('#name').isVisible());
    assert.deepEqual(errors,[]);
-   console.log('PASS roster switching, quoted text, pushed banes, weapon presets and overrides, ranged attacks, JSON export/import, sidebar, mobile, print');
+   console.log('PASS roster switching, quoted text, pushed banes, weapon presets and overrides, ranged attacks, JSON export/import, sidebar, resource depletion and persistence, regular/current attributes, legacy imports, mobile, print');
    await context.close();
   }
  } finally {await browser.close();fs.rmSync(temp,{recursive:true,force:true});}
