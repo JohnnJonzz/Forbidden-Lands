@@ -24,7 +24,19 @@
             padding: 20px;
         }
 
+        .sheet-layout { max-width: 1460px; margin: 0 auto; display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 20px; align-items: start; }
+        #dice-panel { position: sticky; top: 20px; max-height: calc(100vh - 40px); overflow-y: auto; }
+        .w-preset, .w-skill { margin-bottom: 6px; }
+        .weapon-help { color: #bdbdbd; font-size: .9rem; }
+        @media (max-width: 1000px) {
+            .sheet-layout { grid-template-columns: minmax(0, 1fr); }
+            #dice-panel { position: static; grid-row: 1; max-height: none; }
+        }
+        @media print { .sheet-layout { display: block; } }
+
         .container {
+            min-width: 0;
+            width: 100%;
             max-width: 1100px;
             margin: 0 auto;
             display: grid;
@@ -239,7 +251,8 @@
 </head>
 <body>
 
-<div class="container">
+<div class="sheet-layout">
+<main class="container">
 
     <!-- Top Management Bar -->
     <div class="panel col-12">
@@ -260,16 +273,6 @@
     </div>
 
     <p class="col-12 save-note" id="save-status" role="status">Changes save in this browser. Export JSON for a backup or another device.</p>
-    <!-- Dice Roller Output Panel -->
-    <div class="panel col-12" id="dice-panel">
-        <h3>Dice Roller Console</h3>
-        <div role="status" aria-live="polite" id="dice-summary" style="font-size: 0.95em; color: #aaa;">Select a Skill or Weapon to roll...</div>
-        <div class="dice-container" id="dice-results"></div>
-        <div id="dice-actions">
-            <button id="btn-push" onclick="app.pushRoll()" style="display:none; background-color: #d4af37; color: #111;">Push Roll!</button>
-        </div>
-    </div>
-
     <!-- Header / Basic Info -->
     <div class="panel col-12">
         <h2>Forbidden Lands Adventurer</h2>
@@ -430,6 +433,7 @@
     <!-- Weapons Table -->
     <div class="panel col-6">
         <h3>Weapons</h3>
+        <p class="weapon-help">Choose a preset to fill a row, then edit any value for your weapon. Choosing another preset replaces that row’s values.</p>
         <table class="dynamic-table" id="weapons-table">
             <thead>
                 <tr>
@@ -464,6 +468,17 @@
         <button class="btn-add" onclick="app.addGearRow()">+ Add Gear</button>
     </div>
 
+</main>
+    <!-- Dice Roller Output Panel -->
+    <aside class="panel" id="dice-panel" aria-label="Dice roller">
+        <h3>Dice Roller Console</h3>
+        <div role="status" aria-live="polite" id="dice-summary" style="font-size: 0.95em; color: #aaa;">Select a Skill or Weapon to roll...</div>
+        <div class="dice-container" id="dice-results"></div>
+        <div id="dice-actions">
+            <button id="btn-push" onclick="app.pushRoll()" style="display:none; background-color: #d4af37; color: #111;">Push Roll!</button>
+        </div>
+    </aside>
+
 </div>
 
 <script>
@@ -472,6 +487,22 @@
  */
 class ForbiddenLandsApp {
     constructor() {
+        // Common weapons; all preset values remain editable for variants and house rules.
+        this.weaponPresets = [
+            {name: 'Dagger', bonus: 1, dmg: 1, range: 'Arm', feat: 'Light, Edged, Pointed', skill: 'melee'},
+            {name: 'Short sword', bonus: 2, dmg: 1, range: 'Arm', feat: 'Edged, Pointed', skill: 'melee'},
+            {name: 'Broadsword', bonus: 2, dmg: 2, range: 'Arm', feat: 'Edged, Pointed', skill: 'melee'},
+            {name: 'Longsword', bonus: 2, dmg: 2, range: 'Near', feat: 'Heavy, Two-handed, Edged, Pointed', skill: 'melee'},
+            {name: 'Handaxe', bonus: 2, dmg: 2, range: 'Arm', feat: 'Edged, Hook', skill: 'melee'},
+            {name: 'Battleaxe', bonus: 2, dmg: 3, range: 'Arm', feat: 'Heavy, Two-handed, Edged, Hook', skill: 'melee'},
+            {name: 'Mace', bonus: 2, dmg: 1, range: 'Arm', feat: 'Blunt', skill: 'melee'},
+            {name: 'Short spear', bonus: 1, dmg: 1, range: 'Near', feat: 'Pointed', skill: 'melee'},
+            {name: 'Long spear', bonus: 2, dmg: 1, range: 'Near', feat: 'Two-handed, Pointed', skill: 'melee'},
+            {name: 'Short bow', bonus: 2, dmg: 1, range: 'Short', feat: 'Two-handed', skill: 'marksmanship'},
+            {name: 'Longbow', bonus: 2, dmg: 1, range: 'Long', feat: 'Heavy, Two-handed', skill: 'marksmanship'},
+            {name: 'Light crossbow', bonus: 1, dmg: 2, range: 'Long', feat: 'Two-handed, Slow reload', skill: 'marksmanship'},
+            {name: 'Heavy crossbow', bonus: 1, dmg: 3, range: 'Long', feat: 'Heavy, Two-handed, Slow reload', skill: 'marksmanship'}
+        ];
         this.skillsConfig = [
             { id: 'might', name: 'Might', attr: 'strength' },
             { id: 'endurance', name: 'Endurance', attr: 'strength' },
@@ -637,7 +668,8 @@ class ForbiddenLandsApp {
             bonus: tr.querySelector('.w-bonus').value,
             dmg: tr.querySelector('.w-dmg').value,
             range: tr.querySelector('.w-range').value,
-            feat: tr.querySelector('.w-feat').value
+            feat: tr.querySelector('.w-feat').value,
+            skill: tr.querySelector('.w-skill').value
         }));
 
         data.gear = Array.from(document.querySelectorAll('#gear-table tbody tr')).map(tr => ({
@@ -676,7 +708,7 @@ class ForbiddenLandsApp {
         if (data.talents) data.talents.forEach(t => this.addTalentRow(t.name, t.rank, t.desc));
 
         document.querySelector('#weapons-table tbody').innerHTML = '';
-        if (data.weapons) data.weapons.forEach(w => this.addWeaponRow(w.name, w.bonus, w.dmg, w.range, w.feat));
+        if (data.weapons) data.weapons.forEach(w => this.addWeaponRow(w.name, w.bonus, w.dmg, w.range, w.feat, w.skill));
 
         document.querySelector('#gear-table tbody').innerHTML = '';
         if (data.gear) data.gear.forEach(g => this.addGearRow(g.item, g.weight, g.notes));
@@ -695,10 +727,20 @@ class ForbiddenLandsApp {
         ]);
     }
 
-    addWeaponRow(name = '', bonus = 0, dmg = 1, range = 'Arm', feat = '') {
+    addWeaponRow(name = '', bonus = 0, dmg = 1, range = 'Arm', feat = '', skill = 'melee') {
         const tr = document.createElement('tr');
         tr.innerHTML = `
-            <td><input type="text" value="${this.escapeHTML(name)}" class="w-name" onchange="app.saveState()"></td>
+            <td>
+                <select class="w-preset" aria-label="Weapon preset" onchange="app.applyWeaponPreset(this)">
+                    <option value="">Custom / choose weapon…</option>
+                    ${this.weaponPresets.map((weapon, index) => `<option value="${index}">${this.escapeHTML(weapon.name)}</option>`).join('')}
+                </select>
+                <input type="text" aria-label="Weapon name" value="${this.escapeHTML(name)}" class="w-name" onchange="app.saveState()">
+                <select class="w-skill" aria-label="Weapon attack skill" onchange="app.saveState()">
+                    <option value="melee" ${skill === 'melee' ? 'selected' : ''}>Melee (Strength)</option>
+                    <option value="marksmanship" ${skill === 'marksmanship' ? 'selected' : ''}>Marksmanship (Agility)</option>
+                </select>
+            </td>
             <td><input type="number" value="${this.escapeHTML(bonus)}" class="w-bonus" onchange="app.saveState()"></td>
             <td><input type="number" value="${this.escapeHTML(dmg)}" class="w-dmg" onchange="app.saveState()"></td>
             <td><input type="text" value="${this.escapeHTML(range)}" class="w-range" onchange="app.saveState()"></td>
@@ -706,7 +748,22 @@ class ForbiddenLandsApp {
             <td><button class="btn-roll" onclick="app.rollWeaponAttack(this)">Attack</button></td>
             <td><button class="btn-del" onclick="this.closest('tr').remove(); app.saveState();">X</button></td>
         `;
+        for (const [selector, label] of Object.entries({'.w-bonus':'Weapon bonus', '.w-dmg':'Weapon damage', '.w-range':'Weapon range', '.w-feat':'Weapon features'})) {
+            tr.querySelector(selector).setAttribute('aria-label', label);
+        }
         document.querySelector('#weapons-table tbody').appendChild(tr);
+    }
+
+    applyWeaponPreset(select) {
+        if (select.value === '') return; // Custom leaves manual values intact.
+        const weapon = this.weaponPresets[Number(select.value)];
+        if (!weapon) return;
+        const row = select.closest('tr');
+        for (const [field, key] of Object.entries({name:'name', bonus:'bonus', dmg:'dmg', range:'range', feat:'feat', skill:'skill'})) {
+            row.querySelector('.w-' + field).value = weapon[key];
+        }
+        select.value = '';
+        this.saveState();
     }
 
     addGearRow(item = '', weight = 'Normal', notes = '') {
@@ -767,11 +824,13 @@ class ForbiddenLandsApp {
         const tr = btn.closest('tr');
         const wName = tr.querySelector('.w-name').value;
         const wBonus = parseInt(tr.querySelector('.w-bonus').value) || 0;
-        const meleeVal = parseInt(document.getElementById('skill-melee').value) || 0;
-        const strVal = parseInt(document.getElementById('attr-strength').value) || 0;
+        const skill = tr.querySelector('.w-skill').value;
+        const attribute = skill === 'marksmanship' ? 'agility' : 'strength';
+        const skillVal = parseInt(document.getElementById('skill-' + skill).value) || 0;
+        const attrVal = parseInt(document.getElementById('attr-' + attribute).value) || 0;
 
-        const dice = this.rollDice(strVal, meleeVal, wBonus);
-        this.currentRoll = { label: `Attack: ${wName}`, attribute: 'strength', dice: dice, isPushed: false };
+        const dice = this.rollDice(attrVal, skillVal, wBonus);
+        this.currentRoll = { label: `Attack: ${wName}`, attribute: attribute, dice: dice, isPushed: false };
         this.renderRollResults();
     }
 

@@ -4,6 +4,8 @@ Open `index.html` in a modern browser, or run `python3 -m http.server 8000` from
 
 - Edit attributes, all 16 skills, conditions, resources, relationships, talents, weapons, and gear.
 - Keep multiple characters in the roster; changes save automatically in browser storage.
+- Choose common weapon presets to fill name, bonus, damage, range, features, and attack skill; every field stays editable and custom values persist in backups.
+- Keep dice results in a sticky right pane on desktop; on smaller screens the roller stacks above the sheet.
 - Roll skills and weapon attacks, then push once. Base banes cause attribute damage and grant Willpower; gear damage is reported for manual adjustment. Apply situational modifiers, armor, and artifact dice manually.
 - Export and import character JSON to back up your sheet or move between devices. Data stays in your browser; there is no account or cloud synchronization.
 - Print a sheet using the Print button. The layout also adapts to phones.
