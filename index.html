@@ -113,6 +113,7 @@
             font-weight: bold;
         }
 
+        .gear-totals { margin-top: 16px; }
         .encumbrance-summary { padding: 10px; border: 1px solid var(--gold-color); border-radius: 4px; color: var(--gold-color); font-weight: bold; }
         .encumbrance-summary.overloaded { color: #ffb3a6; border-color: #ffb3a6; }
         .attribute-spinner { display: flex; justify-content: center; align-items: stretch; gap: 4px; margin: 8px auto; max-width: 110px; }
@@ -232,8 +233,6 @@
 
         .die-base { background-color: #f5f5f5; color: #111; }
         .die-negative-skill { background: #593c75; color: white; }
-        .note-blocks textarea { min-height: 120px; }
-        @media (max-width: 600px) { .note-blocks { grid-template-columns: 1fr; } }
         #dice-staging { margin: 12px 0; }
         #btn-roll-pool { width: 100%; margin-bottom: 12px; }
         button:disabled { opacity: .45; cursor: default; }
@@ -431,6 +430,19 @@
             <input type="text" id="dark-secret" onchange="app.saveState()">
         </div>
 
+        <div style="margin-bottom: 8px;">
+            <label>Relationships</label>
+            <textarea id="relationships" onchange="app.saveState()"></textarea>
+        </div>
+        <div style="margin-bottom: 8px;">
+            <label>Appearance</label>
+            <textarea id="appearance" onchange="app.saveState()"></textarea>
+        </div>
+        <div>
+            <label>Critical Injuries</label>
+            <textarea id="critical-injuries" onchange="app.saveState()"></textarea>
+        </div>
+
     </div>
 
     <!-- Consumables & Purse -->
@@ -506,10 +518,6 @@
     <!-- Gear Table -->
     <div class="panel col-6">
         <h3>Gear</h3>
-        <div id="encumbrance-summary" class="encumbrance-summary" role="status" aria-live="polite"></div>
-        <p class="save-note">Tiny = 0, Light = ½, Normal = 1, Heavy = 2 units each. Capacity = regular Strength × 2. Only named gear rows count; list carried weapons, armor, and supplies here too.</p>
-        <label for="capacity-bonus">Extra capacity (talents or other bonuses)</label>
-        <input type="number" id="capacity-bonus" min="0" value="0" step="0.5" onchange="app.saveState()">
         <table class="dynamic-table" id="gear-table">
             <thead>
                 <tr>
@@ -523,25 +531,15 @@
             <tbody></tbody>
         </table>
         <button class="btn-add" onclick="app.addGearRow()">+ Add Gear</button>
+        <div class="gear-totals">
+        <div id="encumbrance-summary" class="encumbrance-summary" role="status" aria-live="polite"></div>
+        <p class="save-note">Tiny = 0, Light = ½, Normal = 1, Heavy = 2 units each. Capacity = regular Strength × 2. Only named gear rows count; list carried weapons, armor, and supplies here too.</p>
+        <label for="capacity-bonus">Extra capacity (talents or other bonuses)</label>
+        <input type="number" id="capacity-bonus" min="0" value="0" step="0.5" onchange="app.saveState()">
+        </div>
     </div>
 
-    <section class="panel col-12" id="character-notes">
-        <h3>Character Notes</h3>
-        <div class="grid-3 note-blocks">
-        <div style="margin-bottom: 8px;">
-            <label>Relationships</label>
-            <textarea id="relationships" onchange="app.saveState()"></textarea>
-        </div>
-        <div style="margin-bottom: 8px;">
-            <label>Appearance</label>
-            <textarea id="appearance" onchange="app.saveState()"></textarea>
-        </div>
-        <div>
-            <label>Critical Injuries</label>
-            <textarea id="critical-injuries" onchange="app.saveState()"></textarea>
-        </div>
-        </div>
-    </section>
+
 
 </main>
     <!-- Dice Roller Output Panel -->

@@ -98,7 +98,10 @@ const backup=path.join(temp,'character.json');
    await page.locator('#btn-push').click();
    assert.match(await page.locator('#dice-summary').textContent(),/1 Success/);
    await page.evaluate(()=>{Math.random=window.originalRandom;});
-   assert.ok(await page.evaluate(()=>document.querySelector('#gear-table').compareDocumentPosition(document.querySelector('#character-notes')) & Node.DOCUMENT_POSITION_FOLLOWING));
+   assert.ok(await page.evaluate(()=>document.querySelector('#gear-table').compareDocumentPosition(document.querySelector('.gear-totals')) & Node.DOCUMENT_POSITION_FOLLOWING));
+   for (const id of ['relationships','appearance','critical-injuries']) {
+    assert.match(await page.locator('#'+id).locator('xpath=ancestor::div[contains(@class,"panel")]').textContent(), /Personal Details/);
+   }
    for (const id of ['relationships','appearance','critical-injuries']) await page.locator('#'+id).fill('Saved '+id);
    await page.reload();
    for (const id of ['relationships','appearance','critical-injuries']) assert.equal(await page.locator('#'+id).inputValue(),'Saved '+id);
