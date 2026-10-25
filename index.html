@@ -24,7 +24,7 @@
             padding: 20px;
         }
 
-        .sheet-layout { max-width: 1460px; margin: 0 auto; display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 20px; align-items: start; }
+        .sheet-layout { max-width: 1460px; margin: 0 auto; display: grid; grid-template-columns: minmax(0, 1fr) 370px; gap: 20px; align-items: start; }
         #dice-panel { position: sticky; top: 20px; max-height: calc(100vh - 40px); overflow-y: auto; }
         .w-preset, .w-skill { margin-bottom: 6px; }
         .weapon-help { color: #bdbdbd; font-size: .9rem; }
@@ -232,12 +232,34 @@
         }
 
         .die-base { background-color: #f5f5f5; color: #111; }
+        .pool-area h3 { text-align: center; font-size: 1.5rem; }
+        .pool-area h4 { text-align: center; color: var(--gold-color); margin: 14px 0 8px; }
+        .pool-columns { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); border: 1px solid #888; }
+        .pool-column { padding: 8px 6px; min-width: 0; }
+        .pool-column h4 { margin: 0 0 10px; color: inherit; }
+        .pool-base { background: #ece8df; color: #191919; }
+        .pool-skill { background: #982526; color: #fff; }
+        .pool-gear { background: #3b3b3b; color: #fff; }
+        .pool-buttons { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 7px; }
+        .pool-count { background: #f5f2eb; color: #161616; border: 1px solid #111; border-radius: 7px; box-shadow: 2px 3px 2px #0008; padding: 7px 0; font-size: 1.1rem; min-height: 36px; }
+        .pool-count:hover { background: #e5ce92; }
+        .pool-count[aria-pressed="true"] { background: #d4af37; color: #111; outline: 2px solid #fff; outline-offset: -5px; }
+        .artifact-options { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+        .artifact-options button { padding: 10px 0; background: #354d2d; border: 2px solid transparent; }
+        .artifact-options button[aria-pressed="true"] { border-color: var(--gold-color); background: #59783a; }
+        .pool-adjustments { margin-top: 14px; }
+        .pool-adjustments summary { cursor: pointer; color: #ccc; }
+        .pool-controls { display: grid; grid-template-columns: 2fr 1fr; gap: 10px; align-items: start; }
+        #staged-label { text-align: center; margin: 8px 0 14px; }
+        .clear-pool { width: 100%; background: #444; }
+        .results-area { margin-top: 22px; border-top: 2px solid var(--gold-color); padding-top: 18px; }
         .die-negative-skill { background: #593c75; color: white; }
         #dice-staging { margin: 12px 0; }
         #btn-roll-pool { width: 100%; margin-bottom: 12px; }
         button:disabled { opacity: .45; cursor: default; }
         .die-skill { background-color: #8b0000; color: #fff; }
         .die-gear { background-color: #222; color: #fff; border-color: #555; }
+        .die-artifact { min-width: 62px; padding: 0 4px; font-size: .9em; }
         .die-artifact { background-color: #d4af37; color: #111; }
 
         .die-success { border: 2px solid #00ff00; box-shadow: 0 0 5px #00ff00; }
@@ -544,22 +566,34 @@
 </main>
     <!-- Dice Roller Output Panel -->
     <aside class="panel" id="dice-panel" aria-label="Dice roller">
-        <h3>Dice Roller Console</h3>
-        <p class="save-note">1. Stage a skill or weapon. 2. Adjust dice and modifiers. 3. Roll, then push if needed.</p>
-        <div id="staged-label" role="status">No roll staged</div>
+        <section class="pool-area" aria-label="Dice pool">
+        <h3>Dice Pool</h3>
+        <div class="pool-columns" id="pool-selectors"></div>
+        <h4>Artifact dice</h4>
+        <div class="artifact-options" id="artifact-options"></div>
+        <details class="pool-adjustments"><summary>Fine adjustments / bonus or penalty</summary>
         <div class="grid-2" id="dice-staging">
-            <div><label for="pool-base">Base dice</label><input type="number" id="pool-base" min="0" max="100" value="0" oninput="app.updatePoolPreview()"></div>
-            <div><label for="pool-skill">Skill dice</label><input type="number" id="pool-skill" min="-100" max="100" value="0" oninput="app.updatePoolPreview()"></div>
-            <div><label for="pool-gear">Gear dice</label><input type="number" id="pool-gear" min="0" max="100" value="0" oninput="app.updatePoolPreview()"></div>
-            <div><label for="pool-modifier">Bonus / penalty</label><input type="number" id="pool-modifier" min="-100" max="100" value="0" oninput="app.updatePoolPreview()"></div>
+            <div><label for="pool-base">Base dice</label><input type="number" id="pool-base" min="0" max="100" value="0" oninput="app.editPool()"></div>
+            <div><label for="pool-skill">Skill dice</label><input type="number" id="pool-skill" min="-100" max="100" value="0" oninput="app.editPool()"></div>
+            <div><label for="pool-gear">Gear dice</label><input type="number" id="pool-gear" min="0" max="100" value="0" oninput="app.editPool()"></div>
+            <div><label for="pool-modifier">Bonus / penalty</label><input type="number" id="pool-modifier" min="-100" max="100" value="0" oninput="app.editPool()"></div>
+        </div></details>
+        <p class="save-note" id="pool-preview"></p>
+        <div class="pool-controls">
+            <button id="btn-roll-pool" onclick="app.rollStagedPool()" disabled>Roll dice</button>
+            <button onclick="app.rollD66()">D66</button>
         </div>
-        <p class="save-note" id="pool-preview">Select a skill or weapon to prepare its dice.</p>
-        <button id="btn-roll-pool" onclick="app.rollStagedPool()" disabled>Roll staged dice</button>
+        <div id="staged-label" role="status">No roll staged</div>
+        <button class="clear-pool" onclick="app.clearPool()">Clear dice pool</button>
+        </section>
+        <section class="results-area" aria-label="Dice results">
+        <h3>Results</h3>
         <div role="status" aria-live="polite" id="dice-summary" style="font-size: 0.95em; color: #aaa;">Select a Skill or Weapon to roll...</div>
         <div class="dice-container" id="dice-results"></div>
         <div id="dice-actions">
             <button id="btn-push" onclick="app.pushRoll()" style="display:none; background-color: #d4af37; color: #111;">Push Roll!</button>
         </div>
+        </section>
     </aside>
 
 </div>
@@ -615,6 +649,7 @@ class ForbiddenLandsApp {
             'coin-copper', 'coin-silver', 'coin-gold', 'capacity-bonus'
         ];
 
+        this.artifactDice = [];
         this.currentRoll = null;
         this.stagedRoll = null;
         this.activeCharId = null;
@@ -633,6 +668,75 @@ class ForbiddenLandsApp {
         this.updateRosterSelect();
         this.renderAttributes();
         this.renderEncumbrance();
+    }
+
+    renderPoolSelectors() {
+        const area = document.getElementById('pool-selectors');
+        area.replaceChildren();
+        for (const type of ['base', 'skill', 'gear']) {
+            const column = document.createElement('div');
+            column.className = 'pool-column pool-' + type;
+            const title = document.createElement('h4');
+            title.textContent = type[0].toUpperCase() + type.slice(1);
+            const buttons = document.createElement('div');
+            buttons.className = 'pool-buttons';
+            const values = type === 'skill' ? [6,7,5,8,4,9,3,10,2,-1,1,-2,0,-3] : [6,7,5,8,4,9,3,10,2,11,1,12,0];
+            for (const value of values) {
+                const button = document.createElement('button');
+                button.className = 'pool-count';
+                button.textContent = value;
+                button.setAttribute('aria-label', `${type} dice ${value}`);
+                button.setAttribute('aria-pressed', String(Number(document.getElementById('pool-' + type).value) === value));
+                button.onclick = () => {document.getElementById('pool-' + type).value = value; this.editPool();};
+                buttons.appendChild(button);
+            }
+            column.append(title, buttons); area.appendChild(column);
+        }
+        const artifacts = document.getElementById('artifact-options'); artifacts.replaceChildren();
+        [8,8,10,12].forEach((sides, index) => {
+            const button = document.createElement('button');
+            button.textContent = 'D' + sides;
+            button.setAttribute('aria-label', `Artifact D${sides} slot ${index + 1}`);
+            button.setAttribute('aria-pressed', String(this.artifactDice.includes(index)));
+            button.onclick = () => {
+                this.artifactDice = this.artifactDice.includes(index) ? this.artifactDice.filter(i => i !== index) : [...this.artifactDice, index];
+                this.editPool();
+            };
+            artifacts.appendChild(button);
+        });
+    }
+
+    editPool() {
+        if (!this.stagedRoll) this.stagedRoll = {label:'Custom Roll', attribute:null};
+        document.getElementById('staged-label').textContent = 'Current preset: ' + this.stagedRoll.label;
+        document.getElementById('btn-roll-pool').disabled = false;
+        this.updatePoolPreview();
+    }
+
+    clearPool() {
+        this.stagedRoll = null;
+        this.artifactDice = [];
+        for (const field of ['base','skill','gear','modifier']) document.getElementById('pool-' + field).value = 0;
+        document.getElementById('staged-label').textContent = 'No roll staged';
+        document.getElementById('btn-roll-pool').disabled = true;
+        this.currentRoll = null;
+        document.getElementById('dice-results').replaceChildren();
+        document.getElementById('dice-summary').textContent = 'Pool cleared. Choose dice or stage a skill or weapon.';
+        document.getElementById('btn-push').style.display = 'none';
+        this.updatePoolPreview();
+    }
+
+    rollD66() {
+        this.currentRoll = null;
+        const tens = Math.floor(Math.random() * 6) + 1;
+        const ones = Math.floor(Math.random() * 6) + 1;
+        document.getElementById('dice-results').replaceChildren();
+        for (const value of [tens, ones]) {
+            const die = document.createElement('div'); die.className = 'die die-base'; die.textContent = value;
+            document.getElementById('dice-results').appendChild(die);
+        }
+        document.getElementById('dice-summary').textContent = `D66: ${tens}${ones} (tens ${tens}, ones ${ones})`;
+        document.getElementById('btn-push').style.display = 'none';
     }
 
     renderEncumbrance() {
@@ -799,6 +903,7 @@ class ForbiddenLandsApp {
     }
 
     resetForm() {
+        this.artifactDice = [];
         this.currentRoll = null;
         this.stagedRoll = null;
         document.getElementById('btn-roll-pool').disabled = true;
@@ -872,6 +977,7 @@ class ForbiddenLandsApp {
         const data = this.roster[id];
         if (!data) return;
         this.resetForm();
+        this.artifactDice = [];
         this.currentRoll = null;
         this.stagedRoll = null;
         document.getElementById('btn-roll-pool').disabled = true;
@@ -1034,6 +1140,7 @@ class ForbiddenLandsApp {
     }
 
     stagePool(label, attribute, base, skill, gear) {
+        this.artifactDice = [];
         this.stagedRoll = {label, attribute};
         this.currentRoll = null;
         for (const [field, value] of Object.entries({base, skill, gear, modifier:0})) document.getElementById('pool-' + field).value = value;
@@ -1051,14 +1158,19 @@ class ForbiddenLandsApp {
     }
 
     updatePoolPreview() {
+        this.renderPoolSelectors();
         const pool = this.getStagedPool();
-        document.getElementById('pool-preview').textContent = `${pool.base} base + ${Math.abs(pool.skill)} ${pool.skill < 0 ? 'negative skill' : 'skill'} + ${pool.gear} gear dice. Negative skill sixes cancel successes.`;
+        document.getElementById('pool-preview').textContent = `${pool.base} base + ${Math.abs(pool.skill)} ${pool.skill < 0 ? 'negative skill' : 'skill'} + ${pool.gear} gear dice. Negative skill sixes cancel successes. Artifacts: ${this.artifactDice.map(index => "D" + [8,8,10,12][index]).join(", ") || "none"}.`;
     }
 
     rollStagedPool() {
         if (!this.stagedRoll) return;
         const pool = this.getStagedPool();
         this.currentRoll = {...this.stagedRoll, dice:this.rollDice(pool.base, pool.skill, pool.gear), isPushed:false};
+        this.artifactDice.forEach(index => {
+            const sides = [8,8,10,12][index];
+            this.currentRoll.dice.push({type:'artifact', sides, value:Math.floor(Math.random() * sides) + 1});
+        });
         this.renderRollResults();
     }
 
@@ -1070,10 +1182,10 @@ class ForbiddenLandsApp {
 
         this.currentRoll.dice.forEach(die => {
             // Successes and banes stay locked
-            if (die.value === 6) return;
+            if (die.value >= 6) return;
             if (die.value === 1 && ['base', 'gear'].includes(die.type)) return;
             // Reroll eligible dice
-            die.value = Math.floor(Math.random() * 6) + 1;
+            die.value = Math.floor(Math.random() * (die.sides || 6)) + 1;
             die.pushed = true;
 
         });
@@ -1106,12 +1218,14 @@ class ForbiddenLandsApp {
 
         let successes = 0;
         this.currentRoll.dice.forEach(d => {
-            if (d.value === 6) successes += d.type === 'negative-skill' ? -1 : 1;
+            if (d.value >= 6) successes += d.type === 'negative-skill' ? -1 : (d.type === 'artifact' ? Math.floor((d.value - 6) / 2) + 1 : 1);
             const el = document.createElement('div');
             let typeClass = `die-${d.type}`;
-            let statusClass = d.value === 6 ? 'die-success' : (d.value === 1 && ['base', 'gear'].includes(d.type) ? 'die-bane' : '');
+            let statusClass = d.value >= 6 ? 'die-success' : (d.value === 1 && ['base', 'gear'].includes(d.type) ? 'die-bane' : '');
             el.className = `die ${typeClass} ${statusClass}`;
             el.textContent = d.value === 6 ? (d.type === 'negative-skill' ? '−⚔️' : '⚔️') : (d.value === 1 && ['base', 'gear'].includes(d.type) ? '💀' : d.value);
+            if (d.type === "artifact") el.textContent = `D${d.sides}: ${d.value}`;
+            el.title = `${d.type}: ${d.value}`;
             container.appendChild(el);
         });
 
