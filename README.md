@@ -9,7 +9,7 @@ Open `index.html` in a modern browser, or run `python3 -m http.server 8000` from
 - Keep multiple characters in the roster; changes save automatically in browser storage.
 - Choose common weapon presets to fill name, bonus, damage, range, features, and attack skill; every field stays editable and custom values persist in backups.
 - Keep dice results in a sticky right pane on desktop; on smaller screens the roller stacks above the sheet.
-- Roll skills and weapon attacks, then push once. Base banes cause attribute damage and grant Willpower; gear damage is reported for manual adjustment. Apply situational modifiers, armor, and artifact dice manually.
+- Stage skills and weapon attacks before rolling. Edit base, skill, and gear dice, then enter a positive bonus or negative penalty (applied to skill dice). Click Roll staged dice, then push once if needed. Negative skill dice cancel successes on sixes; skill dice never cause damage. Staging a new action resets the modifier; changing characters clears the staged pool. Resource rolls still roll directly without modifiers or pushing. Relationships, Appearance, and Critical Injuries are beneath Gear. Base banes cause attribute damage and grant Willpower; gear damage is reported for manual adjustment. Use the staged modifier for situational bonuses and penalties; resolve armor and artifact dice manually.
 - Export and import character JSON to back up your sheet or move between devices. Data stays in your browser; there is no account or cloud synchronization.
 - Print a sheet using the Print button. The layout also adapts to phones.
 
