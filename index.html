@@ -187,6 +187,11 @@
             font-size: 0.8em;
             margin-left: 5px;
         }
+        .icon-definitions { position: absolute; width: 0; height: 0; overflow: hidden; }
+        .action-icon { width: 22px; height: 22px; display: block; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+        .portrait-frame { margin: 0 0 16px; min-height: 180px; aspect-ratio: 4 / 5; max-height: 260px; display: flex; flex-direction: column; align-items: center; justify-content: center; border: 2px solid #8c7948; box-shadow: inset 0 0 0 4px #171717; background: #191919; color: #9f926f; border-radius: 4px; }
+        .portrait-frame svg { width: 90px; height: 105px; fill: #38352e; stroke: #6a624e; stroke-width: 2; }
+        .portrait-frame figcaption { font-size: .85rem; margin-top: 12px; letter-spacing: .06em; }
         .btn-roll:hover { background-color: #3b7a3b; }
 
         .dynamic-table {
@@ -292,6 +297,13 @@
     </style>
 </head>
 <body>
+<svg xmlns="http://www.w3.org/2000/svg" class="icon-definitions" aria-hidden="true"><defs>
+    <symbol id="icon-food" viewBox="0 0 24 24"><path d="M5 9c-4-1-4-7 0-7h14c4 0 4 6 0 7v12H5Z"/><path d="m9 5-1 3m6-3-1 3"/></symbol>
+    <symbol id="icon-water" viewBox="0 0 24 24"><path d="M12 2S5 10 5 15a7 7 0 0 0 14 0c0-5-7-13-7-13Z"/><path d="M8 15a4 4 0 0 0 4 4"/></symbol>
+    <symbol id="icon-torches" viewBox="0 0 24 24"><path d="m9 12 1 10h4l1-10M8 12h8M12 2c1 4 6 5 5 8a5 5 0 0 1-10 0c-1-3 2-4 2-6 0 3 2 4 3-2Z"/></symbol>
+    <symbol id="icon-arrows" viewBox="0 0 24 24"><path d="m4 20 15-15m-6 0 7-2-2 7M4 15v5h5M7 12v5h5"/></symbol>
+    <symbol id="icon-d6" viewBox="0 0 24 24"><rect x="2" y="2" width="20" height="20" rx="4"/><g fill="currentColor" stroke="none"><circle cx="7" cy="7" r="1.4"/><circle cx="7" cy="12" r="1.4"/><circle cx="7" cy="17" r="1.4"/><circle cx="17" cy="7" r="1.4"/><circle cx="17" cy="12" r="1.4"/><circle cx="17" cy="17" r="1.4"/></g></symbol>
+</defs></svg>
 
 <div class="sheet-layout">
 <main class="container">
@@ -443,6 +455,10 @@
     <!-- Personal Details -->
     <div class="panel col-4">
         <h3>Personal Details</h3>
+        <figure class="portrait-frame" aria-label="Character portrait placeholder">
+            <svg viewBox="0 0 120 140" aria-hidden="true"><circle cx="60" cy="45" r="23"/><path d="M18 130v-12a42 42 0 0 1 84 0v12Z"/></svg>
+            <figcaption>Character portrait</figcaption>
+        </figure>
         <div style="margin-bottom: 8px;">
             <label>Pride</label>
             <input type="text" id="pride" onchange="app.saveState()">
@@ -474,22 +490,22 @@
         <div class="resource-box">
             <label>Food</label>
             <select id="res-food" onchange="app.saveState()"><option>None</option><option>D6</option><option>D8</option><option>D10</option><option>D12</option></select>
-            <button class="btn-roll" aria-label="Roll food" onclick="app.rollConsumable('food')">Roll</button>
+            <button class="btn-roll" aria-label="Roll food" title="Roll food resource die" onclick="app.rollConsumable('food')"><svg class="action-icon" aria-hidden="true"><use href="#icon-food"></use></svg></button>
         </div>
         <div class="resource-box">
             <label>Water</label>
             <select id="res-water" onchange="app.saveState()"><option>None</option><option>D6</option><option>D8</option><option>D10</option><option>D12</option></select>
-            <button class="btn-roll" aria-label="Roll water" onclick="app.rollConsumable('water')">Roll</button>
+            <button class="btn-roll" aria-label="Roll water" title="Roll water resource die" onclick="app.rollConsumable('water')"><svg class="action-icon" aria-hidden="true"><use href="#icon-water"></use></svg></button>
         </div>
         <div class="resource-box">
             <label>Arrows</label>
             <select id="res-arrows" onchange="app.saveState()"><option>None</option><option>D6</option><option>D8</option><option>D10</option><option>D12</option></select>
-            <button class="btn-roll" aria-label="Roll arrows" onclick="app.rollConsumable('arrows')">Roll</button>
+            <button class="btn-roll" aria-label="Roll arrows" title="Roll arrows resource die" onclick="app.rollConsumable('arrows')"><svg class="action-icon" aria-hidden="true"><use href="#icon-arrows"></use></svg></button>
         </div>
         <div class="resource-box">
             <label>Torches</label>
             <select id="res-torches" onchange="app.saveState()"><option>None</option><option>D6</option><option>D8</option><option>D10</option><option>D12</option></select>
-            <button class="btn-roll" aria-label="Roll torches" onclick="app.rollConsumable('torches')">Roll</button>
+            <button class="btn-roll" aria-label="Roll torches" title="Roll torches resource die" onclick="app.rollConsumable('torches')"><svg class="action-icon" aria-hidden="true"><use href="#icon-torches"></use></svg></button>
         </div>
         <hr style="border-color: var(--border-color); margin: 10px 0;">
         <div class="grid-3">
@@ -837,7 +853,7 @@ class ForbiddenLandsApp {
                 <label>${skill.name} (${skill.attr.substring(0,3).toUpperCase()})</label>
                 <div>
                     <input type="number" id="skill-${skill.id}" min="0" max="5" value="0" onchange="app.saveState()">
-                    <button class="btn-roll" onclick="app.rollSkill('${skill.id}')">Stage</button>
+                    <button class="btn-roll" aria-label="Stage ${skill.name} dice" title="Stage ${skill.name} dice" onclick="app.rollSkill('${skill.id}')"><svg class="action-icon" aria-hidden="true"><use href="#icon-d6"></use></svg></button>
                 </div>
             `;
             container.appendChild(div);
