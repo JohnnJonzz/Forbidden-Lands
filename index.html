@@ -113,6 +113,8 @@
             font-weight: bold;
         }
 
+        .encumbrance-summary { padding: 10px; border: 1px solid var(--gold-color); border-radius: 4px; color: var(--gold-color); font-weight: bold; }
+        .encumbrance-summary.overloaded { color: #ffb3a6; border-color: #ffb3a6; }
         .attribute-spinner { display: flex; justify-content: center; align-items: stretch; gap: 4px; margin: 8px auto; max-width: 110px; }
         .attribute-spinner input { font-size: 2.3rem; width: 70px; padding: 4px; appearance: textfield; -moz-appearance: textfield; }
         .attribute-spinner input::-webkit-inner-spin-button, .attribute-spinner input::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
@@ -509,10 +511,15 @@
     <!-- Gear Table -->
     <div class="panel col-6">
         <h3>Gear</h3>
+        <div id="encumbrance-summary" class="encumbrance-summary" role="status" aria-live="polite"></div>
+        <p class="save-note">Tiny = 0, Light = ½, Normal = 1, Heavy = 2 units each. Capacity = regular Strength × 2. Only named gear rows count; list carried weapons, armor, and supplies here too.</p>
+        <label for="capacity-bonus">Extra capacity (talents or other bonuses)</label>
+        <input type="number" id="capacity-bonus" min="0" value="0" step="0.5" onchange="app.saveState()">
         <table class="dynamic-table" id="gear-table">
             <thead>
                 <tr>
                     <th>Item</th>
+                    <th style="width: 65px;">Qty</th>
                     <th style="width: 80px;">Weight</th>
                     <th>Notes</th>
                     <th style="width: 30px;"></th>
@@ -584,7 +591,7 @@ class ForbiddenLandsApp {
             'cond-hungry', 'cond-thirsty', 'cond-sleepy', 'cond-cold',
             'pride', 'dark-secret', 'relationships', 'appearance', 'critical-injuries',
             'res-food', 'res-water', 'res-arrows', 'res-torches',
-            'coin-copper', 'coin-silver', 'coin-gold'
+            'coin-copper', 'coin-silver', 'coin-gold', 'capacity-bonus'
         ];
 
         this.currentRoll = null;
@@ -603,6 +610,23 @@ class ForbiddenLandsApp {
         }
         this.updateRosterSelect();
         this.renderAttributes();
+        this.renderEncumbrance();
+    }
+
+    renderEncumbrance() {
+        const weights = {Tiny: 0, Light: 0.5, Normal: 1, Heavy: 2};
+        const carried = Array.from(document.querySelectorAll('#gear-table tbody tr')).reduce((total, row) => {
+            if (!row.querySelector('.g-item').value.trim()) return total;
+            const quantity = Math.max(0, Math.floor(Number(row.querySelector('.g-qty').value) || 0));
+            return total + (weights[row.querySelector('.g-weight').value] ?? 1) * quantity;
+        }, 0);
+        const strength = Math.max(1, Math.min(6, Number(document.getElementById('attr-strength-regular').value) || 1));
+        const bonus = Math.max(0, Number(document.getElementById('capacity-bonus').value) || 0);
+        const capacity = strength * 2 + bonus;
+        const summary = document.getElementById('encumbrance-summary');
+        const difference = capacity - carried;
+        summary.classList.toggle('overloaded', difference < 0);
+        summary.textContent = `${carried} / ${capacity} units · ` + (difference < 0 ? `Over capacity by ${-difference}` : `${difference} remaining`);
     }
 
     renderAttributes() {
@@ -774,6 +798,7 @@ class ForbiddenLandsApp {
 
     saveState() {
         this.renderAttributes();
+        this.renderEncumbrance();
         if (!this.activeCharId) return;
         const data = {};
         
@@ -804,6 +829,7 @@ class ForbiddenLandsApp {
         data.gear = Array.from(document.querySelectorAll('#gear-table tbody tr')).map(tr => ({
             item: tr.querySelector('.g-item').value,
             weight: tr.querySelector('.g-weight').value,
+            quantity: tr.querySelector('.g-qty').value,
             notes: tr.querySelector('.g-notes').value
         }));
 
@@ -848,8 +874,9 @@ class ForbiddenLandsApp {
         if (data.weapons) data.weapons.forEach(w => this.addWeaponRow(w.name, w.bonus, w.dmg, w.range, w.feat, w.skill));
 
         document.querySelector('#gear-table tbody').innerHTML = '';
-        if (data.gear) data.gear.forEach(g => this.addGearRow(g.item, g.weight, g.notes));
+        if (data.gear) data.gear.forEach(g => this.addGearRow(g.item, g.weight, g.notes, g.quantity));
         this.renderAttributes();
+        this.renderEncumbrance();
     }
 
     escapeHTML(value) {
@@ -904,9 +931,10 @@ class ForbiddenLandsApp {
         this.saveState();
     }
 
-    addGearRow(item = '', weight = 'Normal', notes = '') {
+    addGearRow(item = '', weight = 'Normal', notes = '', quantity = 1) {
         this.createTableRow('gear-table', [
-            `<input type="text" value="${this.escapeHTML(item)}" class="g-item" onchange="app.saveState()">`,
+            `<input type="text" aria-label="Gear item" value="${this.escapeHTML(item)}" class="g-item" onchange="app.saveState()">`,
+            `<input type="number" aria-label="Gear quantity" min="0" step="1" value="${this.escapeHTML(quantity)}" class="g-qty" onchange="app.saveState()">`,
             `<select class="g-weight" onchange="app.saveState()">
                 <option ${weight==='Tiny'?'selected':''}>Tiny</option>
                 <option ${weight==='Light'?'selected':''}>Light</option>
@@ -928,6 +956,7 @@ class ForbiddenLandsApp {
         delTd.innerHTML = `<button class="btn-del" onclick="this.closest('tr').remove(); app.saveState();">X</button>`;
         tr.appendChild(delTd);
         document.querySelector(`#${tableId} tbody`).appendChild(tr);
+        if (tableId === 'gear-table') this.renderEncumbrance();
     }
 
     // --- Dice Engine ---

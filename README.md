@@ -4,6 +4,7 @@ Open `index.html` in a modern browser, or run `python3 -m http.server 8000` from
 
 - Set regular attributes with the large number and up/down arrows. Click skull markers to mark damage or heal; the current value appears underneath. Regular and current (damaged) attributes are saved separately; skill and weapon rolls use the current value, and pushed banes reduce only that value. Older sheets migrate their single value into both fields.
 - Roll Food, Water, Arrows, or Torches when used. Rolls of 1–2 reduce D12 → D10 → D8 → D6 → None; other rolls keep the die. Resource rolls cannot be pushed.
+- Gear encumbrance updates automatically from quantities and weight categories: Tiny 0, Light ½, Normal 1, Heavy 2. Capacity is regular Strength × 2 plus the editable extra-capacity bonus. Named gear rows count; include carried weapons, armor, coins, and supplies in the gear list with their appropriate weights. Blank rows do not count.
 - Edit attributes, all 16 skills, conditions, resources, relationships, talents, weapons, and gear.
 - Keep multiple characters in the roster; changes save automatically in browser storage.
 - Choose common weapon presets to fill name, bonus, damage, range, features, and attack skill; every field stays editable and custom values persist in backups.
