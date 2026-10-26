@@ -8,7 +8,8 @@ Open `index.html` in a modern browser, or run `python3 -m http.server 8000` from
 - Edit attributes, all 16 skills, conditions, resources, relationships, talents, weapons, and gear.
 - Keep multiple characters in the roster; changes save automatically in browser storage.
 - Attack results show total damage before armor or defense: weapon damage plus one per success beyond the first; misses deal zero. This assumes all extra successes are spent on damage. Damage updates after pushing. Armor has a dedicated block below Weapons for name, rating, and notes.
-- Use the single weapon-name dropdown to choose a preset or select Custom weapon / rename for a custom name. The sword button stages an attack.
+- Gear, Weapons, and Armor stack beneath Talents at the same width on desktop, with space left open to the left. On small screens they use the full sheet width. Each weapon can carry a None/D8/D10/D12 artifact selection, which is included automatically when staging its attack and retained in backups.
+- Use the single weapon-name dropdown to choose a preset or select Custom weapon / rename for a custom name. The sword button stages Melee attacks; Marksmanship uses an arrow icon.
 - Choose common weapon presets to fill name, bonus, damage, range, features, and attack skill; every field stays editable and custom values persist in backups.
 - Keep dice results in a sticky right pane on desktop; on smaller screens the roller stacks above the sheet.
 - The right sidebar separates a visual Dice Pool from Results below it. Click Base, Skill (including negative values), and Gear counts, or stage a skill or weapon. Selected counts are highlighted. Toggle artifact slots (D8, D8, D10, D12), use Clear Dice Pool to reset, or roll D66 as a tens/ones result. Artifact dice score 1/2/3/4 successes on 6–7/8–9/10–11/12 and keep successful results when pushed.

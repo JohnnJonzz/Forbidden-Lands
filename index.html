@@ -26,7 +26,9 @@
 
         .sheet-layout { max-width: 1460px; margin: 0 auto; display: grid; grid-template-columns: minmax(0, 1fr) 370px; gap: 20px; align-items: start; }
         #dice-panel { position: sticky; top: 20px; max-height: calc(100vh - 40px); overflow-y: auto; }
-        .weapons-column { display: flex; flex-direction: column; gap: 15px; min-width: 0; }
+        .equipment-block { grid-column: 5 / span 8; }
+        #weapons-table th:first-child { min-width: 155px; }
+        @media (max-width: 768px) { .equipment-block { grid-column: span 12; } }
         #armor-section label:not(:first-of-type) { margin-top: 10px; }
         .w-preset, .w-skill { margin-bottom: 6px; }
         .weapon-help { color: #bdbdbd; font-size: .9rem; }
@@ -532,41 +534,8 @@
         <button class="btn-add" onclick="app.addTalentRow()">+ Add Talent</button>
     </div>
 
-    <div class="col-6 weapons-column">
-    <!-- Weapons Table -->
-    <div class="panel">
-        <h3>Weapons</h3>
-        <p class="weapon-help">Choose a preset to fill a row, then edit any value for your weapon. Choosing another preset replaces that row’s values.</p>
-        <table class="dynamic-table" id="weapons-table">
-            <thead>
-                <tr>
-                    <th>Weapon</th>
-                    <th style="width: 50px;">Bonus</th>
-                    <th style="width: 50px;">Dmg</th>
-                    <th style="width: 60px;">Range</th>
-                    <th>Features</th>
-                    <th style="width: 80px;">Roll</th>
-                    <th style="width: 30px;"></th>
-                </tr>
-            </thead>
-            <tbody></tbody>
-        </table>
-        <button class="btn-add" onclick="app.addWeaponRow()">+ Add Weapon</button>
-    </div>
-
-    <section class="panel" id="armor-section">
-        <h3>Armor</h3>
-        <label for="armor-name">Armor / helmet</label>
-        <input type="text" id="armor-name" onchange="app.saveState()" placeholder="Armor worn">
-        <label for="armor-rating">Armor rating</label>
-        <input type="number" id="armor-rating" min="0" value="0" onchange="app.saveState()">
-        <label for="armor-notes">Notes</label>
-        <textarea id="armor-notes" onchange="app.saveState()" placeholder="Helmet, features, damage, or adjustments"></textarea>
-    </section>
-    </div>
-
     <!-- Gear Table -->
-    <div class="panel col-6">
+    <div class="panel equipment-block" id="gear-section">
         <h3>Gear</h3>
         <table class="dynamic-table" id="gear-table">
             <thead>
@@ -589,6 +558,39 @@
         </div>
     </div>
 
+
+
+    <!-- Weapons Table -->
+    <div class="panel equipment-block" id="weapons-section">
+        <h3>Weapons</h3>
+        <p class="weapon-help">Choose a preset to fill a row, then edit any value for your weapon. Choosing another preset replaces that row’s values.</p>
+        <table class="dynamic-table" id="weapons-table">
+            <thead>
+                <tr>
+                    <th>Weapon</th>
+                    <th style="width: 50px;">Bonus</th>
+                    <th style="width: 50px;">Dmg</th>
+                    <th style="width: 60px;">Range</th>
+                    <th>Features</th>
+                    <th style="width: 75px;">Artifact</th>
+                    <th style="width: 80px;">Roll</th>
+                    <th style="width: 30px;"></th>
+                </tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+        <button class="btn-add" onclick="app.addWeaponRow()">+ Add Weapon</button>
+    </div>
+
+    <section class="panel equipment-block" id="armor-section">
+        <h3>Armor</h3>
+        <label for="armor-name">Armor / helmet</label>
+        <input type="text" id="armor-name" onchange="app.saveState()" placeholder="Armor worn">
+        <label for="armor-rating">Armor rating</label>
+        <input type="number" id="armor-rating" min="0" value="0" onchange="app.saveState()">
+        <label for="armor-notes">Notes</label>
+        <textarea id="armor-notes" onchange="app.saveState()" placeholder="Helmet, features, damage, or adjustments"></textarea>
+    </section>
 
 
 </main>
@@ -987,7 +989,8 @@ class ForbiddenLandsApp {
             dmg: tr.querySelector('.w-dmg').value,
             range: tr.querySelector('.w-range').value,
             feat: tr.querySelector('.w-feat').value,
-            skill: tr.querySelector('.w-skill').value
+            skill: tr.querySelector('.w-skill').value,
+            artifact: tr.querySelector('.w-artifact').value
         }));
 
         data.gear = Array.from(document.querySelectorAll('#gear-table tbody tr')).map(tr => ({
@@ -1041,7 +1044,7 @@ class ForbiddenLandsApp {
         if (data.talents) data.talents.forEach(t => this.addTalentRow(t.name, t.rank, t.desc));
 
         document.querySelector('#weapons-table tbody').innerHTML = '';
-        if (data.weapons) data.weapons.forEach(w => this.addWeaponRow(w.name, w.bonus, w.dmg, w.range, w.feat, w.skill));
+        if (data.weapons) data.weapons.forEach(w => this.addWeaponRow(w.name, w.bonus, w.dmg, w.range, w.feat, w.skill, w.artifact));
 
         document.querySelector('#gear-table tbody').innerHTML = '';
         if (data.gear) data.gear.forEach(g => this.addGearRow(g.item, g.weight, g.notes, g.quantity));
@@ -1062,7 +1065,7 @@ class ForbiddenLandsApp {
         ]);
     }
 
-    addWeaponRow(name = '', bonus = 0, dmg = 1, range = 'Arm', feat = '', skill = 'melee') {
+    addWeaponRow(name = '', bonus = 0, dmg = 1, range = 'Arm', feat = '', skill = 'melee', artifact = 'None') {
         const tr = document.createElement('tr');
         tr.innerHTML = `
             <td>
@@ -1072,7 +1075,7 @@ class ForbiddenLandsApp {
                     ${name && !this.weaponPresets.some(w => w.name === name) ? `<option value="${this.escapeHTML(name)}" selected>${this.escapeHTML(name)}</option>` : ''}
                     <option value="__custom__">Custom weapon / rename…</option>
                 </select>
-                <select class="w-skill" aria-label="Weapon attack skill" onchange="app.saveState()">
+                <select class="w-skill" aria-label="Weapon attack skill" onchange="app.updateWeaponIcon(this.closest('tr')); app.saveState()">
                     <option value="melee" ${skill === 'melee' ? 'selected' : ''}>Melee (Strength)</option>
                     <option value="marksmanship" ${skill === 'marksmanship' ? 'selected' : ''}>Marksmanship (Agility)</option>
                 </select>
@@ -1081,14 +1084,24 @@ class ForbiddenLandsApp {
             <td><input type="number" value="${this.escapeHTML(dmg)}" class="w-dmg" onchange="app.saveState()"></td>
             <td><input type="text" value="${this.escapeHTML(range)}" class="w-range" onchange="app.saveState()"></td>
             <td><input type="text" value="${this.escapeHTML(feat)}" class="w-feat" onchange="app.saveState()"></td>
+            <td><select class="w-artifact" aria-label="Weapon artifact die" onchange="app.saveState()">
+                ${['None','D8','D10','D12'].map(die => `<option ${artifact === die ? 'selected' : ''}>${die}</option>`).join('')}
+            </select></td>
             <td><button class="btn-roll" aria-label="Stage weapon attack" title="Stage weapon attack" onclick="app.rollWeaponAttack(this)"><svg class="action-icon" aria-hidden="true"><use href="#icon-sword"></use></svg></button></td>
             <td><button class="btn-del" onclick="this.closest('tr').remove(); app.saveState();">X</button></td>
         `;
         for (const [selector, label] of Object.entries({'.w-bonus':'Weapon bonus', '.w-dmg':'Weapon damage', '.w-range':'Weapon range', '.w-feat':'Weapon features'})) {
             tr.querySelector(selector).setAttribute('aria-label', label);
         }
+        this.updateWeaponIcon(tr);
         tr.querySelector('.w-name').dataset.previous = name;
         document.querySelector('#weapons-table tbody').appendChild(tr);
+    }
+
+    updateWeaponIcon(row) {
+        const ranged = row.querySelector('.w-skill').value === 'marksmanship';
+        row.querySelector('.btn-roll use').setAttribute('href', ranged ? '#icon-arrows' : '#icon-sword');
+        row.querySelector('.btn-roll').title = ranged ? 'Stage ranged attack' : 'Stage melee attack';
     }
 
     applyWeaponPreset(select) {
@@ -1108,6 +1121,7 @@ class ForbiddenLandsApp {
                 for (const field of ['bonus', 'dmg', 'range', 'feat', 'skill']) row.querySelector('.w-' + field).value = weapon[field];
             }
         }
+        this.updateWeaponIcon(select.closest('tr'));
         select.dataset.previous = select.value;
         this.saveState();
     }
@@ -1177,6 +1191,9 @@ class ForbiddenLandsApp {
 
         this.stagePool(`Attack: ${wName || 'Weapon'}`, attribute, attrVal, skillVal, wBonus);
         this.stagedRoll.weaponDamage = Math.max(0, Number(tr.querySelector('.w-dmg').value) || 0);
+        const artifactIndex = {D8:0, D10:2, D12:3}[tr.querySelector('.w-artifact').value];
+        this.artifactDice = artifactIndex === undefined ? [] : [artifactIndex];
+        this.updatePoolPreview();
     }
 
     stagePool(label, attribute, base, skill, gear) {
