@@ -1,3 +1,19 @@
+# Forbidden Lands — The Ravenland Chronicles
+
+The new Next.js + TypeScript application lives in [`ravenland/`](ravenland/README.md). It provides a mock AI-GM conversation, four local player identities, campaign status, map, dice, character profiles, journal, and settings in a responsive dark-fantasy interface.
+
+```sh
+cd ravenland
+npm ci
+npm run dev
+```
+
+Open http://localhost:3000 locally. See the app README for production commands, tests, architecture, and Phase 1 limitations. No authentication, paid API, database, or multiplayer synchronization is enabled. Session changes reset on refresh.
+
+The standalone character sheet below remains available independently.
+
+---
+
 # Forbidden Lands character sheet
 
 Open `index.html` in a modern browser, or run `python3 -m http.server 8000` from this directory and open the server in your browser. No build or dependencies are required.
