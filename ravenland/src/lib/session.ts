@@ -1,7 +1,9 @@
+import {applySheet,type CharacterSheet} from './character-sheet';
 import type { Session, Message, Campaign, JournalEntry } from './types';
-export type Action = {type:'message';message:Message}|{type:'journal';entry:JournalEntry}|{type:'campaign';patch:Partial<Campaign>}|{type:'reset';session:Session};
+export type Action = {type:'sheet';characterId:string;sheet:CharacterSheet}| {type:'message';message:Message}|{type:'journal';entry:JournalEntry}|{type:'campaign';patch:Partial<Campaign>}|{type:'reset';session:Session};
 export function sessionReducer(state:Session, action:Action):Session {
  switch(action.type){
+ case 'sheet':return {...state,characters:state.characters.map(character=>character.id===action.characterId?applySheet(character,action.sheet):character)};
  case 'message':return {...state,messages:[...state.messages,action.message]};
  case 'journal':return {...state,journal:[...state.journal,action.entry]};
  case 'campaign':return {...state,campaign:{...state.campaign,...action.patch}};

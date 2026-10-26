@@ -9,7 +9,10 @@
     "typecheck": "tsc --noEmit",
     "test": "tsx --test tests/*.test.ts",
     "db:migrate": "tsx scripts/migrate.ts",
-    "test:persistence": "node tests/persistence-browser.cjs"
+    "test:persistence": "node tests/persistence-browser.cjs",
+    "predev": "node scripts/generate-sheet.mjs",
+    "prebuild": "node scripts/generate-sheet.mjs",
+    "pretest": "node scripts/generate-sheet.mjs"
   },
   "dependencies": {
     "lucide-react": "^0.468.0",

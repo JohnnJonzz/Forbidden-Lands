@@ -923,6 +923,9 @@ class ForbiddenLandsApp {
             const damage = total - remaining;
             regular.dataset.previous = total;
             const track = document.getElementById('damage-' + attribute);
+            const signature = `${total}:${damage}`;
+            if (track.dataset.signature !== signature) {
+            track.dataset.signature = signature;
             track.replaceChildren();
             for (let index = 1; index <= total; index++) {
                 const button = document.createElement('button');
@@ -937,6 +940,7 @@ class ForbiddenLandsApp {
                     this.saveState();
                 };
                 track.appendChild(button);
+            }
             }
             document.getElementById('current-' + attribute).textContent = `Current ${remaining} / ${total}` + (remaining === 0 ? ' · Broken' : '');
             const box = regular.closest('.attr-box');
