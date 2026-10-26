@@ -1,6 +1,6 @@
 import type { GameMaster, Session } from './types';
 export const initialSession: Session = {
- campaign: {name:'The Ravenland Chronicles',date:'12th of Stillfall, 1165',quarter:'Evening',hex:'H14',location:'The Hollow Watch',terrain:'Misty woodland',weather:'Cold rain · Wind from the north',objective:'Find the missing caravan before its trail disappears.'},
+ campaign: {description:'An original expedition into the mist-shrouded northern woodlands.',settings:{tone:'Grim',houseRules:''},name:'The Ravenland Chronicles',date:'12th of Stillfall, 1165',quarter:'Evening',hex:'H14',location:'The Hollow Watch',terrain:'Misty woodland',weather:'Cold rain · Wind from the north',objective:'Find the missing caravan before its trail disappears.'},
  characters:[
  {id:'ilva',name:'Ilva Ashborn',kin:'Human',profession:'Hunter',initials:'IA',color:'#a99c65',strength:3,agility:4,wits:3,empathy:2},
  {id:'brom',name:'Brom Stonehand',kin:'Dwarf',profession:'Fighter',initials:'BS',color:'#ab7964',strength:5,agility:2,wits:2,empathy:3},

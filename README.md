@@ -1,6 +1,6 @@
 # Forbidden Lands — The Ravenland Chronicles
 
-The new Next.js + TypeScript application lives in [`ravenland/`](ravenland/README.md). It provides a mock AI-GM conversation, four local player identities, campaign status, map, dice, character profiles, journal, and settings in a responsive dark-fantasy interface.
+The new Next.js + TypeScript application lives in [`ravenland/`](ravenland/README.md). It provides a mock AI-GM conversation, four local player identities, campaign status, map, dice, character profiles, journal, and settings in a responsive dark-fantasy interface, with server-side SQLite campaign persistence and JSON backups.
 
 ```sh
 cd ravenland
@@ -8,7 +8,7 @@ npm ci
 npm run dev
 ```
 
-Open http://localhost:3000 locally. See the app README for production commands, tests, architecture, and Phase 1 limitations. No authentication, paid API, database, or multiplayer synchronization is enabled. Session changes reset on refresh.
+Open http://localhost:3000 locally. See the app README for production commands, tests, architecture, and Phase 1 limitations. Use Node.js 24+. SQLite campaigns survive refreshes and server restarts. No authentication, paid AI API, or multiplayer synchronization is enabled.
 
 The standalone character sheet below remains available independently.
 

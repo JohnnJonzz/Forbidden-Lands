@@ -3,3 +3,7 @@ node_modules/
 *.tsbuildinfo
 .env*
 !.env.example
+data/
+*.sqlite
+*.sqlite-wal
+*.sqlite-shm

@@ -1,47 +1,68 @@
 # Forbidden Lands — The Ravenland Chronicles
 
-A Phase 1 interface prototype for an AI Game Master and four human adventurers. All campaign text is original mock content. No sourcebook text, official artwork, or external fonts are included.
+The existing Next.js + TypeScript interface now stores campaigns in **server-side SQLite**. All story content is original mock narrative. The standalone root character sheet is preserved independently.
 
 ## Run locally
 
-Requires Node.js 20.9+ (Node 24 recommended) and npm.
+Use **Node.js 24+** and npm (SQLite uses Node's built-in `node:sqlite`).
 
 ```sh
 cd ravenland
 npm ci
+npm run db:migrate
 npm run dev
 ```
 
-Open **http://localhost:3000** in your browser. For a production build use `npm run build` followed by `npm start`. If port 3000 is occupied, use `npm run dev -- --port 3001` and open that port instead.
+Open **http://localhost:3000**. Migrations also run automatically when the server first opens the database. Production: `npm run build`, then `npm start`. Use `npm run dev -- --port 3001` if 3000 is occupied.
 
-## Try the prototype
+The default database is `ravenland/data/ravenland.sqlite`, resolved from the application working directory. Keep this directory between restarts. To choose a different database, export an absolute path before running migration and server commands:
 
-- Read the sample encounter and switch between four local player identities in the composer.
-- Submit an action with Enter (Shift+Enter inserts a newline). The mock GM branches on wagon/forest-related keywords; it is intentionally deterministic and does not use an AI model.
-- Open Map, Dice Roller, Characters, Journal, or Campaign Settings from the top navigation.
-- Roll positive or negative skill pools, add journal entries, or change the campaign title, objective, and quarter day. Settings and notes update immediately within this tab.
-- On mobile, open campaign status using the menu button. Tool panels support Escape and keyboard focus containment.
+```sh
+export RAVENLAND_DB_PATH=/absolute/path/to/campaigns.sqlite
+npm run db:migrate
+npm run dev
+```
 
-**Local state only:** refresh resets the demo. Party members are mock profiles, not connected users. There is no multiplayer, invite link, authentication, database, paid API, or external communication. Voice is not integrated; Discord can be used separately. Spell/character management from the earlier standalone sheet is not integrated in this prototype.
+Database files and WAL/SHM sidecars are ignored by Git. Back up using the app's JSON export. Do not copy only a live SQLite main file while WAL writes may be pending; stop the server before filesystem-level backups.
+
+## Use and verify persistence
+
+1. Open Campaign Settings. Under Campaign library, create a named campaign or select and load an existing one. A new campaign has the sample party with empty chat and journal; the first-ever launch seeds the original sample adventure once.
+2. Edit name, description, in-game date, quarter day, hex, location, terrain, weather, objective, tone, and house rules. Click **Apply changes**. Wait for **Saved to SQLite** in the main view.
+3. Submit player actions and receive mock GM replies. Add Journal entries. These save automatically. Party profiles and all public campaign settings are included in snapshots and backups.
+4. Close the browser. Stop and restart the development server using the same database path. Reopen the app: the last selected campaign, chat, journal, party, and settings are restored.
+5. Create another campaign, then load the first to confirm both remain separate.
+6. Export JSON backup in Campaign Settings, then import it. Import always creates a **new** record; it never replaces the original. It accepts version 1 `ravenland-campaign` backups only, up to 5 MB. Fields, types, lengths, unique IDs, and unknown properties are validated on the server.
+7. **Reset current campaign** asks for confirmation before replacing that campaign with the sample adventure. Other records remain intact. Cancel leaves it unchanged.
+
+Changes are saved immediately through a serialized queue. Save failures are shown with Retry and Export unsaved backup controls, and leaving with unsaved changes triggers the browser's unload warning. Stale updates from another tab return a conflict instead of overwriting newer data. Export the unsaved version before using **Reload saved copy** to discard it and resolve a conflict. The campaign library blocks switching while unsaved writes remain.
+
+The current campaign selection is server-wide for this local prototype. There is **no authentication, multiplayer synchronization, paid AI API, or OpenAI credential requirement**. Run it on a trusted development machine, not as an exposed public service. The default voice workflow remains separate Discord use. Settings are public campaign information: never enter API keys or GM-only secrets in prose fields or backups.
 
 ## Architecture
 
-- `src/app`: Next.js App Router entry point and Tailwind/CSS styling.
-- `src/components`: campaign shell, status sidebar, and companion tool panels.
-- `src/lib/types.ts`: shared domain models and GameMaster boundary.
-- `src/lib/mock.ts`: original seed encounter and local mock GM adapter.
-- `src/lib/session.ts`: immutable session reducer and dice engine.
+- `src/lib/types.ts`: public typed campaign/session/player models.
+- `src/lib/session.ts`: UI-independent session rules and dice calculations.
+- `src/lib/validation.ts`: strict public-state and backup schemas. No credential or GM-secret fields are accepted.
+- `src/server/repository.ts`: repository contract supporting synchronous SQLite and future asynchronous PostgreSQL implementations.
+- `src/server/sqlite.ts`: transactions, optimistic revision checks, prepared queries, migration ledger, and local database adapter. Public state is stored as a validated JSON snapshot per campaign; IDs isolate campaigns and party members have stable IDs.
+- `src/server/migrations`: ordered SQL migrations, applied transactionally once per database. Add migrations here for future schema changes; do not delete existing databases as an upgrade strategy.
+- `src/server/campaign-service.ts`: public campaign access and mock GM functions. A future AI adapter can call these functions without holding a database handle.
+- `src/app/api`: server-side HTTP boundary. Responses and JSON exports contain public state only. A separate `campaign_secrets` table is reserved for future GM-only state and is never read by public routes or exports.
+- `src/hooks/use-campaign.ts`: initial load, serialized saves, save status, conflict handling, and campaign operations.
+- `src/components`: the existing layout plus a campaign library inside Settings. No browser storage is used as the source of truth.
 
-A future server transport can dispatch shared session events instead of local reducer actions. Persistent storage should sit behind a server repository, and any OpenAI adapter must run on the server with a private environment key. No API credentials are needed or read now. This prototype makes no synchronization or persistence guarantees.
+The GM remains a deterministic keyword-based mock. Character editing, accounts, secret administration, schema upgrades for future backup formats, and actual shared-player sessions remain future work.
 
-## Checks
+## Automated checks
 
 ```sh
 npm test
 npm run typecheck
 npm run build
+npm run test:persistence
 ```
 
-Browser smoke checks use the environment-provided Playwright and Chromium: start the app, then run `node tests/browser.cjs`. Set `BASE_URL` or `CHROMIUM_PATH` if needed. These checks exercise action/reply flow, journal creation, settings, dice, tool panels, and a mobile viewport.
+Six unit/storage tests exercise reducer behavior, dice rules, strict validation, migrations, complete public snapshots, stale-write conflicts, multiple campaigns, imports, secret separation, and closing/reopening SQLite.
 
-The existing root `index.html` character sheet is preserved and remains independently runnable.
+`test:persistence` requires Playwright and Chromium (provided in the Codex environment); set `CHROMIUM_PATH` if Chromium is elsewhere. It launches a production server on an available local port with a **temporary database**, modifies settings/chat/journal in a real browser, closes the browser, stops/restarts the server, and asserts exact restoration. It also tests tools, mobile layout, create/load, backup export/import, invalid imports, stale writes, and confirmed/cancelled resets. It removes only its own temporary database. Run `npm run build` first. `node tests/browser.cjs` is an alias for this isolated browser check.
