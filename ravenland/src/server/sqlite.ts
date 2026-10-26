@@ -28,4 +28,6 @@ export class SqliteCampaignRepository implements CampaignRepository {
  close(){this.db.close()}
 }
 let repository:SqliteCampaignRepository|undefined;
-export function getRepository():CampaignRepository {repository??=new SqliteCampaignRepository(process.env.RAVENLAND_DB_PATH||join(process.cwd(),'data/ravenland.sqlite'));return repository}
+export function getLocalRepository():SqliteCampaignRepository {repository??=new SqliteCampaignRepository(process.env.RAVENLAND_DB_PATH||join(process.cwd(),'data/ravenland.sqlite'));return repository}
+
+export function getRepository():CampaignRepository{return getLocalRepository()}

@@ -12,9 +12,12 @@
     "test:persistence": "node tests/persistence-browser.cjs",
     "predev": "node scripts/generate-sheet.mjs",
     "prebuild": "node scripts/generate-sheet.mjs",
-    "pretest": "node scripts/generate-sheet.mjs"
+    "pretest": "node scripts/generate-sheet.mjs",
+    "map:import": "tsx scripts/import-map.ts",
+    "test:map": "node tests/map-browser.cjs"
   },
   "dependencies": {
+    "exceljs": "^4.4.0",
     "lucide-react": "^0.468.0",
     "next": "^16.0.0",
     "react": "^19.2.0",

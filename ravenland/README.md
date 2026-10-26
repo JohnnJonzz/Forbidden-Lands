@@ -76,3 +76,70 @@ The main **Dice Roller** uses the exact same visual pool and rules as the sheet:
 `scripts/generate-sheet.mjs` builds an embedded HTML asset from the repository's maintained root `index.html`, with a narrow same-origin message bridge. Both panel modes share that asset, preventing the dice implementations from drifting. `predev`, `prebuild`, and `pretest` generate it automatically; the generated public file is ignored by Git. The standalone source remains usable independently. Embedded sheets do not use or replace its browser roster: campaign and character IDs control ownership, messages are checked against the iframe source and origin, and sheet updates are validated on the client and server.
 
 To move an existing standalone character, use **Export JSON** on the old sheet and **Import JSON** inside the desired campaign character's sheet. Import edits that selected character rather than creating another party member. Existing standalone browser data is never automatically read or overwritten.
+
+## Phase 3: authoritative hex map
+
+**Source files are not bundled.** The actual `Forbidden_Lands_Map.png` and `Ravenland_Campaign_Master.xlsx` were unavailable during implementation. The app shows an explicit missing-source status until they are supplied; no real Ravenland geography or calibration has been fabricated. Automated map tests use a synthetic workbook and plain test image only. Actual workbook mapping and visual alignment still require those files.
+
+### Import the workbook
+
+Place both files in `ravenland/data/source/` (ignored by Git). `RAVENLAND_MAP_PATH` can point to a different absolute PNG path. Use the same `RAVENLAND_DB_PATH` for import and server commands.
+
+```sh
+cd ravenland
+npm ci
+npm run db:migrate
+npm run map:import -- data/source/Ravenland_Campaign_Master.xlsx --inspect
+```
+
+Inspection prints worksheet names, row counts, and headers, **not row contents**. Copy `config/map-mapping.example.json` to a local mapping file and fill in actual sheet/header names. The template is intentionally incomplete and unreviewed; it is not an assumed workbook schema. Every mapped field must be reviewed for player visibility. Only after review, set `publicColumnsReviewed` to `true`.
+
+Required mappings: `coordinate`, `column`, `row`. Column/row are explicit **logical grid indices**, not image pixels. If the workbook does not provide logical indices, stop and establish a documented coordinate conversion based on its actual coordinate convention before import; do not guess. Optional public mappings: `terrain`, `region`, `printedFeatures`, `waterways`, `routes`. Omitted fields remain null/empty and display “Not provided by source.” List fields use the configured separator. Mapped headers naming GM secrets, spoilers, encounters, treasure, adventure details, or undiscovered content are rejected. Unmapped columns are never persisted or exposed.
+
+If authoritative adjacency is supplied as edge rows, add:
+
+```json
+"adjacency": {
+  "sheet": "ACTUAL_ADJACENCY_WORKSHEET",
+  "from": "ACTUAL_FROM_HEADER",
+  "to": "ACTUAL_TO_HEADER",
+  "bidirectional": false
+}
+```
+
+Set `bidirectional: true` only when the workbook defines those edges as undirected. Without imported edges, travel stays disabled. Unknown endpoints, self-edges, duplicate coordinates, duplicate logical positions, missing headers, and invalid grid indices fail import. This adapter supports an explicit hex sheet and optional edge sheet; inspect the real workbook before adapting other adjacency encodings.
+
+```sh
+npm run map:import -- data/source/Ravenland_Campaign_Master.xlsx path/to/reviewed-mapping.json
+npm run dev
+```
+
+Import is transactional and rejects replacing existing geography. `--replace` explicitly authorizes replacement; it invalidates calibration but never moves existing parties or replaces campaign records. Keep the original workbook as the source of truth. Geographic records live in separate SQLite tables; public campaign discoveries live in `session.discoveries` and are included in campaign JSON backups. No adventure/GM columns are imported. Player endpoints return only reviewed public geography and that campaign's already-known discoveries; they do not query GM-secret storage.
+
+### Calibrate against the printed image
+
+1. Open **Map → Developer calibration**. The image retains its original proportions. Use drag/wheel or touch pan/pinch; zoom buttons work too.
+2. Set orientation (pointy or flat), stagger parity, origin X/Y, horizontal spacing, and vertical spacing. The origin is the image-pixel center of logical grid `(0,0)`, which may be outside the image. Pointy grids stagger alternate rows; flat grids stagger alternate columns. Logical indices come from the reviewed import mapping.
+3. Choose a known printed coordinate, enable landmark marking, and click its **printed hex center** on the image. Repeat for at least three non-collinear coordinates across the map, spanning at least half the imported column range and half the row range. Pick independently identifiable, widely separated corners/edges rather than neighboring hexes.
+4. Compare preview outlines with printed hexes and adjust origin/spacing/orientation. Blue dots are independently clicked landmarks; listed error is the distance between each clicked point and its computed center. Remove/re-mark a mistaken landmark. Save a draft at any time.
+5. **Verify calibration and enable overlay** is enabled only when the landmarks span the required range and each error is at most 15% of the smaller grid spacing. The server checks these constraints again. Visually inspect additional widely separated coordinates: passing a mathematical tolerance alone does not establish the real printed map's correctness.
+
+Before verification, only calibration landmarks/outlines are shown; the complete interactive overlay, party marker, and travel are gated off. Editing calibration invalidates verification. Calibration persists in SQLite and is tied to the PNG checksum; replacing the image invalidates it. Reimporting geography also clears it. Grid lines and coordinate labels can be toggled independently. Large overlays render only hexes in the current viewport.
+
+### Explore and travel
+
+Click or keyboard-select a hex, or choose it using Inspect hex. Inspection highlights it and shows terrain, region, reviewed printed features, waterways/routes, and campaign-known discoveries. It never moves the party. The travel button is enabled only after verified calibration and an explicit imported edge from the party's current coordinate. Confirmation is required. The server rechecks adjacency, source/destination, calibration, and campaign revision inside the update transaction. It updates only hex, source-provided location, and terrain—no narration, time advance, encounters, or mishaps.
+
+If the campaign's existing starting hex is absent from the imported data, no position is guessed. Set the intended starting coordinate explicitly in Campaign Settings, then use validated travel. Named printed features are used as destination names; otherwise the exact source coordinate is shown. Missing terrain remains empty rather than invented.
+
+### Map tests
+
+```sh
+npm test
+npm run typecheck
+npm run build
+npm run test:map
+npm run test:persistence
+```
+
+Ten unit/storage tests now include workbook import, lookup, missing-field handling, source privacy, calibration verification, explicit directed adjacency, travel rejection, and saved positions. `test:map` launches an isolated temporary database/server with **synthetic** source files. It exercises selection without movement, cancelled and confirmed travel, nonadjacent rejection, zoom/pan/touch pinch, privacy filtering, and restoration after a server restart. No real map content or source alignment is claimed by fixture tests. The regular persistence/character-sheet suite continues to run independently and checks the missing-map state when real sources are absent.

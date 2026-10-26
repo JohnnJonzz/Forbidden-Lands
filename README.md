@@ -10,6 +10,8 @@ npm run dev
 
 Open http://localhost:3000 locally. See the app README for production commands, tests, architecture, and Phase 1 limitations. Use Node.js 24+. SQLite campaigns survive refreshes and server restarts. No authentication, paid AI API, or multiplayer synchronization is enabled.
 
+The interactive map requires `Forbidden_Lands_Map.png` and `Ravenland_Campaign_Master.xlsx`; source files are not bundled. See the app README for reviewed workbook mapping, import, and calibration instructions.
+
 The standalone character sheet below remains available independently.
 
 ---

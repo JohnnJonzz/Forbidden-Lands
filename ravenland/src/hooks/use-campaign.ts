@@ -3,7 +3,7 @@ import {useEffect,useRef,useState} from 'react';
 import type {CampaignRecord,CampaignSummary} from '@/lib/types';
 import type {Action} from '@/lib/session';
 import {sessionReducer} from '@/lib/session';
-async function request(method:string,body?:unknown){const response=await fetch('/api/campaigns',{method,headers:{'Content-Type':'application/json'},body:body===undefined?undefined:JSON.stringify(body),cache:'no-store'});const data=await response.json();if(!response.ok)throw new Error(data.error||'Storage request failed');return data as {record:CampaignRecord;campaigns:CampaignSummary[]}}
+async function request(method:string,body?:unknown,path='/api/campaigns'){const response=await fetch(path,{method,headers:{'Content-Type':'application/json'},body:body===undefined?undefined:JSON.stringify(body),cache:'no-store'});const data=await response.json();if(!response.ok)throw new Error(data.error||'Storage request failed');return data as {record:CampaignRecord;campaigns:CampaignSummary[]}}
 export function useCampaign(){
  const [record,setRecord]=useState<CampaignRecord|null>(null),[campaigns,setCampaigns]=useState<CampaignSummary[]>([]),[error,setError]=useState(''),[status,setStatus]=useState('Loading campaign…'),[generation,setGeneration]=useState(0);
  const ref=useRef<CampaignRecord|null>(null),tail=useRef<Promise<void>>(Promise.resolve()),failed=useRef(false),pending=useRef(0);
@@ -14,7 +14,7 @@ export function useCampaign(){
   const task=tail.current.then(async()=>{if(failed.current)throw new Error('Unsaved changes remain. Retry saving or export a backup before switching campaigns.');const data=await request('PUT',{id:next.id,revision:ref.current!.revision,session:next.session});ref.current={...ref.current!,revision:data.record.revision};setRecord(current=>current?{...current,revision:data.record.revision}:current);setCampaigns(data.campaigns)});
   tail.current=task.catch(e=>{failed.current=true;setError(e.message);setStatus('Not saved')}).finally(()=>{pending.current--;if(!pending.current&&!failed.current)setStatus('Saved to SQLite')});await tail.current;return !failed.current;
  }
- async function operate(method:string,body:unknown){await tail.current;if(failed.current)throw new Error('Export your unsaved changes or retry saving before changing campaigns.');setStatus('Loading…');try{accept(await request(method,body))}catch(e){setStatus('Operation failed');throw e}}
+ async function operate(method:string,body:unknown,path='/api/campaigns'){await tail.current;if(failed.current)throw new Error('Export your unsaved changes or retry saving before changing campaigns.');setStatus('Loading…');try{accept(await request(method,body,path))}catch(e){setStatus('Operation failed');throw e}}
  async function retry(){
   if(!ref.current){try{accept(await request('GET'))}catch(e){setError((e as Error).message)}return}
   pending.current++;setStatus('Saving…');
@@ -22,6 +22,7 @@ export function useCampaign(){
   tail.current=task.catch(e=>{failed.current=true;setError(e.message);setStatus('Not saved')}).finally(()=>{pending.current--;if(!pending.current&&!failed.current)setStatus('Saved to SQLite')});await tail.current;
  }
  async function reload(){await tail.current;const current=ref.current;if(!current)return;const response=await fetch('/api/campaigns?id='+current.id,{cache:'no-store'});const data=await response.json();if(!response.ok)throw new Error(data.error);accept(data)}
+ async function travel(to:string){await tail.current;if(!ref.current)return;const current=ref.current;await operate('POST',{campaignId:current.id,revision:current.revision,from:current.session.campaign.hex,to,confirmed:true},'/api/map/travel')}
  function backup(){if(!ref.current)return;const url=URL.createObjectURL(new Blob([JSON.stringify({format:'ravenland-campaign',version:1,session:ref.current.session},null,2)],{type:'application/json'}));const link=document.createElement('a');link.href=url;link.download='ravenland-campaign.json';link.click();setTimeout(()=>URL.revokeObjectURL(url),1000)}
- return {record,campaigns,error,status,generation,update,operate,retry,reload,backup};
+ return {record,campaigns,error,status,generation,travel,update,operate,retry,reload,backup};
 }

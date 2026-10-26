@@ -2,14 +2,16 @@
 import { useState, type ReactNode } from 'react';
 import { BookOpen, Dice5, Plus, Save } from 'lucide-react';
 import type { Session, Panel, Campaign, JournalEntry } from '@/lib/types';
+import {HexMap} from './hex-map';
+import type {CampaignRecord} from '@/lib/types';
 import {CharacterPanel,DicePanel} from './character-panel';
 import type {CharacterSheet} from '@/lib/character-sheet';
-type Props={onSheet:(id:string,sheet:CharacterSheet)=>void;manager:ReactNode;panel:Panel;session:Session;onCampaign:(patch:Partial<Campaign>)=>void;onJournal:(entry:JournalEntry)=>void;onReset:()=>void};
-export function PanelContent({onSheet,manager,panel,session,onCampaign,onJournal,onReset}:Props){
+type Props={record:CampaignRecord;onTravel:(coordinate:string)=>Promise<void>;onSheet:(id:string,sheet:CharacterSheet)=>void;manager:ReactNode;panel:Panel;session:Session;onCampaign:(patch:Partial<Campaign>)=>void;onJournal:(entry:JournalEntry)=>void;onReset:()=>void};
+export function PanelContent({record,onTravel,onSheet,manager,panel,session,onCampaign,onJournal,onReset}:Props){
  const [note,setNote]=useState(''),[title,setTitle]=useState(''),[saved,setSaved]=useState(false);
  const [description,setDescription]=useState(session.campaign.description),[date,setDate]=useState(session.campaign.date),[weather,setWeather]=useState(session.campaign.weather),[hex,setHex]=useState(session.campaign.hex),[location,setLocation]=useState(session.campaign.location),[terrain,setTerrain]=useState(session.campaign.terrain),[tone,setTone]=useState(session.campaign.settings.tone),[houseRules,setHouseRules]=useState(session.campaign.settings.houseRules);
  const [name,setName]=useState(session.campaign.name),[objective,setObjective]=useState(session.campaign.objective),[quarter,setQuarter]=useState(session.campaign.quarter);
- if(panel==='Map') return <div><p className="panel-intro">The northern road</p><div className="map-visual" role="img" aria-label={`Illustrative hex map. Party at ${session.campaign.hex}, ${session.campaign.location}, beside a northern forest trail.`}><div className="map-river"/><span className="map-label north">N ↑</span><span className="map-label wood">THE HUSHWOOD</span><span className="map-label road">THE NORTHERN ROAD</span><div className="map-marker">◆<strong>{session.campaign.hex} · {session.campaign.location}</strong><small>Your party is here</small></div><span className="map-label lake">Stillwater</span></div><p className="muted mt-4">Illustrative campaign map · Hex {session.campaign.hex}. Shared exploration and map editing are planned for a later phase.</p></div>;
+ if(panel==='Map') return <HexMap record={record} onTravel={onTravel}/>;
  if(panel==='Dice Roller') return <DicePanel characters={session.characters} onChange={onSheet}/>;
  if(panel==='Characters') return <CharacterPanel characters={session.characters} onChange={onSheet}/>;
  if(panel==='Journal') return <div><p className="panel-intro">Some things should not be forgotten.</p><div className="journal-list">{session.journal.map(n=><article key={n.id}><BookOpen size={18}/><div><h3>{n.title}</h3><p>{n.text}</p></div></article>)}</div><form className="note-form" onSubmit={e=>{e.preventDefault();if(!title.trim()||!note.trim())return;onJournal({id:crypto.randomUUID(),title:title.trim(),text:note.trim()});setTitle('');setNote('')}}><label>Entry title<input required maxLength={100} value={title} onChange={e=>setTitle(e.target.value)} placeholder="A discovery, a promise, a warning…"/></label><label>Notes<textarea required value={note} onChange={e=>setNote(e.target.value)} placeholder="Write what the party learned…"/></label><button className="gold-button" type="submit"><Plus size={16}/>Add entry</button></form></div>;
