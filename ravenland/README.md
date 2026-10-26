@@ -63,7 +63,7 @@ npm run build
 npm run test:persistence
 ```
 
-Eight unit/storage tests exercise reducer behavior, dice rules, strict validation, migrations, complete public snapshots, stale-write conflicts, multiple campaigns, imports, secret separation, and closing/reopening SQLite.
+Fifteen unit/storage tests exercise reducer behavior, dice rules, strict validation, migrations, complete public snapshots, stale-write conflicts, multiple campaigns, imports, secret separation, and closing/reopening SQLite.
 
 `test:persistence` requires Playwright and Chromium (provided in the Codex environment); set `CHROMIUM_PATH` if Chromium is elsewhere. It launches a production server on an available local port with a **temporary database**, modifies settings/chat/journal in a real browser, closes the browser, stops/restarts the server, and asserts exact restoration. It also tests tools, mobile layout, create/load, backup export/import, invalid imports, stale writes, and confirmed/cancelled resets. It removes only its own temporary database. Run `npm run build` first. `node tests/browser.cjs` is an alias for this isolated browser check.
 
@@ -132,7 +132,7 @@ Before verification, only calibration landmarks/outlines are shown; the complete
 
 ### Explore and travel
 
-Click or keyboard-select a hex, or choose it using Inspect hex. Inspection highlights it and shows terrain, region, reviewed printed features, waterways/routes, and campaign-known discoveries. It never moves the party. The travel button is enabled only after verified calibration and an explicit imported edge from the party's current coordinate. Confirmation is required. The server rechecks adjacency, source/destination, calibration, and campaign revision inside the update transaction. It updates only hex, source-provided location, and terrain—no narration, time advance, encounters, or mishaps.
+Click or keyboard-select a hex, or choose it using Inspect hex. Inspection highlights it and shows terrain, region, reviewed printed features, waterways/routes, and campaign-known discoveries. It never moves the party or spends time. **Plan journey to…** opens the Journey panel with that destination selected. Verified calibration and an explicit imported edge are required. Planning alone does not move anyone. Phase 4 requires explicit departure and expenditure confirmations, and moves the party only when the full adjudicated cost is spent. Source facts, party revision, and adjacency are rechecked by the server. No narration, encounters, or travel mishaps are generated. The former direct-travel endpoint returns HTTP 410 so it cannot bypass journey accounting.
 
 The old sample hex **H14 does not exist** in this authoritative workbook (H has odd-numbered rows). It is not silently relocated. If your campaign still uses H14, open Campaign Settings and explicitly choose a valid starting hex such as M22. If any existing starting hex is absent from imported data, no position is guessed. Set the intended starting coordinate explicitly in Campaign Settings, then use validated travel. Named printed features are used as destination names; otherwise the exact source coordinate is shown. Missing terrain remains empty rather than invented.
 
@@ -147,4 +147,55 @@ npm run test:map:real
 npm run test:persistence
 ```
 
-Eleven unit/storage tests now include workbook import, lookup, missing-field handling, source privacy, calibration verification, explicit directed adjacency, travel rejection, and saved positions. `test:map` launches an isolated temporary database/server with **synthetic** source files. It exercises selection without movement, cancelled and confirmed travel, nonadjacent rejection, zoom/pan/touch pinch, privacy filtering, and restoration after a server restart. Fixture tests make no claims about real map content. `test:map:real` separately imports the actual uploaded workbook/image into a temporary database, checks the counts and reviewed calibration, verifies the unmapped H14 warning, explicitly places a test party at M22, and confirms source-adjacent travel to N21 plus restoration after restart. Both browser suites leave live campaigns untouched. `RAVENLAND_SKIP_MAP_BOOTSTRAP=1` disables startup preparation for isolated custom tests. The regular persistence/character-sheet suite continues to run independently and checks the missing-map state when real sources are absent.
+Fifteen unit/storage tests now include workbook import, lookup, missing-field handling, source privacy, calibration verification, explicit directed adjacency, travel rejection, and saved positions. `test:map` launches an isolated temporary database/server with **synthetic** source files. It exercises selection without movement, cancelled and confirmed travel, nonadjacent rejection, zoom/pan/touch pinch, privacy filtering, and restoration after a server restart. Fixture tests make no claims about real map content. `test:map:real` separately imports the actual uploaded workbook/image into a temporary database, checks the counts and reviewed calibration, verifies the unmapped H14 warning, explicitly places a test party at M22, and confirms source-adjacent travel to N21 plus restoration after restart. Both browser suites leave live campaigns untouched. `RAVENLAND_SKIP_MAP_BOOTSTRAP=1` disables startup preparation for isolated custom tests. The regular persistence/character-sheet suite continues to run independently and checks the missing-map state when real sources are absent.
+
+
+## Phase 4: persistent journey engine
+
+Open **Journey** in the main navigation, or select an adjacent map hex and click **Plan journey to…**. The panel shows the current hex/source terrain, proposed destination, date, quarter, weather, responsibilities, and travel mode. It is independent of the mock Game Master; journey commands never call an AI service or append narration.
+
+### Plan, assign, and complete travel
+
+1. Pick a source-adjacent destination. Assign existing party members to Lead the Way and Keep Watch. Save assignments independently if preparing for later travel.
+2. Choose On foot, Mounted, or Other (manual). Other requires a description. Capability references come from the connected sheets, but mounts, simultaneous roles, and movement restrictions require manual review.
+3. Enter an **explicit manual cost in whole quarter-days** (1–16 per leg), a rules reference/adjudication, and check the review acknowledgment. There is no terrain-independent default rate. The destination terrain is shown from the workbook. Save the plan: neither location nor time changes.
+4. **Confirm and start journey** asks for confirmation and marks the leg in progress, without moving or advancing the clock.
+5. **Spend next quarter** charges one quarter and saves progress. **Complete travel** charges the remaining quarters, after confirmation. Only fully spent legs update the campaign hex/location/terrain and add completed Hike/travel history. The source, destination, assignments, calibration, adjacency, plan ID, and campaign revision are checked again. Arrival uses a single printed feature if one exists, otherwise the source coordinate.
+6. Cancel a plan or an in-progress leg explicitly. Already spent time is retained; the party stays at its departure hex. Closing the panel/browser or restarting the server preserves the plan and expenditure for later resumption.
+
+The old invalid H14 sample position is still never guessed or relocated. Set a valid starting hex in Campaign Settings before planning.
+
+### Clock and calendar
+
+The verified quarter sequence is Morning → Day → Evening → Night → Morning. Completing Night increments the date, and every charged quarter creates a before/after clock log entry. Selection, assignment changes, planning, and starting a plan cost no time. Manual date/quarter changes through Campaign Settings are recorded as clock corrections, not journey expenditure.
+
+**Calendar limitation:** existing dates are free-form labels, and Forbidden Lands fantasy month lengths/year boundaries have not been verified against the rulebooks. Named dates therefore retain their original label plus an explicit elapsed-day suffix, e.g. `12th of Stillfall, 1165 (+1 day)`. Subsequent days increment that offset. This deliberately does not fabricate a fantasy month boundary. For exact civil day/month/year arithmetic in this prototype, set an ISO date such as `2026-12-31`: ending Night yields `2027-01-01`, Morning. ISO arithmetic is Gregorian, not a claim about the game's official calendar. This distinction is also displayed in the panel.
+
+### Activities and weather
+
+The panel records Hike, Lead the Way, Keep Watch, Make Camp, Forage, Hunt, Fish, Rest, Sleep, and Explore. Select party members, enter a manual roll result/successes and outcome, explicitly adjudicate time, and confirm. Choose **0 additional quarters** for an activity concurrent with travel; that means no double charging, not a claim that the activity is free. Separately charged activities are blocked while travel is in progress; finish/cancel travel first or record concurrent results. Completed travel records Hike automatically, so do not charge the same hike again.
+
+Duration/role compatibility, resource use, hunting/foraging yields, healing, sleep deprivation, forced marches, mishaps, fractional movement, and multi-hex-per-quarter travel are **not implemented or verified**. No hidden approximations are applied. This phase tracks whole-quarter, single-hex adjudicated legs, not a complete automated Forbidden Lands travel ruleset. Manual outcome records do not automatically alter character supplies or health.
+
+Weather description updates the existing campaign weather everywhere. Unverified effect notes are stored separately, are visible as unverified, and never become numeric modifiers. Sources are Manual or Roll20 manual entry. `WeatherProvider` is an interface for a future reviewed Roll20 adapter; no generator, external script, random weather table, or OpenAI API is connected. Paste manually obtained weather descriptions for now.
+
+### Persistence and reliability
+
+- `src/lib/journey/clock.ts`, `engine.ts`, and `schema.ts` contain the testable clock, rules-review boundaries, commands, and typed state, without UI/database access. Geographic facts are supplied through an interface; sheet capability extraction is separate.
+- `src/server/journey/service.ts` validates commands and performs campaign updates and idempotency receipts in one SQLite transaction. Migration `003_journey_actions.sql` adds campaign-scoped action IDs and payload fingerprints.
+- Identical retries return the current record without spending time twice, even after server restarts. Reusing an ID with different action parameters is rejected. Revision tokens prevent stale tabs from charging travel. Imported logs also prevent reusing already recorded IDs when the original operational receipts are absent.
+- Journey assignments, plans, spent quarters, completed/cancelled travel, activity outcomes, weather state, and before/after logs live in the public campaign snapshot and are included in JSON backups. Old campaigns without journey state remain compatible. GM-only storage remains separate.
+- Backend confirmation is required for departure, expenditure/completion, cancellation, and charged activities. The UI disables buttons while submitting and offers Retry same action after an uncertain failure. Normal Campaign Settings remains an explicit manual preparation/correction tool, not a substitute for journey travel.
+
+### Verify a journey
+
+```sh
+npm test
+npm run typecheck
+npm run build
+npm run test:map:real
+npm run test:map
+npm run test:persistence
+```
+
+Unit/storage tests cover map adjacency, confirmation, named/ISO clock handling, Night/year rollover, manual terrain-cost boundaries, role validation, partial travel, activities, weather, duplicate submissions before/after reopening SQLite, backup restoration, and absence of automatic narration. The real-map browser test sets a temporary party at M22 with an ISO Night clock, plans a two-quarter M22 → N21 journey, spends one quarter, restarts the server mid-journey, resumes/completes it, records Sleep, and updates weather. Synthetic map tests check cancellation of confirmation and retain zoom/pan/pinch/calibration coverage. The existing character, backup, and campaign suites still run against isolated temporary databases.

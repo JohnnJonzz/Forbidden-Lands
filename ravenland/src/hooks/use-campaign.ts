@@ -1,6 +1,7 @@
 'use client';
 import {useEffect,useRef,useState} from 'react';
 import type {CampaignRecord,CampaignSummary} from '@/lib/types';
+import type {JourneyInput} from '@/lib/journey/schema';
 import type {Action} from '@/lib/session';
 import {sessionReducer} from '@/lib/session';
 async function request(method:string,body?:unknown,path='/api/campaigns'){const response=await fetch(path,{method,headers:{'Content-Type':'application/json'},body:body===undefined?undefined:JSON.stringify(body),cache:'no-store'});const data=await response.json();if(!response.ok)throw new Error(data.error||'Storage request failed');return data as {record:CampaignRecord;campaigns:CampaignSummary[]}}
@@ -22,7 +23,7 @@ export function useCampaign(){
   tail.current=task.catch(e=>{failed.current=true;setError(e.message);setStatus('Not saved')}).finally(()=>{pending.current--;if(!pending.current&&!failed.current)setStatus('Saved to SQLite')});await tail.current;
  }
  async function reload(){await tail.current;const current=ref.current;if(!current)return;const response=await fetch('/api/campaigns?id='+current.id,{cache:'no-store'});const data=await response.json();if(!response.ok)throw new Error(data.error);accept(data)}
- async function travel(to:string){await tail.current;if(!ref.current)return;const current=ref.current;await operate('POST',{campaignId:current.id,revision:current.revision,from:current.session.campaign.hex,to,confirmed:true},'/api/map/travel')}
+ async function journeyCommand(input:JourneyInput,actionId:string){await tail.current;if(!ref.current)return;const current=ref.current;await operate('POST',{...input,campaignId:current.id,revision:current.revision,actionId},'/api/journey')}
  function backup(){if(!ref.current)return;const url=URL.createObjectURL(new Blob([JSON.stringify({format:'ravenland-campaign',version:1,session:ref.current.session},null,2)],{type:'application/json'}));const link=document.createElement('a');link.href=url;link.download='ravenland-campaign.json';link.click();setTimeout(()=>URL.revokeObjectURL(url),1000)}
- return {record,campaigns,error,status,generation,travel,update,operate,retry,reload,backup};
+ return {record,campaigns,error,status,generation,journeyCommand,update,operate,retry,reload,backup};
 }

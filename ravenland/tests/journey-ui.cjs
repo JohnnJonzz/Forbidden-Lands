@@ -1,0 +1,5 @@
+const assert=require('node:assert/strict');
+async function savePlan(page,quarters=1){await page.getByLabel('Travel quarter-days',{exact:true}).fill(String(quarters));await page.getByLabel('Travel adjudication',{exact:true}).fill('Explicit test adjudication for this terrain/mode; not a published Forbidden Lands rate.');await page.getByLabel(/I reviewed terrain, travel mode/).check();await page.getByRole('button',{name:'Save journey plan',exact:true}).click();await page.getByRole('button',{name:'Confirm and start journey',exact:true}).waitFor()}
+async function startPlan(page){page.once('dialog',d=>d.accept());await page.getByRole('button',{name:'Confirm and start journey',exact:true}).click();await page.getByRole('button',{name:'Complete travel',exact:true}).waitFor()}
+async function completePlan(page){page.once('dialog',d=>d.accept());await page.getByRole('button',{name:'Complete travel',exact:true}).click();await page.getByRole('button',{name:'Save journey plan',exact:true}).waitFor()}
+module.exports={savePlan,startPlan,completePlan};
