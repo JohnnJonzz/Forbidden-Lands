@@ -570,7 +570,7 @@
         <button class="btn-add" onclick="app.addGearRow()">+ Add Gear</button>
         <div class="gear-totals">
         <div id="encumbrance-summary" class="encumbrance-summary" role="status" aria-live="polite"></div>
-        <p class="save-note">Tiny = 0, Light = ½, Normal = 1, Heavy = 2 units each. Capacity = regular Strength × 2. Only named gear rows count; list carried weapons, armor, and supplies here too.</p>
+        <p class="save-note">Tiny = 0, Light = ½, Normal = 1, Heavy = 2 units each. Capacity = regular Strength × 2. Named gear rows and carried armor, helmets, and shields count. Do not duplicate armor or shields here; add weapons and other supplies to Gear.</p>
         <label for="capacity-bonus">Extra capacity (talents or other bonuses)</label>
         <input type="number" id="capacity-bonus" min="0" value="0" step="0.5" onchange="app.saveState()">
         </div>
@@ -610,7 +610,7 @@
         <label class="armor-worn"><input id="shield-worn" type="checkbox" checked onchange="app.saveState()"> Don</label>
         <label for="shield-notes">Features</label><input id="shield-notes" type="text" onchange="app.saveState()">
         <div class="grid-2"><div><label for="shield-carried">Carried</label><select id="shield-carried" onchange="app.saveState()"><option>Yes</option><option>No</option></select></div><div><label for="shield-weight">Weight</label><select id="shield-weight" onchange="app.saveState()"><option>Tiny</option><option>Light</option><option selected>Normal</option><option>Heavy</option></select></div></div>
-        <p class="save-note">Rolls use current Strength, Melee, shield bonus, and modifier. Include the shield in Gear for encumbrance.</p>
+        <p class="save-note">Rolls use current Strength, Melee, shield bonus, and modifier. A named shield counts toward encumbrance when Carried is Yes, even when not donned.</p>
     </section>
     <section class="panel equipment-block" id="armor-section">
         <h3>Armor / Helmet</h3>
@@ -645,7 +645,7 @@
             </div>
         </div>
         <div class="armor-footer"><strong>Armor rating <output id="combined-armor-rating" aria-live="polite">0</output></strong><button onclick="app.stageArmor()" aria-label="Stage armor roll" title="Stage armor roll"><svg class="action-icon" aria-hidden="true"><use href="#icon-shield"></use></svg></button></div>
-        <p class="save-note">Only donned, carried pieces contribute. Total = current AR + modifier. Armor rolls cannot be pushed. Weight is recorded here; include carried armor in Gear for encumbrance.</p>
+        <p class="save-note">Only donned, carried pieces contribute. Total = current AR + modifier. Armor rolls cannot be pushed. Named pieces count toward encumbrance when Carried is Yes, even when not donned.</p>
     </section>
 
 
@@ -894,11 +894,17 @@ class ForbiddenLandsApp {
 
     renderEncumbrance() {
         const weights = {Tiny: 0, Light: 0.5, Normal: 1, Heavy: 2};
-        const carried = Array.from(document.querySelectorAll('#gear-table tbody tr')).reduce((total, row) => {
+        const gearWeight = Array.from(document.querySelectorAll('#gear-table tbody tr')).reduce((total, row) => {
             if (!row.querySelector('.g-item').value.trim()) return total;
             const quantity = Math.max(0, Math.floor(Number(row.querySelector('.g-qty').value) || 0));
             return total + (weights[row.querySelector('.g-weight').value] ?? 1) * quantity;
         }, 0);
+        const equipmentWeight = ['armor','helmet','shield'].reduce((total, piece) => {
+            const selected = document.getElementById(piece + '-name').value.trim();
+            const isCarried = document.getElementById(piece + '-carried').value === 'Yes';
+            return total + (selected && isCarried ? (weights[document.getElementById(piece + '-weight').value] ?? 1) : 0);
+        }, 0);
+        const carried = gearWeight + equipmentWeight;
         const strength = Math.max(1, Math.min(6, Number(document.getElementById('attr-strength-regular').value) || 1));
         const bonus = Math.max(0, Number(document.getElementById('capacity-bonus').value) || 0);
         const capacity = strength * 2 + bonus;
