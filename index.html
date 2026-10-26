@@ -26,6 +26,16 @@
 
         .sheet-layout { max-width: 1460px; margin: 0 auto; display: grid; grid-template-columns: minmax(0, 1fr) 370px; gap: 20px; align-items: start; }
         #dice-panel { position: sticky; top: 20px; max-height: calc(100vh - 40px); overflow-y: auto; }
+        #shield-section { grid-column: 1 / span 4; min-width: 0; }
+        #shield-section > label, #shield-section > .grid-2 { margin-top: 10px; }
+        #shield-section output { color: var(--gold-color); font-size: 1.25rem; }
+        .spell-entry { border: 1px solid #79673e; border-radius: 4px; padding: 12px; margin-bottom: 14px; background: #252525; }
+        .spell-main { display: grid; grid-template-columns: 100px 65px minmax(150px,2fr) 75px 75px 1fr 70px 70px; gap: 8px; align-items: end; }
+        .spell-details { display: grid; grid-template-columns: 1fr 1fr 2fr; gap: 10px; margin: 12px 0; }
+        .spell-entry textarea { min-height: 85px; }
+        .spell-remove { margin-top: 8px; background: #444; }
+        @media (max-width: 1200px) { .spell-main { grid-template-columns: repeat(4,minmax(0,1fr)); } }
+        @media (max-width: 768px) { #shield-section { grid-column: span 12; } .spell-main, .spell-details { grid-template-columns: repeat(2,minmax(0,1fr)); } }
         .equipment-block { grid-column: 5 / span 8; }
         #weapons-table th:first-child { min-width: 155px; }
         @media (max-width: 768px) { .equipment-block { grid-column: span 12; } }
@@ -590,6 +600,18 @@
         <button class="btn-add" onclick="app.addWeaponRow()">+ Add Weapon</button>
     </div>
 
+    <section class="panel" id="shield-section">
+        <h3>Shield</h3>
+        <div class="grid-2"><button aria-label="Stage shield shove" onclick="app.stageShield('Shove')">Shove</button><button aria-label="Stage shield parry" onclick="app.stageShield('Parry')">Parry</button></div>
+        <label for="shield-name">Type</label><input id="shield-name" type="text" placeholder="Shield name" onchange="app.saveState()">
+        <div class="grid-2"><div><label>Strength</label><output id="shield-attribute">2</output></div><div><label>Melee</label><output id="shield-skill">0</output></div></div>
+        <div class="grid-2"><div><label for="shield-bonus">Bonus</label><input id="shield-bonus" type="number" min="0" value="0" onchange="app.saveState()"></div><div><label for="shield-max">Max</label><input id="shield-max" type="number" min="0" value="0" onchange="app.saveState()"></div><div><label for="shield-modifier">Misc / skill</label><input id="shield-modifier" type="number" value="0" onchange="app.saveState()"></div><div><label for="shield-artifact">Artifact</label><select id="shield-artifact" onchange="app.saveState()"><option>None</option><option>D8</option><option>D10</option><option>D12</option></select></div></div>
+        <p>Total dice: <output id="shield-total">2</output></p>
+        <label class="armor-worn"><input id="shield-worn" type="checkbox" checked onchange="app.saveState()"> Don</label>
+        <label for="shield-notes">Features</label><input id="shield-notes" type="text" onchange="app.saveState()">
+        <div class="grid-2"><div><label for="shield-carried">Carried</label><select id="shield-carried" onchange="app.saveState()"><option>Yes</option><option>No</option></select></div><div><label for="shield-weight">Weight</label><select id="shield-weight" onchange="app.saveState()"><option>Tiny</option><option>Light</option><option selected>Normal</option><option>Heavy</option></select></div></div>
+        <p class="save-note">Rolls use current Strength, Melee, shield bonus, and modifier. Include the shield in Gear for encumbrance.</p>
+    </section>
     <section class="panel equipment-block" id="armor-section">
         <h3>Armor / Helmet</h3>
         <div class="armor-piece" data-piece="armor">
@@ -627,6 +649,12 @@
     </section>
 
 
+    <section class="panel col-12" id="spells-section">
+        <h3>Spells</h3>
+        <p class="save-note">Record casting options and spell details here. Resolve casting, Willpower spending, and magical mishaps manually.</p>
+        <div id="spells-list"></div>
+        <button class="btn-add" onclick="app.addSpell(); app.saveState()">+ Add Spell</button>
+    </section>
 </main>
     <!-- Dice Roller Output Panel -->
     <aside class="panel" id="dice-panel" aria-label="Dice roller">
@@ -710,7 +738,7 @@ class ForbiddenLandsApp {
             'cond-hungry', 'cond-thirsty', 'cond-sleepy', 'cond-cold',
             'pride', 'dark-secret', 'relationships', 'appearance', 'critical-injuries',
             'res-food', 'res-water', 'res-arrows', 'res-torches',
-            'coin-copper', 'coin-silver', 'coin-gold', 'capacity-bonus'
+            'shield-name', 'shield-bonus', 'shield-max', 'shield-modifier', 'shield-artifact', 'shield-worn', 'shield-notes', 'shield-carried', 'shield-weight', 'coin-copper', 'coin-silver', 'coin-gold', 'capacity-bonus'
         ];
 
         this.artifactDice = [];
@@ -733,6 +761,7 @@ class ForbiddenLandsApp {
         this.renderAttributes();
         this.renderEncumbrance();
         this.renderArmor();
+        this.renderShield();
     }
 
     renderPoolSelectors() {
@@ -802,6 +831,41 @@ class ForbiddenLandsApp {
         }
         document.getElementById('dice-summary').textContent = `D66: ${tens}${ones} (tens ${tens}, ones ${ones})`;
         document.getElementById('btn-push').style.display = 'none';
+    }
+
+    renderShield() {
+        const strength = Math.max(0, Number(document.getElementById('attr-strength').value) || 0);
+        const skill = Number(document.getElementById('skill-melee').value) || 0;
+        const bonus = Math.max(0, Number(document.getElementById('shield-bonus').value) || 0);
+        const modifier = Number(document.getElementById('shield-modifier').value) || 0;
+        document.getElementById('shield-attribute').textContent = strength;
+        document.getElementById('shield-skill').textContent = skill;
+        const enabled = document.getElementById('shield-worn').checked && document.getElementById('shield-carried').value === 'Yes';
+        document.getElementById('shield-total').textContent = enabled ? strength + Math.abs(skill + modifier) + bonus : 0;
+        document.querySelectorAll('#shield-section button').forEach(button=>button.disabled=!enabled);
+    }
+
+    stageShield(action) {
+        if (!document.getElementById('shield-worn').checked || document.getElementById('shield-carried').value !== 'Yes') return;
+        this.stagePool(`Shield ${action}: ${document.getElementById('shield-name').value || 'Shield'}`, 'strength', Number(document.getElementById('attr-strength').value), Number(document.getElementById('skill-melee').value), Math.max(0,Number(document.getElementById('shield-bonus').value)||0));
+        document.getElementById('pool-modifier').value = document.getElementById('shield-modifier').value;
+        const index = {D8:0,D10:2,D12:3}[document.getElementById('shield-artifact').value];
+        this.artifactDice = index === undefined ? [] : [index];
+        this.updatePoolPreview();
+    }
+
+    addSpell(data = {}) {
+        const entry = document.createElement('div'); entry.className='spell-entry';
+        const field = (key,label,type='text',value='') => `<div><label>${label}<input class="spell-${key}" aria-label="Spell ${label}" type="${type}" ${type === 'number' ? 'min="0" step="1"' : ''} value="${this.escapeHTML(data[key] ?? value)}" onchange="app.saveState()"></label></div>`;
+        entry.innerHTML = `<div class="spell-main">
+            <div><label>Mode<select class="spell-mode" aria-label="Spell casting mode" onchange="app.saveState()">${['Normal','Safe','Overcast'].map(mode=>`<option ${data.mode===mode?'selected':''}>${mode}</option>`).join('')}</select></label></div>
+            ${field('wp','WP','number',1)}${field('name','Name')}${field('talent','Talent rank','number',1)}${field('rank','Spell rank','number',1)}${field('type','Type','text','Spell')}
+            <label>Use ingr.<input type="checkbox" class="spell-ingredient" ${data.ingredient?'checked':''} onchange="app.saveState()"></label>
+            <label>Use grim.<input type="checkbox" class="spell-grimoire" ${data.grimoire?'checked':''} onchange="app.saveState()"></label>
+            </div><div class="spell-details">${field('range','Range','text','Personal')}${field('duration','Duration')}${field('ingredients','Ingredients')}</div>
+            <label>Description<textarea class="spell-description" onchange="app.saveState()">${this.escapeHTML(data.description ?? '')}</textarea></label>
+            <button class="spell-remove" onclick="this.closest('.spell-entry').remove(); app.saveState()">Remove spell</button>`;
+        document.getElementById('spells-list').appendChild(entry);
     }
 
     getArmorPieces() {
@@ -992,6 +1056,7 @@ class ForbiddenLandsApp {
     }
 
     resetForm() {
+        document.getElementById('spells-list').replaceChildren();
         this.artifactDice = [];
         this.currentRoll = null;
         this.stagedRoll = null;
@@ -1025,6 +1090,7 @@ class ForbiddenLandsApp {
         this.renderAttributes();
         this.renderEncumbrance();
         this.renderArmor();
+        this.renderShield();
         if (!this.activeCharId) return;
         const data = {};
         
@@ -1060,6 +1126,12 @@ class ForbiddenLandsApp {
             notes: tr.querySelector('.g-notes').value
         }));
 
+        data.spells = Array.from(document.querySelectorAll('.spell-entry')).map(entry => {
+            const spell = {};
+            for (const key of ['mode','wp','name','talent','rank','type','range','duration','ingredients','description']) spell[key] = entry.querySelector('.spell-' + key).value;
+            for (const key of ['ingredient','grimoire']) spell[key] = entry.querySelector('.spell-' + key).checked;
+            return spell;
+        });
         this.roster[this.activeCharId] = data;
         this.saveRoster();
     }
@@ -1111,10 +1183,12 @@ class ForbiddenLandsApp {
         if (data.weapons) data.weapons.forEach(w => this.addWeaponRow(w.name, w.bonus, w.dmg, w.range, w.feat, w.skill, w.artifact));
 
         document.querySelector('#gear-table tbody').innerHTML = '';
+        if (Array.isArray(data.spells)) data.spells.forEach(spell=>{if(spell && typeof spell === 'object') this.addSpell(spell);});
         if (data.gear) data.gear.forEach(g => this.addGearRow(g.item, g.weight, g.notes, g.quantity));
         this.renderAttributes();
         this.renderEncumbrance();
         this.renderArmor();
+        this.renderShield();
     }
 
     escapeHTML(value) {
@@ -1390,7 +1464,7 @@ class ForbiddenLandsApp {
             try {
                 const data = JSON.parse(e.target.result);
                 if (!data || typeof data !== 'object' || Array.isArray(data) || typeof data.name !== 'string') throw new Error('Invalid character');
-                for (const key of ['talents', 'weapons', 'gear']) {
+                for (const key of ['talents', 'weapons', 'gear', 'spells']) {
                     if (data[key] !== undefined && (!Array.isArray(data[key]) || data[key].some(row => !row || typeof row !== 'object'))) throw new Error('Invalid table');
                 }
                 const id = 'char_' + crypto.randomUUID();
