@@ -10,7 +10,7 @@ npm run dev
 
 Open http://localhost:3000 locally. See the app README for production commands, tests, architecture, and Phase 1 limitations. Use Node.js 24+. SQLite campaigns survive refreshes and server restarts. No authentication, paid AI API, or multiplayer synchronization is enabled.
 
-The interactive map requires `Forbidden_Lands_Map.png` and `Ravenland_Campaign_Master.xlsx`; source files are not bundled. See the app README for reviewed workbook mapping, import, and calibration instructions.
+The interactive map uses the uploaded PNG and authoritative workbook: 1,022 hexes, source adjacency, reviewed calibration, and confirmed manual travel. See the app README for import/calibration instructions. Old sample campaigns using invalid H14 need an explicitly chosen starting hex in Campaign Settings.
 
 The standalone character sheet below remains available independently.
 
