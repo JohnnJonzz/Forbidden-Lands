@@ -4,18 +4,19 @@ import { BookOpen, Dice5, Plus, Save } from 'lucide-react';
 import type { Session, Panel, Campaign, JournalEntry } from '@/lib/types';
 import {JourneySettings,QuarterDayPanel} from './quarter-day';
 import type {JourneyInput} from '@/lib/journey/schema';
+import type {DiceAction} from './dice-card';
 import {ImageLibraryPanel} from './portrait-dialog';
 import {HexMap} from './hex-map';
 import type {CampaignRecord} from '@/lib/types';
 import {CharacterPanel,DicePanel} from './character-panel';
 import type {SheetChange} from './sheet-embed';
-type Props={record:CampaignRecord;proposed:string;onJourney:(input:JourneyInput,actionId:string)=>Promise<void>;onPlanJourney:(coordinate:string)=>void;onSheet:SheetChange;manager:ReactNode;panel:Panel;session:Session;onCampaign:(patch:Partial<Campaign>)=>void;onJournal:(entry:JournalEntry)=>void;onReset:()=>void};
-export function PanelContent({record,proposed,onJourney,onPlanJourney,onSheet,manager,panel,session,onCampaign,onJournal,onReset}:Props){
+type Props={onDice:DiceAction;actorId:string;record:CampaignRecord;proposed:string;onJourney:(input:JourneyInput,actionId:string)=>Promise<void>;onPlanJourney:(coordinate:string)=>void;onSheet:SheetChange;manager:ReactNode;panel:Panel;session:Session;onCampaign:(patch:Partial<Campaign>)=>void;onJournal:(entry:JournalEntry)=>void;onReset:()=>void};
+export function PanelContent({onDice,actorId,record,proposed,onJourney,onPlanJourney,onSheet,manager,panel,session,onCampaign,onJournal,onReset}:Props){
  const [note,setNote]=useState(''),[title,setTitle]=useState(''),[saved,setSaved]=useState(false);
  const [description,setDescription]=useState(session.campaign.description),[date,setDate]=useState(session.campaign.date),[weather,setWeather]=useState(session.campaign.weather),[hex,setHex]=useState(session.campaign.hex),[location,setLocation]=useState(session.campaign.location),[terrain,setTerrain]=useState(session.campaign.terrain),[tone,setTone]=useState(session.campaign.settings.tone),[houseRules,setHouseRules]=useState(session.campaign.settings.houseRules);
  const [name,setName]=useState(session.campaign.name),[objective,setObjective]=useState(session.campaign.objective),[quarter,setQuarter]=useState(session.campaign.quarter);
  if(panel==='Journey Settings') return <JourneySettings record={record} onCommand={onJourney}/>;
- if(panel==='Quarter-Day Activities') return <QuarterDayPanel record={record} proposed={proposed} onCommand={onJourney}/>;
+ if(panel==='Quarter-Day Activities') return <QuarterDayPanel onDice={onDice} actorId={actorId} record={record} proposed={proposed} onCommand={onJourney}/>;
  if(panel==='Image Library') return <ImageLibraryPanel campaignId={record.id}/>;
  if(panel==='Map') return <HexMap record={record} onPlanJourney={onPlanJourney}/>;
  if(panel==='Dice Roller') return <DicePanel campaignId={record.id} characters={session.characters} onChange={onSheet}/>;

@@ -13,3 +13,7 @@ export function executeDice(raw:unknown,repo:SqliteCampaignRepository=getLocalRe
   const updated=repo.update(record.id,record.revision,session);db.prepare('INSERT INTO journey_actions VALUES (?,?,?,?)').run(record.id,c.actionId,fingerprint,new Date().toISOString());db.exec('COMMIT');return {record:updated,replayed:false};
  }catch(e){db.exec('ROLLBACK');throw e}
 }
+
+// Future narration adapters consume this one immutable public packet per submitted group.
+// Staging, pushing and readiness never enqueue narration or call an AI service.
+export function getQuarterDayNarration(campaignId:string,batchId:string,repo:SqliteCampaignRepository=getLocalRepository()){const batch=repo.get(campaignId)?.session.diceGroups?.batches.find(b=>b.id===batchId);if(!batch)throw new Error('Submitted batch not found');return structuredClone(batch)}

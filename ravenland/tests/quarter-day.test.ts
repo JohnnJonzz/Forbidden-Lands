@@ -1,3 +1,5 @@
+import {applyDiceCommand} from '../src/lib/dice/engine';
+import {executeDice} from '../src/server/dice/service';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {randomUUID} from 'node:crypto';
@@ -34,7 +36,7 @@ test('structured roll matching, no premature movement, manual adjudication, roll
  s=apply(s,{type:'quarter-roll',roll});assert.equal(quarterFor(s).active!.requests[0].status,'pending');assert.throws(()=>apply(s,{type:'quarter-roll',roll}),/already recorded/);
  const linked={...roll,id:randomUUID(),quarterDayId:id,requestId:request.id};s=apply(s,{type:'quarter-roll',roll:linked});assert.equal(quarterFor(s).active!.requests[0].status,'completed');assert.throws(()=>apply(s,{type:'quarter-roll',roll:{...linked,id:randomUUID()}}),/does not match/);
  const remaining=quarterFor(s).active!.requests[1];s=apply(s,{type:'quarter-manual',planId:id,requestId:remaining.id,notes:'Controller reviewed conditions: watch successful',confirmed:true});assert.equal(quarterFor(s).active!.status,'RESOLVED');assert.equal(s.campaign.hex,'M22');
- assert.throws(()=>apply(s,{type:'quarter-advance',planId:id,confirmed:true}),/adjudicate/);
+ assert.throws(()=>apply(s,{type:'quarter-advance',planId:id,confirmed:true}),/coordinator/);s=applyDiceCommand(s,{campaignId:randomUUID(),actionId:randomUUID(),type:'submit-group',planId:id,actorId:'ilva'},geo,'2026-10-27T12:00:00.000Z',()=>6);assert.throws(()=>apply(s,{type:'quarter-advance',planId:id,confirmed:true}),/adjudicate/);
  s=apply(s,{type:'quarter-travel-ruling',planId:id,approved:true,notes:'Controller verified terrain rate and compatibility; arrival this quarter',confirmed:true});s=apply(s,{type:'quarter-advance',planId:id,confirmed:true});assert.equal(s.campaign.hex,'N21');assert.equal(s.campaign.quarter,'Morning');assert.equal(s.campaign.date,'2027-01-01');assert.equal(quarterFor(s).history[0].status,'ADVANCED');assert.throws(()=>apply(s,{type:'quarter-advance',planId:id,confirmed:true}),/missing/);assert.equal(journeyContext(s).campaign.hex,'N21');
 });
 test('same SQLite saves pending requests and idempotent advance across repository restart',()=>{
@@ -42,7 +44,7 @@ test('same SQLite saves pending requests and idempotent advance across repositor
  let record=repo.create(initial());const submit=(input:Record<string,unknown>)=>{const cmd={campaignId:record.id,revision:record.revision,actionId:randomUUID(),...input};record=executeJourney(cmd,repo).record;return cmd};
  submit({type:'quarter-draft',traveling:false,destination:'',assignments:defaultAssignments(record.session,false)});const id=quarterFor(record.session).active!.id;submit({type:'quarter-confirm',planId:id,confirmed:true});const before=record.session;repo.close();repo=new SqliteCampaignRepository(path);assert.deepEqual(repo.get(record.id)!.session,before);
  for(const r of quarterFor(record.session).active!.requests)submit({type:'quarter-manual',planId:id,requestId:r.id,notes:'Manual ruling: no roll needed for resting here',confirmed:true});
- const cmd=submit({type:'quarter-advance',planId:id,confirmed:true});const after=record.session;assert.equal(executeJourney(cmd,repo).replayed,true);repo.close();repo=new SqliteCampaignRepository(path);assert.equal(executeJourney(cmd,repo).replayed,true);assert.deepEqual(repo.get(record.id)!.session,after);
+ record=executeDice({campaignId:record.id,actionId:randomUUID(),type:'submit-group',planId:id,actorId:'ilva'},repo).record;const cmd=submit({type:'quarter-advance',planId:id,confirmed:true});const after=record.session;assert.equal(executeJourney(cmd,repo).replayed,true);repo.close();repo=new SqliteCampaignRepository(path);assert.equal(executeJourney(cmd,repo).replayed,true);assert.deepEqual(repo.get(record.id)!.session,after);
  }finally{repo.close();rmSync(dir,{recursive:true,force:true})}
 });
 test('cancellation retains history and does not spend time',()=>{let s=initial();s=apply(s,{type:'quarter-draft',traveling:false,destination:'',assignments:defaultAssignments(s,false)});s=apply(s,{type:'quarter-cancel',planId:quarterFor(s).active!.id,confirmed:true});assert.equal(s.campaign.quarter,'Night');assert.equal(s.campaign.hex,'M22');assert.equal(quarterFor(s).history[0].status,'CANCELLED')});
