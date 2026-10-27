@@ -19,6 +19,7 @@
     "prestart": "tsx scripts/prepare-map.ts",
     "test:map:real": "node tests/real-map-browser.cjs",
     "test:quarter": "node tests/quarter-browser.cjs",
+    "test:dice-repair": "node tests/dice-repair-browser.cjs",
     "test:windows": "node tests/character-windows-browser.cjs",
     "test:portraits": "node tests/portrait-browser.cjs",
     "test:groups": "tsx --test tests/group-dice.test.ts",

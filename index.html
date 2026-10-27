@@ -387,7 +387,7 @@
         <p class="save-note">Use arrows for the regular value. Click skulls to mark damage; click a marked skull to heal.</p>
         <div class="grid-2">
             <div class="attr-box">
-                <label>Strength</label>
+                <label>Strength</label><button class="btn-roll" aria-label="Stage Strength dice" title="Stage Strength dice" onclick="app.rollAttribute('strength')"><svg class="action-icon" aria-hidden="true"><use href="#icon-d6"></use></svg></button>
                 <div class="attribute-spinner">
                     <input type="number" aria-label="Regular strength" id="attr-strength-regular" min="1" max="6" value="2" onchange="app.updateAttribute('strength')">
                     <div class="attribute-arrows">
@@ -400,7 +400,7 @@
                 <div class="attribute-current" id="current-strength" aria-live="polite"></div>
             </div>
             <div class="attr-box">
-                <label>Agility</label>
+                <label>Agility</label><button class="btn-roll" aria-label="Stage Agility dice" title="Stage Agility dice" onclick="app.rollAttribute('agility')"><svg class="action-icon" aria-hidden="true"><use href="#icon-d6"></use></svg></button>
                 <div class="attribute-spinner">
                     <input type="number" aria-label="Regular agility" id="attr-agility-regular" min="1" max="6" value="2" onchange="app.updateAttribute('agility')">
                     <div class="attribute-arrows">
@@ -413,7 +413,7 @@
                 <div class="attribute-current" id="current-agility" aria-live="polite"></div>
             </div>
             <div class="attr-box">
-                <label>Wits</label>
+                <label>Wits</label><button class="btn-roll" aria-label="Stage Wits dice" title="Stage Wits dice" onclick="app.rollAttribute('wits')"><svg class="action-icon" aria-hidden="true"><use href="#icon-d6"></use></svg></button>
                 <div class="attribute-spinner">
                     <input type="number" aria-label="Regular wits" id="attr-wits-regular" min="1" max="6" value="2" onchange="app.updateAttribute('wits')">
                     <div class="attribute-arrows">
@@ -426,7 +426,7 @@
                 <div class="attribute-current" id="current-wits" aria-live="polite"></div>
             </div>
             <div class="attr-box">
-                <label>Empathy</label>
+                <label>Empathy</label><button class="btn-roll" aria-label="Stage Empathy dice" title="Stage Empathy dice" onclick="app.rollAttribute('empathy')"><svg class="action-icon" aria-hidden="true"><use href="#icon-d6"></use></svg></button>
                 <div class="attribute-spinner">
                     <input type="number" aria-label="Regular empathy" id="attr-empathy-regular" min="1" max="6" value="2" onchange="app.updateAttribute('empathy')">
                     <div class="attribute-arrows">
@@ -1321,6 +1321,11 @@ class ForbiddenLandsApp {
         ];
     }
 
+    rollAttribute(attribute) {
+        if (!['strength','agility','wits','empathy'].includes(attribute)) return;
+        this.stagePool(attribute[0].toUpperCase() + attribute.slice(1), attribute, Math.max(0, Number(document.getElementById('attr-' + attribute).value) || 0), 0, 0);
+    }
+
     rollSkill(skillId) {
         const config = this.skillsConfig.find(s => s.id === skillId);
         const attrVal = parseInt(document.getElementById(`attr-${config.attr}`).value) || 0;
@@ -1348,12 +1353,13 @@ class ForbiddenLandsApp {
     stagePool(label, attribute, base, skill, gear) {
         this.artifactDice = [];
         this.stagedRoll = {label, attribute};
-        this.currentRoll = null;
         for (const [field, value] of Object.entries({base, skill, gear, modifier:0})) document.getElementById('pool-' + field).value = value;
         document.getElementById('staged-label').textContent = 'Staged: ' + label;
-        document.getElementById('dice-results').replaceChildren();
-        document.getElementById('dice-summary').textContent = 'Adjust the pool, then roll when ready.';
-        document.getElementById('btn-push').style.display = 'none';
+        if (!this.currentRoll) {
+            document.getElementById('dice-results').replaceChildren();
+            document.getElementById('dice-summary').textContent = 'Adjust the pool, then roll when ready.';
+            document.getElementById('btn-push').style.display = 'none';
+        }
         document.getElementById('btn-roll-pool').disabled = false;
         this.updatePoolPreview();
     }
@@ -1382,6 +1388,8 @@ class ForbiddenLandsApp {
 
     pushRoll() {
         if (!this.currentRoll || this.currentRoll.isPushed || this.currentRoll.isArmor) return;
+        const successes = Math.max(0, this.currentRoll.dice.reduce((n,d) => n + (d.value >= 6 ? (d.type === 'negative-skill' ? -1 : d.type === 'artifact' ? Math.floor((d.value-6)/2)+1 : 1) : 0), 0));
+        if (successes > 0 && !confirm('Has the GM approved that additional successes can improve this successful roll?')) return;
 
         let baseBanes = 0;
         let gearBanes = 0;
@@ -1389,7 +1397,7 @@ class ForbiddenLandsApp {
         this.currentRoll.dice.forEach(die => {
             // Successes and banes stay locked
             if (die.value >= 6) return;
-            if (die.value === 1 && ['base', 'gear'].includes(die.type)) return;
+            if (die.value === 1 && ['base', 'gear', 'artifact'].includes(die.type)) return;
             // Reroll eligible dice
             die.value = Math.floor(Math.random() * (die.sides || 6)) + 1;
             die.pushed = true;

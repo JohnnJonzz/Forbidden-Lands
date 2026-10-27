@@ -6,7 +6,10 @@ import type {JourneyGeography} from '../journey/engine';
 import type {StructuredRoll} from '../journey/quarter-schema';
 import type {DiceCommand,PendingDice} from './schema';
 export function countSuccesses(r:StructuredRoll){return Math.max(0,r.attribute.filter(v=>v===6).length+r.skillDice.filter(v=>v===6).length*(r.negativeSkill?-1:1)+r.gear.filter(v=>v===6).length+r.artifacts.reduce((n,d)=>{if(d.value>d.sides)throw new Error('Artifact result exceeds die size');return n+(d.value>=6?Math.floor((d.value-6)/2)+1:0)},0))}
-export function canPush(r:PendingDice){return r.status==='Pending'&&!r.result.pushed&&!r.metadata.isArmor&&!r.metadata.utility}
+export function hasEligibleDice(r:StructuredRoll){return r.attribute.some(v=>v>1&&v<6)||r.skillDice.some(v=>v<6)||r.gear.some(v=>v>1&&v<6)||r.artifacts.some(d=>d.value>1&&d.value<6)}
+// Skill ones are reported for reference, but never cause push damage or Willpower.
+export function baneCounts(r:StructuredRoll){const attribute=r.attribute.filter(v=>v===1).length,skill=r.skillDice.filter(v=>v===1).length,gear=r.gear.filter(v=>v===1).length;return {attribute,skill,gear,total:attribute+skill+gear}}
+export function canPush(r:PendingDice){return r.status==='Pending'&&!r.result.pushed&&!r.metadata.isArmor&&!r.metadata.utility&&hasEligibleDice(r.result)}
 export function applyDiceCommand(input:Session,c:DiceCommand,geo:JourneyGeography,now:string,die:(sides:number)=>number):Session{
  let s=structuredClone(input);s.dice??=[];
  if(c.type==='group-coordinator'){
@@ -47,11 +50,12 @@ export function applyDiceCommand(input:Session,c:DiceCommand,geo:JourneyGeograph
  }
  if(c.type==='push'){
   if(!canPush(card))throw new Error('This roll cannot be pushed');
+  if(card.result.successes>0&&!c.additionalEffectConfirmed)throw new Error('Confirm GM approval that additional successes can improve this successful roll before pushing');
   const r=card.result;
   const reroll=(v:number,sides:number,banes:boolean)=>v>=6||(v===1&&banes)?v:die(sides);
-  r.attribute=r.attribute.map(v=>reroll(v,6,true));r.skillDice=r.skillDice.map(v=>reroll(v,6,false));r.gear=r.gear.map(v=>reroll(v,6,true));r.artifacts=r.artifacts.map(d=>({...d,value:reroll(d.value,d.sides,false)}));r.pushed=true;r.successes=countSuccesses(r);
+  r.attribute=r.attribute.map(v=>reroll(v,6,true));r.skillDice=r.skillDice.map(v=>reroll(v,6,false));r.gear=r.gear.map(v=>reroll(v,6,true));r.artifacts=r.artifacts.map(d=>({...d,value:reroll(d.value,d.sides,true)}));r.pushed=true;r.successes=countSuccesses(r);
   const index=s.characters.findIndex(ch=>ch.id===card.characterId);if(index<0)throw new Error('Character not found');const sheet=structuredClone(sheetFor(s.characters[index]));
-  const baseBanes=r.attribute.filter(v=>v===1).length;r.attributeDamage=card.metadata.attribute?baseBanes:0;r.gearDamage=r.gear.filter(v=>v===1).length;
+  const baseBanes=r.attribute.filter(v=>v===1).length;r.attributeDamage=baseBanes;r.gearDamage=r.gear.filter(v=>v===1).length;
   if(card.metadata.attribute){const key=`attr-${card.metadata.attribute}` as 'attr-strength';const before=Math.max(0,Math.trunc(Number(sheet[key]??s.characters[index][card.metadata.attribute])||0));sheet[key]=String(Math.max(0,before-baseBanes));}
   const wp=Math.max(0,Math.min(10,Math.trunc(Number(sheet.willpower)||0)));sheet.willpower=String(Math.min(10,wp+baseBanes));r.willpower=Math.max(0,Math.min(10,wp+baseBanes)-wp);
   if(card.metadata.weaponIndex!==null){const weapon=sheet.weapons?.[card.metadata.weaponIndex];

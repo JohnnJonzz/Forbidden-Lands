@@ -8,7 +8,7 @@ export type RollMetadata=z.infer<typeof metadataSchema>;
 const envelope={campaignId:z.string().uuid(),actionId:z.string().uuid()};
 export const diceCommandSchema=z.discriminatedUnion('type',[
  z.object({...envelope,type:z.literal('create'),roll:rollSchema,metadata:metadataSchema}).strict(),
- z.object({...envelope,type:z.literal('push'),rollId:z.string().uuid()}).strict(),
+ z.object({...envelope,type:z.literal('push'),additionalEffectConfirmed:z.literal(true).optional(),rollId:z.string().uuid()}).strict(),
  z.object({...envelope,type:z.literal('ready'),rollId:z.string().uuid(),requestId:id,actorId:id}).strict(),
  z.object({...envelope,type:z.literal('unready'),rollId:z.string().uuid(),actorId:id}).strict(),
  z.object({...envelope,type:z.literal('submit-group'),planId:id,actorId:id}).strict(),

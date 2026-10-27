@@ -27,3 +27,5 @@
 .recent-dice{margin:0 1.5rem;padding:.65rem 1rem;border:1px solid var(--border,#494334);border-radius:6px;font-size:.85rem}.recent-dice summary,.day-tracker summary{cursor:pointer;color:#d4b779}.recent-dice>div{max-height:180px;overflow:auto}.day-tracker{margin-bottom:2rem}.day-tracker details{padding:.7rem;border-bottom:1px solid #494334}.quarter-assignment fieldset{display:flex;gap:1rem}.quarter-assignment input[type=radio]{width:auto}
 
 .day-tracker h3{font:22px var(--serif);color:var(--text);margin:10px 0 18px}.day-tracker h4{color:var(--gold);margin:14px 0 4px}.day-tracker p{overflow-wrap:anywhere}.day-tracker small{display:block;margin-top:10px;color:var(--muted)}.day-tracker .quiet-button{margin-top:10px}.recent-dice{flex-shrink:0}
+
+.recent-dice-entry{border-top:1px solid var(--line);padding:8px 0}.recent-dice-entry>summary{font-size:12px}.recent-dice-entry time{color:var(--muted)}.recent-dice-values{margin-top:8px}.recent-dice-values p{margin:3px 0;overflow-wrap:anywhere}.recent-dice-entry small{color:var(--muted)}

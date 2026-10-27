@@ -49,7 +49,8 @@ export function applyQuarterCommand(input:Session,c:QuarterCommand,geo:JourneyGe
 // Outcomes are player rulings. Dice never select or overwrite them.
 export function requiresOutcome(a:QuarterPlan['assignments'][number]){return ['Lead the Way','Keep Watch'].includes(a.activity)||(!['Rest','Sleep','Hike'].includes(a.activity)&&a.skill!=='No roll')||(a.activity==='Hike'&&a.skill==='Endurance')}
 function submitManualQuarter(input:Session,c:Extract<QuarterCommand,{type:'quarter-submit'}>,geo:JourneyGeography,now:string):Session{
- if(c.actorId!==input.characters[0]?.id)throw new Error('Only Player 1, the party controller, can submit quarter-day results');
+ // Development only: authenticated campaign membership/ownership must gate submission before public multiplayer.
+ if(!input.characters.some(ch=>ch.id===c.actorId))throw new Error('Choose a current party member before submitting quarter-day results');
  if(c.expected.date!==input.campaign.date||c.expected.quarter!==input.campaign.quarter||c.expected.hex!==input.campaign.hex)throw new Error('This quarter-day has already ended or the campaign position changed. Reopen activities.');
  if(input.dayTracker?.some(e=>e.id===c.actionId))throw new Error('Quarter-day already submitted');
  const old=quarterFor(input).active;
