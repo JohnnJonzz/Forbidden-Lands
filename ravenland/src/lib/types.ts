@@ -5,7 +5,7 @@ export interface Character { sheet?:CharacterSheet; id: string; name: string; ki
 export interface Message { id: string; role: 'gm' | 'player'; author: string; text: string; }
 export interface Campaign { name: string; description: string; settings: {tone:'Grim'|'Balanced'|'Heroic';houseRules:string}; date: string; quarter: Quarter; hex: string; location: string; terrain: string; weather: string; objective: string; }
 export interface JournalEntry { id: string; title: string; text: string; }
-export interface Session { quarterDays?:import('./journey/quarter-schema').QuarterState; journey?:import('./journey/schema').JourneyState; discoveries?:import('./map/types').Discovery[]; campaign: Campaign; characters: Character[]; messages: Message[]; journal: JournalEntry[]; }
+export interface Session { dice?:import('./dice/schema').PendingDice[]; quarterDays?:import('./journey/quarter-schema').QuarterState; journey?:import('./journey/schema').JourneyState; discoveries?:import('./map/types').Discovery[]; campaign: Campaign; characters: Character[]; messages: Message[]; journal: JournalEntry[]; }
 // Replace this boundary with a server transport and repository in a later phase.
 export interface GameMaster { respond(action: string, character: string): string; }
 

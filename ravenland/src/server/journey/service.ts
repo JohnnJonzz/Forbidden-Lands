@@ -8,7 +8,7 @@ import {getLocalRepository,SqliteCampaignRepository} from '../sqlite';
 import {SqliteMapStore} from '../map/store';
 export class JourneyInputError extends Error {}
 export function executeJourney(raw:unknown,repository:SqliteCampaignRepository=getLocalRepository()){
- const command=commandSchema.parse(raw),db=repository.db;const {revision:expectedRevision,...identity}=command;void expectedRevision;const fingerprint=createHash('sha256').update(JSON.stringify(identity)).digest('hex');db.exec('BEGIN IMMEDIATE');try{
+ const command=commandSchema.parse(raw);if(command.type==='quarter-roll')throw new JourneyInputError('Create a pending dice result and submit it through /api/dice.');const db=repository.db;const {revision:expectedRevision,...identity}=command;void expectedRevision;const fingerprint=createHash('sha256').update(JSON.stringify(identity)).digest('hex');db.exec('BEGIN IMMEDIATE');try{
   const record=repository.get(command.campaignId);if(!record)throw new JourneyInputError('Campaign not found');const previous=db.prepare('SELECT fingerprint FROM journey_actions WHERE campaign_id=? AND action_id=?').get(command.campaignId,command.actionId) as {fingerprint:string}|undefined;
   if(previous){if(previous.fingerprint!==fingerprint)throw new JourneyInputError('Action ID was already used with different parameters');db.exec('COMMIT');return {record,replayed:true}}
   if(record.session.journey?.log.some(event=>event.id.startsWith(command.actionId+':')))throw new JourneyInputError('Action ID is already recorded in imported journey history');
