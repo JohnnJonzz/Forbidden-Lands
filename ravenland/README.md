@@ -132,7 +132,7 @@ Before verification, only calibration landmarks/outlines are shown; the complete
 
 ### Explore and travel
 
-Click or keyboard-select a hex, or choose it using Inspect hex. Inspection highlights it and shows terrain, region, reviewed printed features, waterways/routes, and campaign-known discoveries. It never moves the party or spends time. **Plan journey to…** opens the Journey panel with that destination selected. Verified calibration and an explicit imported edge are required. Planning alone does not move anyone. Phase 4 requires explicit departure and expenditure confirmations, and moves the party only when the full adjudicated cost is spent. Source facts, party revision, and adjacency are rechecked by the server. No narration, encounters, or travel mishaps are generated. The former direct-travel endpoint returns HTTP 410 so it cannot bypass journey accounting.
+Click or keyboard-select a hex, or choose it using Inspect hex. Inspection highlights it and shows terrain, region, reviewed printed features, waterways/routes, and campaign-known discoveries. It never moves the party or spends time. **Plan journey to…** opens the Quarter-Day Activities modal with that destination selected. Verified calibration and an explicit imported edge are required. Planning alone does not move anyone. The controller confirms assignments, resolves requests, records any travel ruling and explicitly advances the quarter-day. Source facts, party revision, and adjacency are rechecked by the server. No narration, encounters, or travel mishaps are generated. The former direct-travel endpoint returns HTTP 410 so it cannot bypass journey accounting.
 
 The old sample hex **H14 does not exist** in this authoritative workbook (H has odd-numbered rows). It is not silently relocated. If your campaign still uses H14, open Campaign Settings and explicitly choose a valid starting hex such as M22. If any existing starting hex is absent from imported data, no position is guessed. Set the intended starting coordinate explicitly in Campaign Settings, then use validated travel. Named printed features are used as destination names; otherwise the exact source coordinate is shown. Missing terrain remains empty rather than invented.
 
@@ -150,52 +150,40 @@ npm run test:persistence
 Fifteen unit/storage tests now include workbook import, lookup, missing-field handling, source privacy, calibration verification, explicit directed adjacency, travel rejection, and saved positions. `test:map` launches an isolated temporary database/server with **synthetic** source files. It exercises selection without movement, cancelled and confirmed travel, nonadjacent rejection, zoom/pan/touch pinch, privacy filtering, and restoration after a server restart. Fixture tests make no claims about real map content. `test:map:real` separately imports the actual uploaded workbook/image into a temporary database, checks the counts and reviewed calibration, verifies the unmapped H14 warning, explicitly places a test party at M22, and confirms source-adjacent travel to N21 plus restoration after restart. Both browser suites leave live campaigns untouched. `RAVENLAND_SKIP_MAP_BOOTSTRAP=1` disables startup preparation for isolated custom tests. The regular persistence/character-sheet suite continues to run independently and checks the missing-map state when real sources are absent.
 
 
-## Phase 4: persistent journey engine
+## Quarter-day activities and Journey Settings
 
-Open **Journey** in the main navigation, or select an adjacent map hex and click **Plan journey to…**. The panel shows the current hex/source terrain, proposed destination, date, quarter, weather, responsibilities, and travel mode. It is independent of the mock Game Master; journey commands never call an AI service or append narration.
+The main chat remains the gameplay screen. Click **Quarter-Day Activities** in the persistent status strip above the conversation to open the compact modal. The strip reads the saved campaign state and shows the current quarter, assigned activities or travel direction/destination, state, and unresolved request count.
 
-### Plan, assign, and complete travel
+1. Open **Journey Settings** to save Manual / AI Game Master weather mode, current manual weather, default Lead the Way and Keep Watch characters, and Hike roll handling. The actual campaign roster supplies the dropdowns. AI weather is explicitly unavailable; no random weather is substituted. Weather descriptions never apply mechanical modifiers.
+2. Open **Quarter-Day Activities**. Choose Party Traveling Yes/No. Traveling shows only authoritative adjacent destinations with compass directions from the Ravenland doubled-row coordinate convention. One character leads and another watches; others default to Hike. Stationary choices are Make Camp, Rest, Sleep, Hunt, Fish, Forage, Explore, and Keep Watch. Split the Party is disabled and marked Coming Soon.
+3. Assign each character once. Review the roll requirement for each activity: Manual review, No roll, or a specific skill. **Activity prerequisites, simultaneous activity compatibility and roll requirements are not yet verified against the Player’s Handbook.** Manual review is the safe default; choosing No roll is an explicit controller ruling, not an assumption that activities never require rolls. Save draft, then confirm. Confirmed assignments are locked.
+4. Requests appear in the chat with live completion status. Open the requested character sheet, stage the appropriate skill and roll. Push first if desired. Above the sheet, choose the specific matching request and click **Send final roll to chat**. An unrelated roll can be published to chat without resolving an activity. Request selection is always explicit, including when several requests could match. Attribute, skill, negative skill, gear and artifact faces, successes, push status and applicable damage/Willpower effects are stored structurally. The existing dice engine still applies its own character effects; the journey engine does not apply them a second time.
+5. Alternatively, the campaign controller can **Adjudicate manually**, entering a required reason. Manual overrides remain in chat and activity history. There is no authentication or enforced GM identity in this local prototype.
+6. Traveling also requires a recorded controller ruling: arrive at the selected destination this quarter, or remain in the current hex. Explain terrain, travel progress and activity compatibility. **No uniform travel rate is assumed.** This revision does not verify terrain speeds, fractional or multi-hex movement, forced marches, supplies, mishaps, healing or yields. The destination and every ruling remain in quarter-day history even when the party stays put.
+7. Once all requests resolve, explicitly **Advance quarter-day**. Position (if arrival approved), outcomes, history and the next clock quarter are saved in one transaction. Resolving a roll alone never moves the party. Pending requests block advancement; duplicate action or roll submissions cannot apply time or resolution twice. Cancellation is available before final resolution and retains history without time expenditure.
 
-1. Pick a source-adjacent destination. Assign existing party members to Lead the Way and Keep Watch. Save assignments independently if preparing for later travel.
-2. Choose On foot, Mounted, or Other (manual). Other requires a description. Capability references come from the connected sheets, but mounts, simultaneous roles, and movement restrictions require manual review.
-3. Enter an **explicit manual cost in whole quarter-days** (1–16 per leg), a rules reference/adjudication, and check the review acknowledgment. There is no terrain-independent default rate. The destination terrain is shown from the workbook. Save the plan: neither location nor time changes.
-4. **Confirm and start journey** asks for confirmation and marks the leg in progress, without moving or advancing the clock.
-5. **Spend next quarter** charges one quarter and saves progress. **Complete travel** charges the remaining quarters, after confirmation. Only fully spent legs update the campaign hex/location/terrain and add completed Hike/travel history. The source, destination, assignments, calibration, adjacency, plan ID, and campaign revision are checked again. Arrival uses a single printed feature if one exists, otherwise the source coordinate.
-6. Cancel a plan or an in-progress leg explicitly. Already spent time is retained; the party stays at its departure hex. Closing the panel/browser or restarting the server preserves the plan and expenditure for later resumption.
+The state sequence is DRAFT → CONFIRMED → AWAITING_ROLLS → RESOLVED → ADVANCED. Confirmation and request creation are atomic, so CONFIRMED is a transient state. Plans with no requested rolls proceed directly to RESOLVED. Cancellations are archived as CANCELLED.
 
-The old invalid H14 sample position is still never guessed or relocated. Set a valid starting hex in Campaign Settings before planning.
+The clock runs Morning → Day → Evening → Night → Morning. ISO dates advance through verified Gregorian month/year boundaries. Existing named fantasy dates retain their label plus an elapsed-day suffix, such as `12th of Stillfall, 1165 (+1 day)`; fantasy calendar month boundaries remain unverified. Campaign Settings can explicitly correct dates, with an audit log.
 
-### Clock and calendar
+### Storage and integration
 
-The verified quarter sequence is Morning → Day → Evening → Night → Morning. Completing Night increments the date, and every charged quarter creates a before/after clock log entry. Selection, assignment changes, planning, and starting a plan cost no time. Manual date/quarter changes through Campaign Settings are recorded as clock corrections, not journey expenditure.
+All settings, drafts, requests, structured rolls, outcomes, weather descriptions and completed/cancelled plans use the existing campaign SQLite snapshot and JSON backups. Migration `004_quarter_days.sql` adds default quarter-day state without deleting legacy journey records. Older imports remain supported. Any already-active legacy journey can be finished or cancelled from the recovery details in Journey Settings; new play uses the modal. Existing journey history is visible in its history details.
 
-**Calendar limitation:** existing dates are free-form labels, and Forbidden Lands fantasy month lengths/year boundaries have not been verified against the rulebooks. Named dates therefore retain their original label plus an explicit elapsed-day suffix, e.g. `12th of Stillfall, 1165 (+1 day)`. Subsequent days increment that offset. This deliberately does not fabricate a fantasy month boundary. For exact civil day/month/year arithmetic in this prototype, set an ISO date such as `2026-12-31`: ending Night yields `2027-01-01`, Morning. ISO arithmetic is Gregorian, not a claim about the game's official calendar. This distinction is also displayed in the panel.
+`quarter-schema.ts` defines validated state and commands; `quarter-engine.ts` contains UI/database-independent activity resolution and `journeyContext()` for a future narration adapter. The context includes location, clock, weather, party, assignments, requests and completed structured rolls. `/api/journey` retains optimistic revisions and transactional action receipts. The AI does not mutate mechanical outcomes and no paid API is connected. Geography remains independent and no GM-only information is imported into player activity state.
 
-### Activities and weather
-
-The panel records Hike, Lead the Way, Keep Watch, Make Camp, Forage, Hunt, Fish, Rest, Sleep, and Explore. Select party members, enter a manual roll result/successes and outcome, explicitly adjudicate time, and confirm. Choose **0 additional quarters** for an activity concurrent with travel; that means no double charging, not a claim that the activity is free. Separately charged activities are blocked while travel is in progress; finish/cancel travel first or record concurrent results. Completed travel records Hike automatically, so do not charge the same hike again.
-
-Duration/role compatibility, resource use, hunting/foraging yields, healing, sleep deprivation, forced marches, mishaps, fractional movement, and multi-hex-per-quarter travel are **not implemented or verified**. No hidden approximations are applied. This phase tracks whole-quarter, single-hex adjudicated legs, not a complete automated Forbidden Lands travel ruleset. Manual outcome records do not automatically alter character supplies or health.
-
-Weather description updates the existing campaign weather everywhere. Unverified effect notes are stored separately, are visible as unverified, and never become numeric modifiers. Sources are Manual or Roll20 manual entry. `WeatherProvider` is an interface for a future reviewed Roll20 adapter; no generator, external script, random weather table, or OpenAI API is connected. Paste manually obtained weather descriptions for now.
-
-### Persistence and reliability
-
-- `src/lib/journey/clock.ts`, `engine.ts`, and `schema.ts` contain the testable clock, rules-review boundaries, commands, and typed state, without UI/database access. Geographic facts are supplied through an interface; sheet capability extraction is separate.
-- `src/server/journey/service.ts` validates commands and performs campaign updates and idempotency receipts in one SQLite transaction. Migration `003_journey_actions.sql` adds campaign-scoped action IDs and payload fingerprints.
-- Identical retries return the current record without spending time twice, even after server restarts. Reusing an ID with different action parameters is rejected. Revision tokens prevent stale tabs from charging travel. Imported logs also prevent reusing already recorded IDs when the original operational receipts are absent.
-- Journey assignments, plans, spent quarters, completed/cancelled travel, activity outcomes, weather state, and before/after logs live in the public campaign snapshot and are included in JSON backups. Old campaigns without journey state remain compatible. GM-only storage remains separate.
-- Backend confirmation is required for departure, expenditure/completion, cancellation, and charged activities. The UI disables buttons while submitting and offers Retry same action after an uncertain failure. Normal Campaign Settings remains an explicit manual preparation/correction tool, not a substitute for journey travel.
-
-### Verify a journey
+### Checks and persistence verification
 
 ```sh
 npm test
 npm run typecheck
 npm run build
-npm run test:map:real
-npm run test:map
+npm run test:quarter
 npm run test:persistence
+npm run test:map
+npm run test:map:real
 ```
 
-Unit/storage tests cover map adjacency, confirmation, named/ISO clock handling, Night/year rollover, manual terrain-cost boundaries, role validation, partial travel, activities, weather, duplicate submissions before/after reopening SQLite, backup restoration, and absence of automatic narration. The real-map browser test sets a temporary party at M22 with an ISO Night clock, plans a two-quarter M22 → N21 journey, spends one quarter, restarts the server mid-journey, resumes/completes it, records Sleep, and updates weather. Synthetic map tests check cancellation of confirmation and retain zoom/pan/pinch/calibration coverage. The existing character, backup, and campaign suites still run against isolated temporary databases.
+Browser tests require Playwright and Chromium (`CHROMIUM_PATH` can override `/usr/bin/chromium`). They use isolated temporary databases. The quarter-day browser check saves defaults, confirms activities, publishes a structured sheet roll, restarts the server with pending requests, manually resolves them and advances. Real-map tests cover M22 → N21, Night rollover and resuming a confirmed plan after restart. Unit tests cover activity restrictions, defaults, directions, authoritative adjacency, matching, duplicate protection, manual overrides, premature-movement prevention and save/reload.
+
+To verify manually, save a draft, refresh, confirm it, close the browser and restart the server with the same database path. The status strip and modal restore the saved assignments and pending requests. Complete requests and advance once; reopen again to inspect the retained activity and journey history.

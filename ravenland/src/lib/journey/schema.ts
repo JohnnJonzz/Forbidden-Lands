@@ -1,3 +1,4 @@
+import {quarterCommandSchema} from './quarter-schema';
 import {z} from 'zod';
 export const activityNames=['Hike','Lead the Way','Keep Watch','Make Camp','Forage','Hunt','Fish','Rest','Sleep','Explore'] as const;
 const text=z.string().max(5000),id=z.string().min(1).max(100);
@@ -10,13 +11,14 @@ export const eventSchema=z.object({id,kind:z.enum(['plan','start','clock','trave
 export const weatherSchema=z.object({forDescription:z.string().max(300),source:z.enum(['Manual','Roll20 manual entry']),unverifiedEffects:text,updatedAt:text}).strict();
 export const journeySchema=z.object({assignments,mode:modeSchema,modeDetails:text,activePlan:planSchema.nullable(),travelHistory:z.array(planSchema).max(2000),activities:z.array(activitySchema).max(5000),log:z.array(eventSchema).max(15000),weather:weatherSchema}).strict().refine(journey=>(!journey.activePlan||(['planned','in-progress'].includes(journey.activePlan.status)&&journey.activePlan.spent<journey.activePlan.cost))&&new Set(journey.log.map(event=>event.id)).size===journey.log.length&&new Set(journey.activities.map(activity=>activity.id)).size===journey.activities.length&&new Set(journey.travelHistory.map(plan=>plan.id)).size===journey.travelHistory.length,'Inconsistent active plan or duplicate journey records');
 const envelope={campaignId:z.string().uuid(),revision:z.number().int().positive(),actionId:z.string().uuid()};
-export const commandSchema=z.discriminatedUnion('type',[
+const legacyCommandSchema=z.discriminatedUnion('type',[
  z.object({...envelope,type:z.literal('plan'),to:z.string().min(1).max(50),leader:id,watch:id,mode:modeSchema,modeDetails:text,quarterDays:z.number().int().min(1).max(16),adjudication:text.trim().min(1),capabilitiesReviewed:z.literal(true)}).strict(),
  z.object({...envelope,type:z.literal('assignments'),assignments,mode:modeSchema,modeDetails:text}).strict(),
  z.object({...envelope,type:z.enum(['start','advance','complete','cancel']),planId:id,confirmed:z.literal(true)}).strict(),
  z.object({...envelope,type:z.literal('activity'),activity:z.enum(activityNames),characters:z.array(id).min(1).max(20),outcome:outcomeSchema,quarterDays:z.number().int().min(0).max(16),adjudication:text.trim().min(1),confirmed:z.literal(true)}).strict(),
  z.object({...envelope,type:z.literal('weather'),description:z.string().min(1).max(300),source:z.enum(['Manual','Roll20 manual entry']),unverifiedEffects:text}).strict()
 ]);
+export const commandSchema=z.union([legacyCommandSchema,quarterCommandSchema]);
 export type JourneyState=z.infer<typeof journeySchema>;
 export type JourneyCommand=z.infer<typeof commandSchema>;
 export type JourneyInput=JourneyCommand extends infer T?T extends JourneyCommand?Omit<T,'campaignId'|'revision'|'actionId'>:never:never;

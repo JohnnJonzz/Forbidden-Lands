@@ -1,3 +1,4 @@
+import {journeyFor} from '../../lib/journey/engine';
 import {createHash} from 'node:crypto';
 import {applyJourneyCommand} from '../../lib/journey/engine';
 import {commandSchema} from '../../lib/journey/schema';
@@ -12,7 +13,8 @@ export function executeJourney(raw:unknown,repository:SqliteCampaignRepository=g
   if(previous){if(previous.fingerprint!==fingerprint)throw new JourneyInputError('Action ID was already used with different parameters');db.exec('COMMIT');return {record,replayed:true}}
   if(record.session.journey?.log.some(event=>event.id.startsWith(command.actionId+':')))throw new JourneyInputError('Action ID is already recorded in imported journey history');
   if(record.revision!==command.revision)throw new ConflictError('Campaign changed. Reload the saved campaign before submitting this journey action.');
-  const map=new SqliteMapStore(repository),edges=map.edges();let session;try{session=applyJourneyCommand(record.session,command,{lookup:hex=>map.lookup(hex),adjacent:(from,to)=>isAdjacent(edges,from,to),calibrated:map.publicMap(record.id).calibration?.verified??false},new Date().toISOString())}catch(e){throw new JourneyInputError((e as Error).message)}
+  const map=new SqliteMapStore(repository),edges=map.edges();const geo={lookup:(hex:string)=>map.lookup(hex),adjacent:(from:string,to:string)=>isAdjacent(edges,from,to),calibrated:map.publicMap(record.id).calibration?.verified??false};let session;try{session=applyJourneyCommand(record.session,command,geo,new Date().toISOString())}catch(e){throw new JourneyInputError((e as Error).message)}
+  if(command.type.startsWith('quarter-')){const journey=journeyFor(session);session.journey=journey;if(!journey.log.some(e=>e.id.startsWith(command.actionId+':')))journey.log.push({id:command.actionId+':audit',kind:'activity',summary:command.type,before:{date:record.session.campaign.date,quarter:record.session.campaign.quarter,hex:record.session.campaign.hex},after:{date:session.campaign.date,quarter:session.campaign.quarter,hex:session.campaign.hex},at:new Date().toISOString()})}
   const updated=repository.update(record.id,record.revision,session);db.prepare('INSERT INTO journey_actions VALUES (?,?,?,?)').run(record.id,command.actionId,fingerprint,new Date().toISOString());db.exec('COMMIT');return {record:updated,replayed:false};
  }catch(e){db.exec('ROLLBACK');throw e}
 }

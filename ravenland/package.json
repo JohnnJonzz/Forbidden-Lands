@@ -17,7 +17,8 @@
     "test:map": "node tests/map-browser.cjs",
     "map:prepare": "tsx scripts/prepare-map.ts",
     "prestart": "tsx scripts/prepare-map.ts",
-    "test:map:real": "node tests/real-map-browser.cjs"
+    "test:map:real": "node tests/real-map-browser.cjs",
+    "test:quarter": "node tests/quarter-browser.cjs"
   },
   "dependencies": {
     "exceljs": "^4.4.0",
