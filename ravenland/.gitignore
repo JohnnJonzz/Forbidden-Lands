@@ -9,3 +9,8 @@ data/
 *.sqlite-shm
 
 public/character-sheet.html
+
+# Keep image category scaffolding; user uploads belong in persistent private storage.
+public/images/**/*
+!public/images/**/
+!public/images/**/.gitkeep

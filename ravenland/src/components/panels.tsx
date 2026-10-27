@@ -5,7 +5,7 @@ import type { Session, Panel, Campaign, JournalEntry } from '@/lib/types';
 import {JourneySettings,QuarterDayPanel} from './quarter-day';
 import type {JourneyInput} from '@/lib/journey/schema';
 import type {DiceAction} from './dice-card';
-import {ImageLibraryPanel} from './portrait-dialog';
+import {ImageLibraryPanel} from './image-library-panel';
 import {HexMap} from './hex-map';
 import type {CampaignRecord} from '@/lib/types';
 import {CharacterPanel,DicePanel} from './character-panel';

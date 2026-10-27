@@ -21,7 +21,8 @@
     "test:quarter": "node tests/quarter-browser.cjs",
     "test:windows": "node tests/character-windows-browser.cjs",
     "test:portraits": "node tests/portrait-browser.cjs",
-    "test:groups": "node tests/group-browser.cjs"
+    "test:groups": "node tests/group-browser.cjs",
+    "test:library": "node tests/library-browser.cjs"
   },
   "dependencies": {
     "exceljs": "^4.4.0",

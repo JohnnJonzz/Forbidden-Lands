@@ -212,7 +212,7 @@ Run `npm run test:windows` after a production build to exercise dedicated window
 
 Click the portrait frame in any connected character sheet, including separate character windows. Choose **Upload Image** or **Choose from Image Library**, review the preview, then **Confirm Portrait**. Cancelling a preview does not upload or assign anything. Existing portraits open a complete, uncropped preview with a **View full image** link, replacement controls and **Remove Portrait**. The sheet frame uses a centered cover crop without stretching; full-image viewing retains the image proportions.
 
-Uploads support still PNG, JPEG and WebP files up to 8 MB, 20 megapixels and 8000 pixels per side. The shared image service decodes and validates the actual format, corrects EXIF orientation, strips metadata and stores a full-resolution WebP plus a square 256-pixel WebP thumbnail. New images are categorized **Player Character**. The **Image Library** navigation panel browses the current campaign’s shared images; portraits can be assigned repeatedly without copying files. Identical uploaded file bytes are deduplicated by SHA-256, including across campaign libraries. Removing a portrait clears the character reference but keeps the reusable library image.
+Uploads support still PNG, JPEG and WebP files up to 8 MB, 20 megapixels and 8000 pixels per side. The shared image service decodes and validates the actual format, corrects EXIF orientation, strips metadata and stores a full-resolution WebP plus a square 256-pixel WebP thumbnail. Portrait uploads are categorized **Player Character**. The **Image Library** navigation panel browses the current campaign’s shared images; portraits can be assigned repeatedly without copying files. Identical uploaded file bytes are deduplicated by SHA-256, including across campaign libraries. Removing a portrait clears the character reference but keeps the reusable library image.
 
 Each character stores only `portraitId`, alongside their existing stable ID; binaries are never embedded in character records. The same reference supplies the sheet portrait, **THE PARTY** square thumbnails, character cards, header avatars, player chat and dice cards. Characters without portraits retain their initials. Existing server polling and browser notifications synchronize replacements/removals across the main window and connected sheets without a manual refresh. Portrait assignments update only that character reference, preserving sheet data, dice results, chat and journey state.
 
@@ -241,3 +241,35 @@ Ordinary gameplay rolls keep **Submit Result**. Choosing Ordinary gameplay — n
 Migration `007_group_dice.sql` adds coordinator settings and batch history without changing existing rolls, consequences, campaign saves or journey history. Ready cards, coordinator choices and consolidated batches persist in the same database and JSON backups. Existing completed requests can be consolidated by the coordinator before advancing an older saved quarter-day.
 
 Run `npm run test:groups` after a production build. It opens four connected sheets, checks 3-of-4 and 4-of-4 readiness, coordinator delegation and mandatory gating, restores Ready state after a server restart, submits a single batch, retries it idempotently, and verifies ordinary individual submission and zero GM/OpenAI requests from dice actions. Unit tests cover mixed manual/Ready outcomes, ownership checks, one-push locking, duplicate protection, rollback of an invalid group, and the consolidated narration packet.
+
+## Image Library categories and storage folders
+
+The application includes these tracked development placeholders, each with `.gitkeep`:
+
+```text
+ravenland/public/images/
+  terrain/
+  characters/
+  npcs/
+  creatures/
+  locations/
+  scenes/
+```
+
+Open **Image Library** in the main navigation to upload art directly in the app. Choose an image file, review the preview, set its name and category, then **Confirm Upload**. **Cancel Upload** leaves both files and metadata unchanged. Categories are **Terrain**, **Player Character**, **NPC**, **Creature**, **Location**, and **Scene**; use **Filter category** to browse them. The same file uploaded again reuses its stored asset and original campaign metadata rather than creating a duplicate. Uploading through a character portrait still defaults to Player Character. Portrait selection, replacement/removal, and automatic THE PARTY thumbnails with initials fallback remain available.
+
+The public folders are scaffolding for development assets. **Runtime uploads are stored in private persistent storage, not in these public folders or in Git.** The development default is `ravenland/data/images`, beside the existing SQLite database, and survives application refreshes, builds and server restarts when that directory is retained. Both runtime data and image contents under the public placeholders are ignored by Git; only the `.gitkeep` files are tracked. No upload operation runs Git or uploads anything to GitHub.
+
+For hosting, mount durable storage and set `RAVENLAND_IMAGE_DIR` to its absolute path; keep `RAVENLAND_DB_PATH` on durable storage too. A serverless/temporary filesystem is not suitable. Back up both SQLite metadata and the image directory. Campaign JSON contains image references rather than binaries, so moving to another machine requires restoring the stored assets and metadata as described above.
+
+`ImageStorage` in `src/server/images/storage.ts` separates image processing/metadata from file storage. The existing `FileImageStorage` adapter publishes complete, content-addressed objects atomically. A future S3-compatible or other cloud object-storage adapter can implement `putIfAbsent` and `read`, while retaining the same IDs, image API, portrait references and database records. No cloud provider or credentials are required for local development. Existing portrait files keep their original object keys; this change does not move or duplicate them.
+
+Migration `008_image_categories.sql` expands the existing campaign image metadata table without changing image IDs, portrait references or other campaign records. Upload validation and thumbnail generation remain shared by the portrait picker and library panel. Tests include upgrading existing Player Character records, all six categories, a cloud-style storage adapter, deduplication, and persistent portrait reuse.
+
+```sh
+npm test
+npm run typecheck
+npm run build
+npm run test:library
+npm run test:portraits
+```

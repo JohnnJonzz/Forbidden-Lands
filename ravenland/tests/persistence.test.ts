@@ -14,7 +14,7 @@ test('migrate, save every public field, close/reopen, select multiple campaigns,
  const saved=repo.update(first.id,first.revision,session);assert.equal(saved.revision,2);assert.throws(()=>repo.update(first.id,first.revision,initialSession),ConflictError);
  repo.db.prepare('INSERT INTO campaign_secrets VALUES (?,?)').run(first.id,'{"private":"hidden"}');
  const second=repo.create(initialSession);assert.notEqual(second.id,first.id);repo.select(first.id);repo.close();repo=new SqliteCampaignRepository(file);
- assert.deepEqual(repo.current().session,session);assert.equal(repo.list().length,2);assert.equal(repo.db.prepare('SELECT * FROM schema_migrations').all().length,7);
+ assert.deepEqual(repo.current().session,session);assert.equal(repo.list().length,2);assert.equal(repo.db.prepare('SELECT * FROM schema_migrations').all().length,8);
  const backup=backupSchema.parse({format:'ravenland-campaign',version:1,session:repo.current().session});assert.ok(!JSON.stringify(backup).includes('hidden'));const imported=repo.create(backup.session);assert.notEqual(imported.id,first.id);assert.deepEqual(repo.get(first.id)?.session,session);assert.equal(repo.list().length,3);
  }finally{repo.close();rmSync(dir,{recursive:true,force:true})}
 });
