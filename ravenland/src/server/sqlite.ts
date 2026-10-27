@@ -24,7 +24,20 @@ export class SqliteCampaignRepository implements CampaignRepository {
  select(id:string){const record=this.get(id);if(!record)throw new Error('Campaign not found');this.db.prepare("INSERT INTO application_meta(key,value) VALUES ('active_campaign',?) ON CONFLICT(key) DO UPDATE SET value=excluded.value").run(id);return record}
  current(){const active=this.db.prepare("SELECT value FROM application_meta WHERE key='active_campaign'").get() as {value:string}|undefined;const current=active?this.get(active.value):null;if(current)return current;const existing=this.list()[0];return existing?this.select(existing.id):this.create(initialSession)}
  create(session:Session){const data=sessionSchema.parse(session);const id=randomUUID(),now=new Date().toISOString();this.db.exec('BEGIN IMMEDIATE');try{this.db.prepare('INSERT INTO campaigns VALUES (?,1,?,?,?)').run(id,JSON.stringify(data),now,now);for(const character of data.characters){if(character.portraitId)this.db.prepare('INSERT OR IGNORE INTO campaign_images(campaign_id,image_id,name,category) SELECT ?,image_id,name,category FROM campaign_images WHERE image_id=? LIMIT 1').run(id,character.portraitId)}const record=this.select(id);this.db.exec('COMMIT');return record}catch(e){this.db.exec('ROLLBACK');throw e}}
- update(id:string,revision:number,session:Session){const data=sessionSchema.parse(session);const result=this.db.prepare('UPDATE campaigns SET public_state=?,revision=revision+1,updated_at=? WHERE id=? AND revision=?').run(JSON.stringify(data),new Date().toISOString(),id,revision);if(!result.changes)throw new ConflictError('This campaign changed in another tab. Export your local changes, then reload the campaign.');return this.get(id)!}
+ update(id:string,revision:number,session:Session){
+  const data=sessionSchema.parse(session),previous=this.get(id);
+  if(!previous||previous.revision!==revision)throw new ConflictError('This campaign changed in another tab. Export your local changes, then reload the campaign.');
+  for(const entry of previous.session.dayCorrections??[]){
+   if(JSON.stringify(data.dayCorrections?.find(e=>e.id===entry.id))!==JSON.stringify(entry))throw new Error('Logged corrections are immutable');
+  }
+  for(const entry of previous.session.dayTracker??[]){
+   if(JSON.stringify(data.dayTracker?.find(e=>e.id===entry.id))!==JSON.stringify(entry))throw new Error('Day Tracker mechanical records are immutable. Preserve the original and record corrections separately.');
+  }
+  const result=this.db.prepare('UPDATE campaigns SET public_state=?,revision=revision+1,updated_at=? WHERE id=? AND revision=?').run(JSON.stringify(data),new Date().toISOString(),id,revision);
+  if(!result.changes)throw new ConflictError('This campaign changed in another tab. Export your local changes, then reload the campaign.');
+  return this.get(id)!;
+ }
+
  close(){this.db.close()}
 }
 let repository:SqliteCampaignRepository|undefined;

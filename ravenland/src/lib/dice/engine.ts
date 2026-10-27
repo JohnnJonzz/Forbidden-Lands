@@ -14,6 +14,7 @@ export function applyDiceCommand(input:Session,c:DiceCommand,geo:JourneyGeograph
  }
  if(c.type==='submit-group'){
   const groups=groupsFor(s),state=groupReadiness(s),p=state.plan;
+  if(p?.manualMode)throw new Error('Quarter-day outcomes are manual; dice submission is independent');
   if(c.actorId!==groups.coordinatorId)throw new Error('Only the designated party coordinator can submit quarter-day results');
   if(groups.batches.some(b=>b.planId===c.planId))throw new Error('Quarter-day results already submitted');
   if(!p||p.id!==c.planId||p.status==='DRAFT')throw new Error('Confirm the quarter-day plan before submitting results');

@@ -20,6 +20,10 @@
 
 .story-tab{min-width:0;flex:1}.story-tab>svg{flex-shrink:0}.story-heading{min-width:0}.story-chapter{display:block;font:8px/1.5 Arial,sans-serif;letter-spacing:1px;color:var(--muted);overflow:hidden;text-overflow:ellipsis}.story-heading h1{font:20px/1.3 var(--serif);margin:3px 0 0;color:#e0dac7;overflow:hidden;text-overflow:ellipsis}.tool-tabs{flex-shrink:0}@media(max-width:1150px){.tool-tabs button span{display:none}}@media(max-width:650px){.story-tab>svg{display:none}.tool-tabs button{padding:8px 6px}.story-heading h1{font-size:16px}.story-chapter{font-size:7px;letter-spacing:.5px}}
 
-.group-readiness{display:grid;gap:8px;padding:12px 0;border-bottom:1px solid #494c3a;margin-bottom:16px}.group-readiness small{color:var(--muted)}.group-readiness label{display:flex;gap:10px;align-items:center;flex-wrap:wrap}.group-readiness select{background:#20251e;color:var(--text);padding:6px;border:1px solid #5b604b;max-width:100%}.group-readiness button{justify-self:start}.dice-card.ready{border-color:#b7a074;background:#292b20}
+.dice-card.ready{border-color:#b7a074;background:#292b20}
 
 .library-upload{padding:16px;border:1px solid var(--line);border-radius:5px;margin-bottom:20px}.library-upload h3,.library-upload p{margin:0}.library-filter{display:grid;gap:6px;margin-top:16px}
+
+.recent-dice{margin:0 1.5rem;padding:.65rem 1rem;border:1px solid var(--border,#494334);border-radius:6px;font-size:.85rem}.recent-dice summary,.day-tracker summary{cursor:pointer;color:#d4b779}.recent-dice>div{max-height:180px;overflow:auto}.day-tracker{margin-bottom:2rem}.day-tracker details{padding:.7rem;border-bottom:1px solid #494334}.quarter-assignment fieldset{display:flex;gap:1rem}.quarter-assignment input[type=radio]{width:auto}
+
+.day-tracker h3{font:22px var(--serif);color:var(--text);margin:10px 0 18px}.day-tracker h4{color:var(--gold);margin:14px 0 4px}.day-tracker p{overflow-wrap:anywhere}.day-tracker small{display:block;margin-top:10px;color:var(--muted)}.day-tracker .quiet-button{margin-top:10px}.recent-dice{flex-shrink:0}
