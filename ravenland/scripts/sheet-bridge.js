@@ -2,6 +2,11 @@
  if(window.parent===window) return;
  let characterId=null, loading=false;
  const notify=(type,data={})=>window.parent.postMessage({type,...data},location.origin);
+ const portraitFrame=document.querySelector('.portrait-frame'),placeholder=portraitFrame.innerHTML;
+ portraitFrame.setAttribute('role','button');portraitFrame.tabIndex=0;portraitFrame.setAttribute('aria-label','Choose character portrait');
+ const openPortrait=()=>notify('ravenland:portrait-open',{characterId});portraitFrame.addEventListener('click',openPortrait);portraitFrame.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();openPortrait()}});
+ function showPortrait(url){portraitFrame.replaceChildren();if(url){const img=document.createElement('img');img.src=url;img.alt='Character portrait';img.style.cssText='position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block';portraitFrame.append(img);portraitFrame.setAttribute('aria-label','View or change character portrait')}else{portraitFrame.innerHTML=placeholder;portraitFrame.setAttribute('aria-label','Choose character portrait')}portraitFrame.style.position='relative';portraitFrame.style.cursor='pointer';portraitFrame.style.overflow='hidden';}
+ window.addEventListener('message',event=>{if(event.origin===location.origin&&event.source===window.parent&&event.data?.type==='ravenland:portrait-sync')showPortrait(event.data.portraitUrl)});
  app.saveRoster=function(){
   this.updateRosterSelect();
   if(!loading&&characterId&&this.activeCharId)notify('ravenland:sheet-change',{characterId,sheet:this.roster[this.activeCharId]});
@@ -35,6 +40,7 @@
   if(event.origin!==location.origin||event.source!==window.parent||!['ravenland:sheet-init','ravenland:sheet-sync','ravenland:sheet-export'].includes(event.data?.type))return;
   if(event.data.type==='ravenland:sheet-export'){app.exportJSON();return}
   const preserve=event.data.type==='ravenland:sheet-sync'?{staged:app.stagedRoll,roll:app.currentRoll,artifacts:app.artifactDice,pool:Object.fromEntries(['base','skill','gear','modifier'].map(k=>[k,document.getElementById('pool-'+k).value])),results:document.getElementById('dice-results').innerHTML,summary:document.getElementById('dice-summary').innerHTML,label:document.getElementById('staged-label').textContent}:null;
+  if('portraitUrl' in event.data)showPortrait(event.data.portraitUrl);
   loading=true;characterId=event.data.characterId;
   document.body.dataset.embedMode=event.data.mode;
   app.renderSkills();app.roster={[characterId]:event.data.sheet};app.activeCharId=characterId;app.loadCharacter(characterId);app.updateRosterSelect();

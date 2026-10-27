@@ -1,7 +1,7 @@
 import type {CharacterSheet} from './character-sheet';
 export type Quarter = 'Morning' | 'Day' | 'Evening' | 'Night';
-export type Panel = 'Map' | 'Dice Roller' | 'Characters' | 'Journal' | 'Campaign Settings' | 'Journey Settings' | 'Quarter-Day Activities';
-export interface Character { sheet?:CharacterSheet; id: string; name: string; kin: string; profession: string; initials: string; color: string; strength: number; agility: number; wits: number; empathy: number; }
+export type Panel = 'Map' | 'Dice Roller' | 'Characters' | 'Journal' | 'Campaign Settings' | 'Image Library' | 'Journey Settings' | 'Quarter-Day Activities';
+export interface Character { portraitId?:string|null; sheet?:CharacterSheet; id: string; name: string; kin: string; profession: string; initials: string; color: string; strength: number; agility: number; wits: number; empathy: number; }
 export interface Message { id: string; role: 'gm' | 'player'; author: string; text: string; }
 export interface Campaign { name: string; description: string; settings: {tone:'Grim'|'Balanced'|'Heroic';houseRules:string}; date: string; quarter: Quarter; hex: string; location: string; terrain: string; weather: string; objective: string; }
 export interface JournalEntry { id: string; title: string; text: string; }

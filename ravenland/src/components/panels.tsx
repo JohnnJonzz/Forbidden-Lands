@@ -4,6 +4,7 @@ import { BookOpen, Dice5, Plus, Save } from 'lucide-react';
 import type { Session, Panel, Campaign, JournalEntry } from '@/lib/types';
 import {JourneySettings,QuarterDayPanel} from './quarter-day';
 import type {JourneyInput} from '@/lib/journey/schema';
+import {ImageLibraryPanel} from './portrait-dialog';
 import {HexMap} from './hex-map';
 import type {CampaignRecord} from '@/lib/types';
 import {CharacterPanel,DicePanel} from './character-panel';
@@ -15,6 +16,7 @@ export function PanelContent({record,proposed,onJourney,onPlanJourney,onSheet,ma
  const [name,setName]=useState(session.campaign.name),[objective,setObjective]=useState(session.campaign.objective),[quarter,setQuarter]=useState(session.campaign.quarter);
  if(panel==='Journey Settings') return <JourneySettings record={record} onCommand={onJourney}/>;
  if(panel==='Quarter-Day Activities') return <QuarterDayPanel record={record} proposed={proposed} onCommand={onJourney}/>;
+ if(panel==='Image Library') return <ImageLibraryPanel campaignId={record.id}/>;
  if(panel==='Map') return <HexMap record={record} onPlanJourney={onPlanJourney}/>;
  if(panel==='Dice Roller') return <DicePanel campaignId={record.id} characters={session.characters} onChange={onSheet}/>;
  if(panel==='Characters') return <CharacterPanel campaignId={record.id} characters={session.characters} onChange={onSheet}/>;

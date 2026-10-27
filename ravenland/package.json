@@ -19,7 +19,8 @@
     "prestart": "tsx scripts/prepare-map.ts",
     "test:map:real": "node tests/real-map-browser.cjs",
     "test:quarter": "node tests/quarter-browser.cjs",
-    "test:windows": "node tests/character-windows-browser.cjs"
+    "test:windows": "node tests/character-windows-browser.cjs",
+    "test:portraits": "node tests/portrait-browser.cjs"
   },
   "dependencies": {
     "exceljs": "^4.4.0",
@@ -28,6 +29,7 @@
     "next": "^16.0.0",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
+    "sharp": "^0.35.5",
     "zod": "^4.6.7"
   },
   "devDependencies": {
