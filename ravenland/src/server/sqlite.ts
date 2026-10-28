@@ -1,3 +1,4 @@
+import {explorationFor} from '../lib/map/exploration';
 import { DatabaseSync } from 'node:sqlite';
 import { mkdirSync, readFileSync, readdirSync } from 'node:fs';
 import { dirname, join } from 'node:path';
@@ -23,10 +24,12 @@ export class SqliteCampaignRepository implements CampaignRepository {
  get(id:string){const row=this.db.prepare('SELECT * FROM campaigns WHERE id=?').get(id) as Row|undefined;return row?this.decode(row):null}
  select(id:string){const record=this.get(id);if(!record)throw new Error('Campaign not found');this.db.prepare("INSERT INTO application_meta(key,value) VALUES ('active_campaign',?) ON CONFLICT(key) DO UPDATE SET value=excluded.value").run(id);return record}
  current(){const active=this.db.prepare("SELECT value FROM application_meta WHERE key='active_campaign'").get() as {value:string}|undefined;const current=active?this.get(active.value):null;if(current)return current;const existing=this.list()[0];return existing?this.select(existing.id):this.create(initialSession)}
- create(session:Session){const data=sessionSchema.parse(session);const id=randomUUID(),now=new Date().toISOString();this.db.exec('BEGIN IMMEDIATE');try{this.db.prepare('INSERT INTO campaigns VALUES (?,1,?,?,?)').run(id,JSON.stringify(data),now,now);for(const character of data.characters){if(character.portraitId)this.db.prepare('INSERT OR IGNORE INTO campaign_images(campaign_id,image_id,name,category) SELECT ?,image_id,name,category FROM campaign_images WHERE image_id=? LIMIT 1').run(id,character.portraitId)}const record=this.select(id);this.db.exec('COMMIT');return record}catch(e){this.db.exec('ROLLBACK');throw e}}
- update(id:string,revision:number,session:Session,options?:{workflowValidated?:boolean}){
+ create(session:Session){const data=sessionSchema.parse(session);this.normalizeExploration(data);const id=randomUUID(),now=new Date().toISOString();this.db.exec('BEGIN IMMEDIATE');try{this.db.prepare('INSERT INTO campaigns VALUES (?,1,?,?,?)').run(id,JSON.stringify(data),now,now);for(const character of data.characters){if(character.portraitId)this.db.prepare('INSERT OR IGNORE INTO campaign_images(campaign_id,image_id,name,category) SELECT ?,image_id,name,category FROM campaign_images WHERE image_id=? LIMIT 1').run(id,character.portraitId)}const record=this.select(id);this.db.exec('COMMIT');return record}catch(e){this.db.exec('ROLLBACK');throw e}}
+ update(id:string,revision:number,session:Session,options?:{workflowValidated?:boolean;explorationValidated?:boolean}){
   const data=sessionSchema.parse(session),previous=this.get(id);
   if(!previous||previous.revision!==revision)throw new ConflictError('This campaign changed in another tab. Export your local changes, then reload the campaign.');
+  if(!options?.explorationValidated&&JSON.stringify(data.exploration)!==JSON.stringify(previous.session.exploration))throw new ConflictError('Exploration edits must use the map exploration service');
+  this.normalizeExploration(data,previous.session);
   for(const entry of previous.session.dayCorrections??[]){
    if(JSON.stringify(data.dayCorrections?.find(e=>e.id===entry.id))!==JSON.stringify(entry))throw new Error('Logged corrections are immutable');
   }
@@ -41,6 +44,8 @@ export class SqliteCampaignRepository implements CampaignRepository {
   if(!result.changes)throw new ConflictError('This campaign changed in another tab. Export your local changes, then reload the campaign.');
   return this.get(id)!;
  }
+
+ private normalizeExploration(data:Session,previous?:Session){const hexes=this.db.prepare('SELECT coordinate FROM geography_hexes').all() as {coordinate:string}[];if(data.exploration||hexes.some(h=>h.coordinate===data.campaign.hex)||previous&&hexes.some(h=>h.coordinate===previous.campaign.hex)){const state=explorationFor(data,hexes);if(previous&&previous.campaign.hex!==data.campaign.hex&&hexes.some(h=>h.coordinate===previous.campaign.hex))state.explored=[...new Set([...state.explored,previous.campaign.hex])].sort();data.exploration=state}}
 
  close(){this.db.close()}
 }

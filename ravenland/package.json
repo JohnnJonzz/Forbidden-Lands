@@ -14,6 +14,7 @@
     "prebuild": "node scripts/generate-sheet.mjs",
     "pretest": "node scripts/generate-sheet.mjs",
     "map:import": "tsx scripts/import-map.ts",
+    "test:fog": "node tests/fog-browser.cjs",
     "test:map": "node tests/map-browser.cjs",
     "map:prepare": "tsx scripts/prepare-map.ts",
     "prestart": "tsx scripts/prepare-map.ts",
