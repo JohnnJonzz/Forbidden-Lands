@@ -13,3 +13,5 @@ export async function POST(request:Request){try{
  const category=z.enum(imageCategories).parse(data.get('category')??'Player Character');
  const image=await new ImageLibrary().upload(String(data.get('campaignId')??''),{bytes:Buffer.from(await file.arrayBuffer()),type:file.type,name:String(data.get('name')??file.name)},category);return NextResponse.json({image},{status:201});
  }catch(e){return NextResponse.json({error:e instanceof Error?e.message:'Image upload failed'},{status:400})}}
+
+export async function PATCH(request:Request){try{const origin=request.headers.get('origin');if(origin&&new URL(origin).host!==request.headers.get('host'))throw new Error('Origin mismatch');const body=await request.text();if(body.length>4096)throw new Error('Invalid image metadata');return NextResponse.json({image:new ImageLibrary().updateCategory(JSON.parse(body))})}catch(e){return NextResponse.json({error:e instanceof Error?e.message:'Category update failed'},{status:400})}}

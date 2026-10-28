@@ -34,7 +34,7 @@ export function useCampaign(campaignId?:string){
   tail.current=task.catch(e=>{failed.current=true;setError(e.message);setStatus('Not saved')}).finally(()=>{pending.current--;if(!pending.current&&!failed.current)setStatus('Saved to SQLite')});await tail.current;
  }
  async function reload(){await tail.current;const current=ref.current;if(!current)return;const response=await fetch('/api/campaigns?id='+current.id,{cache:'no-store'});const data=await response.json();if(!response.ok)throw new Error(data.error);accept(data)}
- async function journeyCommand(input:JourneyInput,actionId:string){await tail.current;if(!ref.current)return;const current=ref.current;const body={...input,campaignId:current.id,revision:current.revision,actionId};if(input.type==='quarter-correction')await commandMutation('POST',body,'/api/journey');else await operate('POST',body,'/api/journey')}
+ async function journeyCommand(input:JourneyInput,actionId:string){await tail.current;if(!ref.current)return;const current=ref.current;const body={...input,campaignId:current.id,revision:current.revision,actionId};if(input.type==='quarter-correction'||input.type.startsWith('quarter-chat-'))await commandMutation('POST',body,'/api/journey');else await operate('POST',body,'/api/journey')}
  function backup(){if(!ref.current)return;const url=URL.createObjectURL(new Blob([JSON.stringify({format:'ravenland-campaign',version:1,session:ref.current.session},null,2)],{type:'application/json'}));const link=document.createElement('a');link.href=url;link.download='ravenland-campaign.json';link.click();setTimeout(()=>URL.revokeObjectURL(url),1000)}
  return {record,campaigns,error,status,generation,saveSheet,diceCommand,journeyCommand,update,operate,retry,reload,backup};
 }

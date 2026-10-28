@@ -1,3 +1,5 @@
+import {applyChatCommand} from './chat-engine';
+import {chatCommandSchema} from './chat-schema';
 import {applyQuarterCommand} from './quarter-engine';
 import {quarterCommandSchema} from './quarter-schema';
 import type {Character,Session} from '../types';
@@ -10,7 +12,7 @@ export interface WeatherProvider {describe:()=>Promise<{description:string;sourc
 export function journeyFor(session:Session):JourneyState{return session.journey??{assignments:{leader:null,watch:null},mode:'On foot',modeDetails:'',activePlan:null,travelHistory:[],activities:[],log:[],weather:{forDescription:session.campaign.weather,source:'Manual',unverifiedEffects:'',updatedAt:''}}}
 export function characterCapabilities(character:Character){return {name:character.name,currentStrength:character.sheet?.['attr-strength']??character.strength,currentAgility:character.sheet?.['attr-agility']??character.agility,survival:character.sheet?.['skill-survival']??'0',scouting:character.sheet?.['skill-scouting']??'0',mountStatus:'Not verified'}}
 export function travelRate(terrain:string|null,mode:string){return {terrain,mode,quarterDays:null,status:'Manual adjudication required; terrain/mode rate unverified'}}
-function applyLegacyJourneyCommand(input:Session,command:Exclude<JourneyCommand,import('./quarter-schema').QuarterCommand>,geo:JourneyGeography,now:string):Session{
+function applyLegacyJourneyCommand(input:Session,command:Exclude<JourneyCommand,import('./quarter-schema').QuarterCommand|import('./chat-schema').ChatCommand>,geo:JourneyGeography,now:string):Session{
  if(input.quarterDays?.active&&command.type!=='weather'&&command.type!=='cancel')throw new Error('Finish or cancel the active quarter-day before legacy journey actions');
  if('confirmed' in command&&command.confirmed!==true)throw new Error('Explicit confirmation is required');
  const session=structuredClone(input),journey=journeyFor(session);session.journey=journey;
@@ -38,4 +40,4 @@ export function recordManualClockChange(before:Session,after:Session,at:string,i
  const journey=structuredClone(journeyFor(after));journey.log.push({id,kind:'clock',summary:'Manual campaign clock correction (not journey expenditure)',before:{date:before.campaign.date,quarter:before.campaign.quarter,hex:before.campaign.hex},after:{date:after.campaign.date,quarter:after.campaign.quarter,hex:after.campaign.hex},at});return {...after,journey};
 }
 
-export function applyJourneyCommand(input:Session,command:JourneyCommand,geo:JourneyGeography,now:string):Session {if(command.type.startsWith('quarter-'))return applyQuarterCommand(input,quarterCommandSchema.parse(command),geo,now);return applyLegacyJourneyCommand(input,command as Exclude<JourneyCommand,import('./quarter-schema').QuarterCommand>,geo,now)}
+export function applyJourneyCommand(input:Session,command:JourneyCommand,geo:JourneyGeography,now:string):Session {if(command.type.startsWith('quarter-chat-'))return applyChatCommand(input,chatCommandSchema.parse(command),geo,now);if(command.type.startsWith('quarter-'))return applyQuarterCommand(input,quarterCommandSchema.parse(command),geo,now);return applyLegacyJourneyCommand(input,command as Exclude<JourneyCommand,import('./quarter-schema').QuarterCommand|import('./chat-schema').ChatCommand>,geo,now)}

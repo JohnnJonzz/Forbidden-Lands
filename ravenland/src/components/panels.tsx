@@ -3,7 +3,7 @@ import {DayTracker} from './day-tracker';
 import { useState, type ReactNode } from 'react';
 import { BookOpen, Dice5, Plus, Save } from 'lucide-react';
 import type { Session, Panel, Campaign, JournalEntry } from '@/lib/types';
-import {JourneySettings,QuarterDayPanel} from './quarter-day';
+import {JourneySettings} from './quarter-day';
 import type {JourneyInput} from '@/lib/journey/schema';
 import type {DiceAction} from './dice-card';
 import {ImageLibraryPanel} from './image-library-panel';
@@ -17,7 +17,7 @@ export function PanelContent({selectedCharacter,onDice,actorId,record,proposed,o
  const [description,setDescription]=useState(session.campaign.description),[date,setDate]=useState(session.campaign.date),[weather,setWeather]=useState(session.campaign.weather),[hex,setHex]=useState(session.campaign.hex),[location,setLocation]=useState(session.campaign.location),[terrain,setTerrain]=useState(session.campaign.terrain),[tone,setTone]=useState(session.campaign.settings.tone),[houseRules,setHouseRules]=useState(session.campaign.settings.houseRules);
  const [name,setName]=useState(session.campaign.name),[objective,setObjective]=useState(session.campaign.objective),[quarter,setQuarter]=useState(session.campaign.quarter);
  if(panel==='Journey Settings') return <JourneySettings record={record} onCommand={onJourney}/>;
- if(panel==='Quarter-Day Activities') return <QuarterDayPanel actorId={actorId} record={record} proposed={proposed} onCommand={onJourney}/>;
+ if(panel==='Quarter-Day Activities') return <p>Quarter-day activities are in the main chat.</p>;
  if(panel==='Image Library') return <ImageLibraryPanel campaignId={record.id}/>;
  if(panel==='Map') return <HexMap record={record} onPlanJourney={onPlanJourney}/>;
  if(panel==='Dice Roller') return <DicePanel dice={session.dice} onDice={onDice} campaignId={record.id} characters={session.characters} onChange={onSheet}/>;

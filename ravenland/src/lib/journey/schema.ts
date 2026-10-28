@@ -1,3 +1,4 @@
+import {chatCommandSchema} from './chat-schema';
 import {quarterCommandSchema} from './quarter-schema';
 import {z} from 'zod';
 export const activityNames=['Hike','Lead the Way','Keep Watch','Make Camp','Forage','Hunt','Fish','Rest','Sleep','Explore'] as const;
@@ -18,7 +19,7 @@ const legacyCommandSchema=z.discriminatedUnion('type',[
  z.object({...envelope,type:z.literal('activity'),activity:z.enum(activityNames),characters:z.array(id).min(1).max(20),outcome:outcomeSchema,quarterDays:z.number().int().min(0).max(16),adjudication:text.trim().min(1),confirmed:z.literal(true)}).strict(),
  z.object({...envelope,type:z.literal('weather'),description:z.string().min(1).max(300),source:z.enum(['Manual','Roll20 manual entry']),unverifiedEffects:text}).strict()
 ]);
-export const commandSchema=z.union([legacyCommandSchema,quarterCommandSchema]);
+export const commandSchema=z.union([legacyCommandSchema,quarterCommandSchema,chatCommandSchema]);
 export type JourneyState=z.infer<typeof journeySchema>;
 export type JourneyCommand=z.infer<typeof commandSchema>;
 export type JourneyInput=JourneyCommand extends infer T?T extends JourneyCommand?Omit<T,'campaignId'|'revision'|'actionId'>:never:never;
