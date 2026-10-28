@@ -31,3 +31,5 @@
 .recent-dice-entry{border-top:1px solid var(--line);padding:8px 0}.recent-dice-entry>summary{font-size:12px}.recent-dice-entry time{color:var(--muted)}.recent-dice-values{margin-top:8px}.recent-dice-values p{margin:3px 0;overflow-wrap:anywhere}.recent-dice-entry small{color:var(--muted)}
 
 button.party-member{width:100%;padding:4px 0;border:0;background:transparent;text-align:left;color:inherit;border-radius:3px}button.party-member:hover{background:#292c25}button.party-member:focus-visible{outline:2px solid var(--gold);outline-offset:4px}
+
+.sheet-frame{height:auto;min-height:320px}.character-dialog{overflow-y:auto}.character-dialog .dialog-header{position:sticky;top:-1px;z-index:2;background:#20231e}.character-window .sheet-frame{height:auto}

@@ -24,8 +24,10 @@
             padding: 20px;
         }
 
-        .sheet-layout { max-width: 1460px; margin: 0 auto; display: grid; grid-template-columns: minmax(0, 1fr) 370px; gap: 20px; align-items: start; }
-        #dice-panel { position: sticky; top: 20px; max-height: calc(100vh - 40px); overflow-y: auto; }
+        .sheet-layout { max-width: 1460px; margin: 0 auto; display: grid; grid-template-columns: minmax(0, 1fr); gap: 20px; align-items: start; }
+        #dice-panel { position: static; max-height: none; overflow: visible; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 24px; }
+        #dice-panel .results-area { margin: 0; padding: 0; border: 0; }
+        @media (max-width: 700px) { #dice-panel { grid-template-columns: minmax(0, 1fr); } #dice-panel .results-area { grid-row: 1; } }
         #shield-section { grid-column: 1 / span 4; min-width: 0; }
         #shield-section > label, #shield-section > .grid-2 { margin-top: 10px; }
         #shield-section output { color: var(--gold-color); font-size: 1.25rem; }
@@ -330,6 +332,40 @@
 
 <div class="sheet-layout">
 <main class="container">
+
+    <!-- Dice Roller Output Panel -->
+    <section class="panel col-12" id="dice-panel" aria-label="Dice roller">
+        <section class="pool-area" aria-label="Dice pool">
+        <h3>Dice Pool</h3>
+        <div class="pool-columns" id="pool-selectors"></div>
+        <h4>Artifact dice</h4>
+        <div class="artifact-options" id="artifact-options"></div>
+        <details class="pool-adjustments"><summary>Fine adjustments / bonus or penalty</summary>
+        <div class="grid-2" id="dice-staging">
+            <div><label for="pool-base">Base dice</label><input type="number" id="pool-base" min="0" max="100" value="0" oninput="app.editPool()"></div>
+            <div><label for="pool-skill">Skill dice</label><input type="number" id="pool-skill" min="-100" max="100" value="0" oninput="app.editPool()"></div>
+            <div><label for="pool-gear">Gear dice</label><input type="number" id="pool-gear" min="0" max="100" value="0" oninput="app.editPool()"></div>
+            <div><label for="pool-modifier">Bonus / penalty</label><input type="number" id="pool-modifier" min="-100" max="100" value="0" oninput="app.editPool()"></div>
+        </div></details>
+        <p class="save-note" id="pool-preview"></p>
+        <div class="pool-controls">
+            <button id="btn-roll-pool" onclick="app.rollStagedPool()" disabled>Roll dice</button>
+            <button onclick="app.rollD66()">D66</button>
+        </div>
+        <div id="staged-label" role="status">No roll staged</div>
+        <button class="clear-pool" onclick="app.clearPool()">Clear dice pool</button>
+        </section>
+        <section class="results-area" aria-label="Dice results">
+        <h3>Results</h3>
+        <div role="status" aria-live="polite" id="dice-summary" style="font-size: 0.95em; color: #aaa;">Select a Skill or Weapon to roll...</div>
+        <div class="dice-container" id="dice-results"></div>
+        <div id="dice-actions">
+            <button id="btn-push" onclick="app.pushRoll()" disabled style="background-color: #d4af37; color: #111;">Push Roll</button>
+            <p id="push-status" role="status">Roll dice to check whether a push is available.</p>
+            <button id="btn-retry-roll" onclick="app.retryRollSave?.()" hidden>Retry saving roll</button>
+        </div>
+        </section>
+    </section>
 
     <!-- Top Management Bar -->
     <div class="panel col-12">
@@ -656,37 +692,6 @@
         <button class="btn-add" onclick="app.addSpell(); app.saveState()">+ Add Spell</button>
     </section>
 </main>
-    <!-- Dice Roller Output Panel -->
-    <aside class="panel" id="dice-panel" aria-label="Dice roller">
-        <section class="pool-area" aria-label="Dice pool">
-        <h3>Dice Pool</h3>
-        <div class="pool-columns" id="pool-selectors"></div>
-        <h4>Artifact dice</h4>
-        <div class="artifact-options" id="artifact-options"></div>
-        <details class="pool-adjustments"><summary>Fine adjustments / bonus or penalty</summary>
-        <div class="grid-2" id="dice-staging">
-            <div><label for="pool-base">Base dice</label><input type="number" id="pool-base" min="0" max="100" value="0" oninput="app.editPool()"></div>
-            <div><label for="pool-skill">Skill dice</label><input type="number" id="pool-skill" min="-100" max="100" value="0" oninput="app.editPool()"></div>
-            <div><label for="pool-gear">Gear dice</label><input type="number" id="pool-gear" min="0" max="100" value="0" oninput="app.editPool()"></div>
-            <div><label for="pool-modifier">Bonus / penalty</label><input type="number" id="pool-modifier" min="-100" max="100" value="0" oninput="app.editPool()"></div>
-        </div></details>
-        <p class="save-note" id="pool-preview"></p>
-        <div class="pool-controls">
-            <button id="btn-roll-pool" onclick="app.rollStagedPool()" disabled>Roll dice</button>
-            <button onclick="app.rollD66()">D66</button>
-        </div>
-        <div id="staged-label" role="status">No roll staged</div>
-        <button class="clear-pool" onclick="app.clearPool()">Clear dice pool</button>
-        </section>
-        <section class="results-area" aria-label="Dice results">
-        <h3>Results</h3>
-        <div role="status" aria-live="polite" id="dice-summary" style="font-size: 0.95em; color: #aaa;">Select a Skill or Weapon to roll...</div>
-        <div class="dice-container" id="dice-results"></div>
-        <div id="dice-actions">
-            <button id="btn-push" onclick="app.pushRoll()" style="display:none; background-color: #d4af37; color: #111;">Push Roll!</button>
-        </div>
-        </section>
-    </aside>
 
 </div>
 
@@ -1388,6 +1393,7 @@ class ForbiddenLandsApp {
 
     pushRoll() {
         if (!this.currentRoll || this.currentRoll.isPushed || this.currentRoll.isArmor) return;
+        if (!this.currentRoll.dice.some(d => d.value < 6 && (d.value !== 1 || ['skill','negative-skill'].includes(d.type)))) return;
         const successes = Math.max(0, this.currentRoll.dice.reduce((n,d) => n + (d.value >= 6 ? (d.type === 'negative-skill' ? -1 : d.type === 'artifact' ? Math.floor((d.value-6)/2)+1 : 1) : 0), 0));
         if (successes > 0 && !confirm('Has the GM approved that additional successes can improve this successful roll?')) return;
 
@@ -1460,6 +1466,11 @@ class ForbiddenLandsApp {
             document.getElementById('btn-push').style.display = 'inline-block';
         }
         summary.innerHTML = text;
+        const eligible = this.currentRoll.dice.some(d => d.value < 6 && (d.value !== 1 || ['skill','negative-skill'].includes(d.type)));
+        const pushButton = document.getElementById('btn-push');
+        pushButton.style.display = 'inline-block';
+        pushButton.disabled = this.currentRoll.isArmor || this.currentRoll.isPushed || !eligible;
+        document.getElementById('push-status').textContent = this.currentRoll.isArmor ? 'Armor rolls cannot be pushed.' : this.currentRoll.isPushed ? 'Already pushed once.' : eligible ? 'Push available for eligible dice.' : 'No eligible dice to reroll.';
     }
 
     // --- Import / Export ---
