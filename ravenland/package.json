@@ -24,7 +24,8 @@
     "test:windows": "node tests/character-windows-browser.cjs",
     "test:portraits": "node tests/portrait-browser.cjs",
     "test:groups": "tsx --test tests/group-dice.test.ts",
-    "test:library": "node tests/library-browser.cjs"
+    "test:library": "node tests/library-browser.cjs",
+    "test:locations": "node tests/locations-browser.cjs"
   },
   "dependencies": {
     "exceljs": "^4.4.0",

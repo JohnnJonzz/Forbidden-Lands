@@ -8,7 +8,7 @@ export function sessionReducer(state:Session, action:Action):Session {
  case 'message':return {...state,messages:[...state.messages,action.message]};
  case 'journal':return {...state,journal:[...state.journal,action.entry]};
  case 'campaign':return recordManualClockChange(state,{...state,campaign:{...state.campaign,...action.patch}},new Date().toISOString(),crypto.randomUUID());
- case 'reset':return {...action.session,...(state.exploration?{exploration:state.exploration}:{}),...(state.chatJourney?{chatJourney:state.chatJourney}:{}),...(state.dayTracker?{dayTracker:state.dayTracker}:{}),...(state.dayCorrections?{dayCorrections:state.dayCorrections}:{})};
+ case 'reset':return {...action.session,...(state.locations?{locations:state.locations,journal:[...action.session.journal.filter(e=>!state.journal.some(j=>j.id===e.id&&state.locations?.some(l=>l.journalEntryId===j.id))),...state.journal.filter(e=>state.locations?.some(l=>l.journalEntryId===e.id))]}:{}),...(state.exploration?{exploration:state.exploration}:{}),...(state.chatJourney?{chatJourney:state.chatJourney}:{}),...(state.dayTracker?{dayTracker:state.dayTracker}:{}),...(state.dayCorrections?{dayCorrections:state.dayCorrections}:{})};
  }
 }
 export function rollPool(base:number,skill:number,gear:number,random= Math.random) {

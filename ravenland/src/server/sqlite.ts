@@ -25,10 +25,12 @@ export class SqliteCampaignRepository implements CampaignRepository {
  select(id:string){const record=this.get(id);if(!record)throw new Error('Campaign not found');this.db.prepare("INSERT INTO application_meta(key,value) VALUES ('active_campaign',?) ON CONFLICT(key) DO UPDATE SET value=excluded.value").run(id);return record}
  current(){const active=this.db.prepare("SELECT value FROM application_meta WHERE key='active_campaign'").get() as {value:string}|undefined;const current=active?this.get(active.value):null;if(current)return current;const existing=this.list()[0];return existing?this.select(existing.id):this.create(initialSession)}
  create(session:Session){const data=sessionSchema.parse(session);this.normalizeExploration(data);const id=randomUUID(),now=new Date().toISOString();this.db.exec('BEGIN IMMEDIATE');try{this.db.prepare('INSERT INTO campaigns VALUES (?,1,?,?,?)').run(id,JSON.stringify(data),now,now);for(const character of data.characters){if(character.portraitId)this.db.prepare('INSERT OR IGNORE INTO campaign_images(campaign_id,image_id,name,category) SELECT ?,image_id,name,category FROM campaign_images WHERE image_id=? LIMIT 1').run(id,character.portraitId)}const record=this.select(id);this.db.exec('COMMIT');return record}catch(e){this.db.exec('ROLLBACK');throw e}}
- update(id:string,revision:number,session:Session,options?:{workflowValidated?:boolean;explorationValidated?:boolean}){
+ update(id:string,revision:number,session:Session,options?:{workflowValidated?:boolean;explorationValidated?:boolean;locationsValidated?:boolean}){
   const data=sessionSchema.parse(session),previous=this.get(id);
   if(!previous||previous.revision!==revision)throw new ConflictError('This campaign changed in another tab. Export your local changes, then reload the campaign.');
   if(!options?.explorationValidated&&JSON.stringify(data.exploration)!==JSON.stringify(previous.session.exploration))throw new ConflictError('Exploration edits must use the map exploration service');
+  if(!options?.locationsValidated&&JSON.stringify(data.locations)!==JSON.stringify(previous.session.locations))throw new ConflictError('Location edits must use the discovery service');
+  for(const l of previous.session.locations??[]){const entry=previous.session.journal.find(e=>e.id===l.journalEntryId);if(entry&&JSON.stringify(data.journal.find(e=>e.id===entry.id))!==JSON.stringify(entry))throw new ConflictError('Linked discovery journal history must be preserved')}
   this.normalizeExploration(data,previous.session);
   for(const entry of previous.session.dayCorrections??[]){
    if(JSON.stringify(data.dayCorrections?.find(e=>e.id===entry.id))!==JSON.stringify(entry))throw new Error('Logged corrections are immutable');
