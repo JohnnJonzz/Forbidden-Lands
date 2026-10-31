@@ -1,0 +1,14 @@
+import { NextResponse } from 'next/server';
+import { ZodError } from 'zod';
+import { getRepository } from '@/server/sqlite';
+import { ConflictError } from '@/server/repository';
+import { createSchema, updateSchema } from '@/lib/validation';
+import { initialSession } from '@/lib/mock';
+export const runtime='nodejs';
+export const dynamic='force-dynamic';
+function failure(error:unknown){if(error instanceof ZodError)return NextResponse.json({error:'Invalid campaign data. Check fields and backup format.'},{status:400});if(error instanceof SyntaxError)return NextResponse.json({error:'Invalid JSON'},{status:400});if(error instanceof ConflictError)return NextResponse.json({error:error.message},{status:409});console.error('Campaign storage operation failed',error instanceof Error?error.name:'Unknown');return NextResponse.json({error:'Campaign storage is unavailable. Your changes have not been saved.'},{status:500})}
+async function body(request:Request){if(!request.headers.get('content-type')?.startsWith('application/json'))throw new SyntaxError('JSON required');const origin=request.headers.get('origin');if(origin&&new URL(origin).host!==request.headers.get('host'))throw new SyntaxError('Origin mismatch');if(Number(request.headers.get('content-length')||0)>5_000_000)throw new SyntaxError('Too large');const text=await request.text();if(Buffer.byteLength(text)>5_000_000)throw new SyntaxError('Too large');return JSON.parse(text)}
+export async function GET(request:Request){try{const repo=getRepository();const id=new URL(request.url).searchParams.get('id');const record=id?await repo.get(id):await repo.current();if(!record)return NextResponse.json({error:'Campaign not found'},{status:404});return NextResponse.json({record,campaigns:await repo.list()},{headers:{'Cache-Control':'no-store'}})}catch(e){return failure(e)}}
+export async function POST(request:Request){try{const input=createSchema.parse(await body(request));const record=await getRepository().create(input.kind==='import'?input.backup.session:{...initialSession,campaign:{...initialSession.campaign,name:input.name},messages:[],journal:[]});return NextResponse.json({record,campaigns:await getRepository().list()},{status:201})}catch(e){return failure(e)}}
+export async function PUT(request:Request){try{const input=updateSchema.parse(await body(request));const record=await getRepository().update(input.id,input.revision,input.session);return NextResponse.json({record,campaigns:await getRepository().list()})}catch(e){return failure(e)}}
+export async function PATCH(request:Request){try{const input=await body(request);if(typeof input.id!=='string'||Object.keys(input).length!==1)return NextResponse.json({error:'Invalid selection'},{status:400});const repo=getRepository();if(!await repo.get(input.id))return NextResponse.json({error:'Campaign not found'},{status:404});return NextResponse.json({record:await repo.select(input.id),campaigns:await repo.list()})}catch(e){return failure(e)}}

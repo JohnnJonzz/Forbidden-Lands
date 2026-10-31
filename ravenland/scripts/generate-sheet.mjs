@@ -1,0 +1,13 @@
+import {readFileSync,writeFileSync,mkdirSync} from 'node:fs';
+import {createHash} from 'node:crypto';
+import {fileURLToPath} from 'node:url';
+const root=fileURLToPath(new URL('../',import.meta.url));
+let html=readFileSync(root+'../index.html','utf8');
+const fields=[...html.match(/this.fieldIds = \[([\s\S]*?)\];/)[1].matchAll(/'([^']+)'/g)].map(match=>match[1]);
+const skills=[...html.match(/this.skillsConfig = \[([\s\S]*?)\];/)[1].matchAll(/id: '([^']+)'/g)].map(match=>'skill-'+match[1]);
+writeFileSync(root+'src/lib/sheet-fields.ts','// Generated from the standalone sheet.\nexport const sheetFieldNames = '+JSON.stringify([...fields,...skills],null,2)+' as const;\n');
+html=html.replace('    app.init();',"    if(window.parent===window) app.init(); else window.parent.postMessage({type:'ravenland:sheet-ready'},location.origin);");
+const css=`<style>body[data-embed-mode="dice"] main>*:not(#dice-panel){display:none}body[data-embed-mode="dice"] #dice-panel{display:block}body[data-embed-mode="dice"] .sheet-layout{display:block;max-width:480px}body[data-embed-mode="dice"] #dice-panel{position:static;max-height:none}html,body{overflow:hidden}body{padding:10px}body[data-embed-mode="sheet"] .sheet-layout{max-width:1600px}@media print{body{padding:0}}</style>`;
+html=html.replace('</head>',css+'</head>').replace('</body>','<script>'+readFileSync(root+'scripts/sheet-bridge.js','utf8')+'</script></body>');
+writeFileSync(root+'src/lib/sheet-version.ts','// Generated with the embedded sheet to invalidate stale cached assets.\nexport const sheetAssetVersion = '+JSON.stringify(createHash('sha256').update(html).digest('hex').slice(0,16))+';\n');
+mkdirSync(root+'public',{recursive:true});writeFileSync(root+'public/character-sheet.html',html);

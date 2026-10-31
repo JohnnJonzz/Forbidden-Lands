@@ -1,0 +1,1524 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Forbidden Lands Character Sheet</title>
+    <style>
+        :root {
+            --bg-color: #121212;
+            --panel-bg: #1e1e1e;
+            --accent-color: #8b0000;
+            --accent-hover: #a00000;
+            --gold-color: #d4af37;
+            --text-color: #e0e0e0;
+            --border-color: #333;
+            --input-bg: #2a2a2a;
+        }
+
+        body {
+            font-family: 'Times New Roman', Times, serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            padding: 20px;
+        }
+
+        .sheet-layout { max-width: 1460px; margin: 0 auto; display: grid; grid-template-columns: minmax(0, 1fr); gap: 20px; align-items: start; }
+        #dice-panel { position: static; max-height: none; overflow: visible; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 24px; }
+        #dice-panel .results-area { margin: 0; padding: 0; border: 0; }
+        @media (max-width: 700px) { #dice-panel { grid-template-columns: minmax(0, 1fr); } #dice-panel .results-area { grid-row: 1; } }
+        #shield-section { grid-column: 1 / span 4; min-width: 0; }
+        #shield-section > label, #shield-section > .grid-2 { margin-top: 10px; }
+        #shield-section output { color: var(--gold-color); font-size: 1.25rem; }
+        .spell-entry { border: 1px solid #79673e; border-radius: 4px; padding: 12px; margin-bottom: 14px; background: #252525; }
+        .spell-main { display: grid; grid-template-columns: 100px 65px minmax(150px,2fr) 75px 75px 1fr 70px 70px; gap: 8px; align-items: end; }
+        .spell-details { display: grid; grid-template-columns: 1fr 1fr 2fr; gap: 10px; margin: 12px 0; }
+        .spell-entry textarea { min-height: 85px; }
+        .spell-remove { margin-top: 8px; background: #444; }
+        @media (max-width: 1200px) { .spell-main { grid-template-columns: repeat(4,minmax(0,1fr)); } }
+        @media (max-width: 768px) { #shield-section { grid-column: span 12; } .spell-main, .spell-details { grid-template-columns: repeat(2,minmax(0,1fr)); } }
+        .equipment-block { grid-column: 5 / span 8; }
+        #weapons-table th:first-child { min-width: 155px; }
+        @media (max-width: 768px) { .equipment-block { grid-column: span 12; } }
+        .armor-piece { border-bottom: 1px dotted #9c8553; padding: 12px 0; }
+        .armor-main { display: grid; grid-template-columns: minmax(140px,2fr) minmax(110px,1.3fr) 1fr 45px 80px; gap: 8px; align-items: end; }
+        .armor-main output { display: block; text-align: center; font-size: 1.5rem; padding: 5px; color: var(--gold-color); }
+        .armor-details { display: grid; grid-template-columns: 65px minmax(100px,1fr) 70px 90px; gap: 8px; align-items: end; margin-top: 10px; }
+        .armor-worn { display: flex; gap: 6px; align-items: center; min-height: 36px; }
+        .armor-footer { display: flex; align-items: center; justify-content: flex-end; gap: 15px; margin-top: 15px; }
+        .armor-footer output { color: var(--gold-color); font-size: 1.5rem; margin-left: 12px; }
+        @media (max-width: 1100px) { .armor-main { grid-template-columns: repeat(2,minmax(0,1fr)); } .armor-details { grid-template-columns: repeat(2,minmax(0,1fr)); } }
+        .w-preset, .w-skill { margin-bottom: 6px; }
+        .weapon-help { color: #bdbdbd; font-size: .9rem; }
+        @media (max-width: 1000px) {
+            .sheet-layout { grid-template-columns: minmax(0, 1fr); }
+            #dice-panel { position: static; grid-row: 1; max-height: none; }
+        }
+        @media print { .sheet-layout { display: block; } }
+
+        .container {
+            min-width: 0;
+            width: 100%;
+            max-width: 1100px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: repeat(12, 1fr);
+            gap: 15px;
+        }
+
+        .panel {
+            background-color: var(--panel-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            padding: 15px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+        }
+
+        h2, h3 {
+            margin-top: 0;
+            color: var(--gold-color);
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 5px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .col-12 { grid-column: span 12; }
+        .col-8 { grid-column: span 8; }
+        .col-6 { grid-column: span 6; }
+        .col-4 { grid-column: span 4; }
+        .col-3 { grid-column: span 3; }
+
+        @media (max-width: 768px) {
+            .col-8, .col-6, .col-4, .col-3 { grid-column: span 12; }
+        }
+
+        label {
+            display: block;
+            margin-bottom: 3px;
+            font-size: 0.85em;
+            text-transform: uppercase;
+            color: #aaa;
+        }
+
+        input[type="text"], input[type="number"], select, textarea {
+            width: 100%;
+            background-color: var(--input-bg);
+            border: 1px solid var(--border-color);
+            color: var(--text-color);
+            padding: 8px;
+            border-radius: 3px;
+            box-sizing: border-box;
+            font-family: inherit;
+        }
+
+        textarea {
+            resize: vertical;
+            height: 60px;
+        }
+
+        .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+        .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 5px; }
+        .grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+
+        .attr-box {
+            text-align: center;
+            background: #252525;
+            padding: 8px;
+            border-radius: 4px;
+            border: 1px solid #3a3a3a;
+        }
+
+        .attr-box input {
+            text-align: center;
+            font-size: 1.2em;
+            font-weight: bold;
+        }
+
+        .gear-totals { margin-top: 16px; }
+        .encumbrance-summary { padding: 10px; border: 1px solid var(--gold-color); border-radius: 4px; color: var(--gold-color); font-weight: bold; }
+        .encumbrance-summary.overloaded { color: #ffb3a6; border-color: #ffb3a6; }
+        .attribute-spinner { display: flex; justify-content: center; align-items: stretch; gap: 4px; margin: 8px auto; max-width: 110px; }
+        .attribute-spinner input { font-size: 2.3rem; width: 70px; padding: 4px; appearance: textfield; -moz-appearance: textfield; }
+        .attribute-spinner input::-webkit-inner-spin-button, .attribute-spinner input::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+        .attribute-arrows { display: flex; flex-direction: column; gap: 3px; }
+        .attribute-arrows button { padding: 4px 7px; font-size: .75rem; flex: 1; background: #444; }
+        .damage-track { display: flex; flex-wrap: wrap; justify-content: center; gap: 4px; min-height: 32px; }
+        .damage-skull { padding: 3px; width: 30px; height: 32px; font-size: 1.3rem; background: #303030; color: #999; border: 1px solid #666; }
+        .damage-skull[aria-pressed="true"] { background: #681f25; color: #ffe1b0; border-color: #dc8b74; }
+        .attribute-current { font-size: .8rem; color: #ccc; margin-top: 6px; }
+        @media print { .damage-skull { display: inline-block !important; } }
+
+        .skill-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 6px;
+            font-size: 0.9em;
+        }
+
+        .skill-row input {
+            width: 50px;
+            text-align: center;
+        }
+
+        .resource-box {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+
+        .resource-box select { width: 80px; }
+        .resource-box { gap: 6px; }
+        .resource-box label { flex: 1; }
+
+        .checkbox-group {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-top: 5px;
+        }
+
+        .checkbox-group label {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            cursor: pointer;
+            color: var(--text-color);
+            text-transform: none;
+        }
+
+        button {
+            background-color: var(--accent-color);
+            color: white;
+            border: none;
+            padding: 8px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+
+        button:hover { background-color: var(--accent-hover); }
+
+        .btn-add { margin-top: 10px; width: 100%; }
+        .btn-roll {
+            background-color: #2e5a2e;
+            padding: 4px 8px;
+            font-size: 0.8em;
+            margin-left: 5px;
+        }
+        .icon-definitions { position: absolute; width: 0; height: 0; overflow: hidden; }
+        .action-icon { width: 22px; height: 22px; display: block; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+        .portrait-frame { margin: 0 0 16px; min-height: 180px; aspect-ratio: 4 / 5; max-height: 260px; display: flex; flex-direction: column; align-items: center; justify-content: center; border: 2px solid #8c7948; box-shadow: inset 0 0 0 4px #171717; background: #191919; color: #9f926f; border-radius: 4px; }
+        .portrait-frame svg { width: 90px; height: 105px; fill: #38352e; stroke: #6a624e; stroke-width: 2; }
+        .portrait-frame figcaption { font-size: .85rem; margin-top: 12px; letter-spacing: .06em; }
+        .btn-roll:hover { background-color: #3b7a3b; }
+
+        .dynamic-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 5px;
+        }
+
+        .dynamic-table th, .dynamic-table td {
+            border: 1px solid var(--border-color);
+            padding: 4px;
+            text-align: left;
+            font-size: 0.85em;
+        }
+
+        .btn-del { background: #444; padding: 2px 6px; font-size: 0.8em; }
+        .btn-del:hover { background: #a00000; }
+
+        /* Dice Log & Modal Styling */
+        #dice-panel {
+            background: #181818;
+            border: 1px solid var(--gold-color);
+        }
+
+        .dice-container {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            margin: 10px 0;;
+        }
+
+        .die {
+            width: 36px;
+            height: 36px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 1.1em;
+            border-radius: 4px;
+            color: white;
+            border: 1px solid #000;
+        }
+
+        .die-base { background-color: #f5f5f5; color: #111; }
+        .pool-area h3 { text-align: center; font-size: 1.5rem; }
+        .pool-area h4 { text-align: center; color: var(--gold-color); margin: 14px 0 8px; }
+        .pool-columns { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); border: 1px solid #888; }
+        .pool-column { padding: 8px 6px; min-width: 0; }
+        .pool-column h4 { margin: 0 0 10px; color: inherit; }
+        .pool-base { background: #ece8df; color: #191919; }
+        .pool-skill { background: #982526; color: #fff; }
+        .pool-gear { background: #3b3b3b; color: #fff; }
+        .pool-buttons { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 7px; }
+        .pool-count { background: #f5f2eb; color: #161616; border: 1px solid #111; border-radius: 7px; box-shadow: 2px 3px 2px #0008; padding: 7px 0; font-size: 1.1rem; min-height: 36px; }
+        .pool-count:hover { background: #e5ce92; }
+        .pool-count[aria-pressed="true"] { background: #d4af37; color: #111; outline: 2px solid #fff; outline-offset: -5px; }
+        .artifact-options { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+        .artifact-options button { padding: 10px 0; background: #354d2d; border: 2px solid transparent; }
+        .artifact-options button[aria-pressed="true"] { border-color: var(--gold-color); background: #59783a; }
+        .pool-adjustments { margin-top: 14px; }
+        .pool-adjustments summary { cursor: pointer; color: #ccc; }
+        .pool-controls { display: grid; grid-template-columns: 2fr 1fr; gap: 10px; align-items: start; }
+        #staged-label { text-align: center; margin: 8px 0 14px; }
+        .clear-pool { width: 100%; background: #444; }
+        .results-area { margin-top: 22px; border-top: 2px solid var(--gold-color); padding-top: 18px; }
+        .die-negative-skill { background: #593c75; color: white; }
+        #dice-staging { margin: 12px 0; }
+        #btn-roll-pool { width: 100%; margin-bottom: 12px; }
+        button:disabled { opacity: .45; cursor: default; }
+        .die-skill { background-color: #8b0000; color: #fff; }
+        .die-gear { background-color: #222; color: #fff; border-color: #555; }
+        .die-artifact { min-width: 62px; padding: 0 4px; font-size: .9em; }
+        .die-artifact { background-color: #d4af37; color: #111; }
+
+        .die-success { border: 2px solid #00ff00; box-shadow: 0 0 5px #00ff00; }
+        .die-bane { border: 2px solid #ff0000; box-shadow: 0 0 5px #ff0000; }
+
+        .controls-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        .panel { min-width: 0; overflow-x: auto; }
+        input, select, textarea { box-sizing: border-box; }
+        button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible { outline: 2px solid var(--gold-color); outline-offset: 2px; }
+        .controls-bar { flex-wrap: wrap; gap: 12px; }
+        .save-note { color: #bdbdbd; font-size: .9rem; }
+        @media (max-width: 600px) {
+            body { padding: 8px; }
+            .container { display: block; }
+            .panel { margin-bottom: 12px; padding: 12px; }
+            .grid-4 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+            .dynamic-table { min-width: 520px; }
+        }
+        @media print {
+            body { background: white; color: black; padding: 0; }
+            .panel { background: white; color: black; box-shadow: none; break-inside: avoid; }
+            input, select, textarea { background: white; color: black; }
+            button, #dice-panel, .controls-bar, .save-note { display: none !important; }
+        }
+    </style>
+</head>
+<body>
+<svg xmlns="http://www.w3.org/2000/svg" class="icon-definitions" aria-hidden="true"><defs>
+    <symbol id="icon-food" viewBox="0 0 24 24"><path d="M5 9c-4-1-4-7 0-7h14c4 0 4 6 0 7v12H5Z"/><path d="m9 5-1 3m6-3-1 3"/></symbol>
+    <symbol id="icon-water" viewBox="0 0 24 24"><path d="M12 2S5 10 5 15a7 7 0 0 0 14 0c0-5-7-13-7-13Z"/><path d="M8 15a4 4 0 0 0 4 4"/></symbol>
+    <symbol id="icon-torches" viewBox="0 0 24 24"><path d="m9 12 1 10h4l1-10M8 12h8M12 2c1 4 6 5 5 8a5 5 0 0 1-10 0c-1-3 2-4 2-6 0 3 2 4 3-2Z"/></symbol>
+    <symbol id="icon-arrows" viewBox="0 0 24 24"><path d="m4 20 15-15m-6 0 7-2-2 7M4 15v5h5M7 12v5h5"/></symbol>
+    <symbol id="icon-shield" viewBox="0 0 24 24"><path d="m12 2 9 4v6c0 5-6 9-9 10-3-1-9-5-9-10V6Z"/></symbol>
+    <symbol id="icon-sword" viewBox="0 0 24 24"><path d="m5 19 12-12 4-4-1 6L8 21M4 14l6 6M3 21l3-3"/></symbol>
+    <symbol id="icon-d6" viewBox="0 0 24 24"><rect x="2" y="2" width="20" height="20" rx="4"/><g fill="currentColor" stroke="none"><circle cx="7" cy="7" r="1.4"/><circle cx="7" cy="12" r="1.4"/><circle cx="7" cy="17" r="1.4"/><circle cx="17" cy="7" r="1.4"/><circle cx="17" cy="12" r="1.4"/><circle cx="17" cy="17" r="1.4"/></g></symbol>
+</defs></svg>
+
+<div class="sheet-layout">
+<main class="container">
+
+    <!-- Dice Roller Output Panel -->
+    <section class="panel col-12" id="dice-panel" aria-label="Dice roller">
+        <section class="pool-area" aria-label="Dice pool">
+        <h3>Dice Pool</h3>
+        <div class="pool-columns" id="pool-selectors"></div>
+        <h4>Artifact dice</h4>
+        <div class="artifact-options" id="artifact-options"></div>
+        <details class="pool-adjustments"><summary>Fine adjustments / bonus or penalty</summary>
+        <div class="grid-2" id="dice-staging">
+            <div><label for="pool-base">Base dice</label><input type="number" id="pool-base" min="0" max="100" value="0" oninput="app.editPool()"></div>
+            <div><label for="pool-skill">Skill dice</label><input type="number" id="pool-skill" min="-100" max="100" value="0" oninput="app.editPool()"></div>
+            <div><label for="pool-gear">Gear dice</label><input type="number" id="pool-gear" min="0" max="100" value="0" oninput="app.editPool()"></div>
+            <div><label for="pool-modifier">Bonus / penalty</label><input type="number" id="pool-modifier" min="-100" max="100" value="0" oninput="app.editPool()"></div>
+        </div></details>
+        <p class="save-note" id="pool-preview"></p>
+        <div class="pool-controls">
+            <button id="btn-roll-pool" onclick="app.rollStagedPool()" disabled>Roll dice</button>
+            <button onclick="app.rollD66()">D66</button>
+        </div>
+        <div id="staged-label" role="status">No roll staged</div>
+        <button class="clear-pool" onclick="app.clearPool()">Clear dice pool</button>
+        </section>
+        <section class="results-area" aria-label="Dice results">
+        <h3>Results</h3>
+        <div role="status" aria-live="polite" id="dice-summary" style="font-size: 0.95em; color: #aaa;">Select a Skill or Weapon to roll...</div>
+        <div class="dice-container" id="dice-results"></div>
+        <div id="dice-actions">
+            <button id="btn-push" onclick="app.pushRoll()" disabled style="background-color: #d4af37; color: #111;">Push Roll</button>
+            <p id="push-status" role="status">Roll dice to check whether a push is available.</p>
+            <button id="btn-retry-roll" onclick="app.retryRollSave?.()" hidden>Retry saving roll</button>
+        </div>
+        </section>
+    </section>
+
+    <!-- Top Management Bar -->
+    <div class="panel col-12">
+        <div class="controls-bar">
+            <div>
+                <label style="display:inline-block; margin-right: 5px;">Active Roster:</label>
+                <select id="character-select" onchange="app.switchCharacter(this.value)" style="width: 200px; display:inline-block;"></select>
+                <button onclick="app.createNewCharacter()">+ New</button>
+                <button onclick="app.deleteCharacter()" style="background-color: #444;">Delete</button>
+            </div>
+            <div>
+                <button onclick="window.print()">Print</button>
+                <button onclick="app.exportJSON()">Export JSON</button>
+                <button onclick="document.getElementById('import-file').click()">Import JSON</button>
+                <input type="file" id="import-file" style="display:none" onchange="app.importJSON(event)">
+            </div>
+        </div>
+    </div>
+
+    <p class="col-12 save-note" id="save-status" role="status">Changes save in this browser. Export JSON for a backup or another device.</p>
+    <!-- Header / Basic Info -->
+    <div class="panel col-12">
+        <h2>Forbidden Lands Adventurer</h2>
+        <div class="grid-4">
+            <div>
+                <label>Name</label>
+                <input type="text" id="name" onchange="app.saveState()">
+            </div>
+            <div>
+                <label>Kin</label>
+                <select id="kin" onchange="app.saveState()">
+                    <option>Human</option><option>Elf</option><option>Half-Elf</option><option>Dwarf</option>
+                    <option>Halfling</option><option>Wolfkin</option><option>Orc</option><option>Goblin</option>
+                </select>
+            </div>
+            <div>
+                <label>Profession</label>
+                <select id="profession" onchange="app.saveState()">
+                    <option>Druid</option><option>Fighter</option><option>Hunter</option><option>Minstrel</option>
+                    <option>Peddler</option><option>Rider</option><option>Rogue</option><option>Sorcerer</option>
+                </select>
+            </div>
+            <div>
+                <label>Age</label>
+                <select id="age" onchange="app.saveState()">
+                    <option>Young</option><option>Adult</option><option>Old</option>
+                </select>
+            </div>
+        </div>
+    </div>
+
+    <!-- Attributes & Trackers -->
+    <div class="panel col-4">
+        <h3>Attributes</h3>
+        <p class="save-note">Use arrows for the regular value. Click skulls to mark damage; click a marked skull to heal.</p>
+        <div class="grid-2">
+            <div class="attr-box">
+                <label>Strength</label><button class="btn-roll" aria-label="Stage Strength dice" title="Stage Strength dice" onclick="app.rollAttribute('strength')"><svg class="action-icon" aria-hidden="true"><use href="#icon-d6"></use></svg></button>
+                <div class="attribute-spinner">
+                    <input type="number" aria-label="Regular strength" id="attr-strength-regular" min="1" max="6" value="2" onchange="app.updateAttribute('strength')">
+                    <div class="attribute-arrows">
+                        <button type="button" aria-label="Increase strength" onclick="app.stepAttribute('strength', 1)">▲</button>
+                        <button type="button" aria-label="Decrease strength" onclick="app.stepAttribute('strength', -1)">▼</button>
+                    </div>
+                </div>
+                <input type="number" hidden id="attr-strength" min="0" max="6" value="2">
+                <div class="damage-track" id="damage-strength" role="group" aria-label="Strength damage"></div>
+                <div class="attribute-current" id="current-strength" aria-live="polite"></div>
+            </div>
+            <div class="attr-box">
+                <label>Agility</label><button class="btn-roll" aria-label="Stage Agility dice" title="Stage Agility dice" onclick="app.rollAttribute('agility')"><svg class="action-icon" aria-hidden="true"><use href="#icon-d6"></use></svg></button>
+                <div class="attribute-spinner">
+                    <input type="number" aria-label="Regular agility" id="attr-agility-regular" min="1" max="6" value="2" onchange="app.updateAttribute('agility')">
+                    <div class="attribute-arrows">
+                        <button type="button" aria-label="Increase agility" onclick="app.stepAttribute('agility', 1)">▲</button>
+                        <button type="button" aria-label="Decrease agility" onclick="app.stepAttribute('agility', -1)">▼</button>
+                    </div>
+                </div>
+                <input type="number" hidden id="attr-agility" min="0" max="6" value="2">
+                <div class="damage-track" id="damage-agility" role="group" aria-label="Agility damage"></div>
+                <div class="attribute-current" id="current-agility" aria-live="polite"></div>
+            </div>
+            <div class="attr-box">
+                <label>Wits</label><button class="btn-roll" aria-label="Stage Wits dice" title="Stage Wits dice" onclick="app.rollAttribute('wits')"><svg class="action-icon" aria-hidden="true"><use href="#icon-d6"></use></svg></button>
+                <div class="attribute-spinner">
+                    <input type="number" aria-label="Regular wits" id="attr-wits-regular" min="1" max="6" value="2" onchange="app.updateAttribute('wits')">
+                    <div class="attribute-arrows">
+                        <button type="button" aria-label="Increase wits" onclick="app.stepAttribute('wits', 1)">▲</button>
+                        <button type="button" aria-label="Decrease wits" onclick="app.stepAttribute('wits', -1)">▼</button>
+                    </div>
+                </div>
+                <input type="number" hidden id="attr-wits" min="0" max="6" value="2">
+                <div class="damage-track" id="damage-wits" role="group" aria-label="Wits damage"></div>
+                <div class="attribute-current" id="current-wits" aria-live="polite"></div>
+            </div>
+            <div class="attr-box">
+                <label>Empathy</label><button class="btn-roll" aria-label="Stage Empathy dice" title="Stage Empathy dice" onclick="app.rollAttribute('empathy')"><svg class="action-icon" aria-hidden="true"><use href="#icon-d6"></use></svg></button>
+                <div class="attribute-spinner">
+                    <input type="number" aria-label="Regular empathy" id="attr-empathy-regular" min="1" max="6" value="2" onchange="app.updateAttribute('empathy')">
+                    <div class="attribute-arrows">
+                        <button type="button" aria-label="Increase empathy" onclick="app.stepAttribute('empathy', 1)">▲</button>
+                        <button type="button" aria-label="Decrease empathy" onclick="app.stepAttribute('empathy', -1)">▼</button>
+                    </div>
+                </div>
+                <input type="number" hidden id="attr-empathy" min="0" max="6" value="2">
+                <div class="damage-track" id="damage-empathy" role="group" aria-label="Empathy damage"></div>
+                <div class="attribute-current" id="current-empathy" aria-live="polite"></div>
+            </div>
+        </div>
+
+        <h3 style="margin-top: 15px;">Pools & Trackers</h3>
+        <div class="grid-2">
+            <div>
+                <label>Willpower (Max 10)</label>
+                <input type="number" id="willpower" min="0" max="10" value="0" onchange="app.saveState()">
+            </div>
+            <div>
+                <label>Experience (XP)</label>
+                <input type="number" id="xp" min="0" value="0" onchange="app.saveState()">
+            </div>
+            <div>
+                <label>Reputation</label>
+                <input type="number" id="reputation" min="0" value="0" onchange="app.saveState()">
+            </div>
+
+        </div>
+
+        <h3 style="margin-top: 15px;">Conditions</h3>
+        <div class="checkbox-group">
+            <label><input type="checkbox" id="cond-hungry" onchange="app.saveState()"> Hungry</label>
+            <label><input type="checkbox" id="cond-thirsty" onchange="app.saveState()"> Thirsty</label>
+            <label><input type="checkbox" id="cond-sleepy" onchange="app.saveState()"> Sleepy</label>
+            <label><input type="checkbox" id="cond-cold" onchange="app.saveState()"> Cold</label>
+        </div>
+    </div>
+
+    <!-- Skills -->
+    <div class="panel col-4">
+        <h3>Skills</h3>
+        <div id="skills-list"></div>
+    </div>
+
+    <!-- Personal Details -->
+    <div class="panel col-4">
+        <h3>Personal Details</h3>
+        <figure class="portrait-frame" aria-label="Character portrait placeholder">
+            <svg viewBox="0 0 120 140" aria-hidden="true"><circle cx="60" cy="45" r="23"/><path d="M18 130v-12a42 42 0 0 1 84 0v12Z"/></svg>
+            <figcaption>Character portrait</figcaption>
+        </figure>
+        <div style="margin-bottom: 8px;">
+            <label>Pride</label>
+            <input type="text" id="pride" onchange="app.saveState()">
+        </div>
+        <div style="margin-bottom: 8px;">
+            <label>Dark Secret</label>
+            <input type="text" id="dark-secret" onchange="app.saveState()">
+        </div>
+
+        <div style="margin-bottom: 8px;">
+            <label>Relationships</label>
+            <textarea id="relationships" onchange="app.saveState()"></textarea>
+        </div>
+        <div style="margin-bottom: 8px;">
+            <label>Appearance</label>
+            <textarea id="appearance" onchange="app.saveState()"></textarea>
+        </div>
+        <div>
+            <label>Critical Injuries</label>
+            <textarea id="critical-injuries" onchange="app.saveState()"></textarea>
+        </div>
+
+    </div>
+
+    <!-- Consumables & Purse -->
+    <div class="panel col-4">
+        <h3>Consumables & Purse</h3>
+        <p class="save-note">Roll when a resource is used. On 1–2, step down one die; D6 becomes None.</p>
+        <div class="resource-box">
+            <label>Food</label>
+            <select id="res-food" onchange="app.saveState()"><option>None</option><option>D6</option><option>D8</option><option>D10</option><option>D12</option></select>
+            <button class="btn-roll" aria-label="Roll food" title="Roll food resource die" onclick="app.rollConsumable('food')"><svg class="action-icon" aria-hidden="true"><use href="#icon-food"></use></svg></button>
+        </div>
+        <div class="resource-box">
+            <label>Water</label>
+            <select id="res-water" onchange="app.saveState()"><option>None</option><option>D6</option><option>D8</option><option>D10</option><option>D12</option></select>
+            <button class="btn-roll" aria-label="Roll water" title="Roll water resource die" onclick="app.rollConsumable('water')"><svg class="action-icon" aria-hidden="true"><use href="#icon-water"></use></svg></button>
+        </div>
+        <div class="resource-box">
+            <label>Arrows</label>
+            <select id="res-arrows" onchange="app.saveState()"><option>None</option><option>D6</option><option>D8</option><option>D10</option><option>D12</option></select>
+            <button class="btn-roll" aria-label="Roll arrows" title="Roll arrows resource die" onclick="app.rollConsumable('arrows')"><svg class="action-icon" aria-hidden="true"><use href="#icon-arrows"></use></svg></button>
+        </div>
+        <div class="resource-box">
+            <label>Torches</label>
+            <select id="res-torches" onchange="app.saveState()"><option>None</option><option>D6</option><option>D8</option><option>D10</option><option>D12</option></select>
+            <button class="btn-roll" aria-label="Roll torches" title="Roll torches resource die" onclick="app.rollConsumable('torches')"><svg class="action-icon" aria-hidden="true"><use href="#icon-torches"></use></svg></button>
+        </div>
+        <hr style="border-color: var(--border-color); margin: 10px 0;">
+        <div class="grid-3">
+            <div><label>Copper</label><input type="number" id="coin-copper" min="0" value="0" onchange="app.saveState()"></div>
+            <div><label>Silver</label><input type="number" id="coin-silver" min="0" value="0" onchange="app.saveState()"></div>
+            <div><label>Gold</label><input type="number" id="coin-gold" min="0" value="0" onchange="app.saveState()"></div>
+        </div>
+    </div>
+
+    <!-- Talents Table -->
+    <div class="panel col-8">
+        <h3>Talents</h3>
+        <table class="dynamic-table" id="talents-table">
+            <thead>
+                <tr>
+                    <th>Talent Name</th>
+                    <th style="width: 60px;">Rank</th>
+                    <th>Description</th>
+                    <th style="width: 30px;"></th>
+                </tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+        <button class="btn-add" onclick="app.addTalentRow()">+ Add Talent</button>
+    </div>
+
+    <!-- Gear Table -->
+    <div class="panel equipment-block" id="gear-section">
+        <h3>Gear</h3>
+        <table class="dynamic-table" id="gear-table">
+            <thead>
+                <tr>
+                    <th>Item</th>
+                    <th style="width: 65px;">Qty</th>
+                    <th style="width: 80px;">Weight</th>
+                    <th>Notes</th>
+                    <th style="width: 30px;"></th>
+                </tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+        <button class="btn-add" onclick="app.addGearRow()">+ Add Gear</button>
+        <div class="gear-totals">
+        <div id="encumbrance-summary" class="encumbrance-summary" role="status" aria-live="polite"></div>
+        <p class="save-note">Tiny = 0, Light = ½, Normal = 1, Heavy = 2 units each. Capacity = regular Strength × 2. Named gear rows and carried armor, helmets, and shields count. Do not duplicate armor or shields here; add weapons and other supplies to Gear.</p>
+        <label for="capacity-bonus">Extra capacity (talents or other bonuses)</label>
+        <input type="number" id="capacity-bonus" min="0" value="0" step="0.5" onchange="app.saveState()">
+        </div>
+    </div>
+
+
+
+    <!-- Weapons Table -->
+    <div class="panel equipment-block" id="weapons-section">
+        <h3>Weapons</h3>
+        <p class="weapon-help">Choose a preset to fill a row, then edit any value for your weapon. Choosing another preset replaces that row’s values.</p>
+        <table class="dynamic-table" id="weapons-table">
+            <thead>
+                <tr>
+                    <th>Weapon</th>
+                    <th style="width: 50px;">Bonus</th>
+                    <th style="width: 50px;">Dmg</th>
+                    <th style="width: 60px;">Range</th>
+                    <th>Features</th>
+                    <th style="width: 75px;">Artifact</th>
+                    <th style="width: 80px;">Roll</th>
+                    <th style="width: 30px;"></th>
+                </tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+        <button class="btn-add" onclick="app.addWeaponRow()">+ Add Weapon</button>
+    </div>
+
+    <section class="panel" id="shield-section">
+        <h3>Shield</h3>
+        <div class="grid-2"><button aria-label="Stage shield shove" onclick="app.stageShield('Shove')">Shove</button><button aria-label="Stage shield parry" onclick="app.stageShield('Parry')">Parry</button></div>
+        <label for="shield-name">Type</label><input id="shield-name" type="text" placeholder="Shield name" onchange="app.saveState()">
+        <div class="grid-2"><div><label>Strength</label><output id="shield-attribute">2</output></div><div><label>Melee</label><output id="shield-skill">0</output></div></div>
+        <div class="grid-2"><div><label for="shield-bonus">Bonus</label><input id="shield-bonus" type="number" min="0" value="0" onchange="app.saveState()"></div><div><label for="shield-max">Max</label><input id="shield-max" type="number" min="0" value="0" onchange="app.saveState()"></div><div><label for="shield-modifier">Misc / skill</label><input id="shield-modifier" type="number" value="0" onchange="app.saveState()"></div><div><label for="shield-artifact">Artifact</label><select id="shield-artifact" onchange="app.saveState()"><option>None</option><option>D8</option><option>D10</option><option>D12</option></select></div></div>
+        <p>Total dice: <output id="shield-total">2</output></p>
+        <label class="armor-worn"><input id="shield-worn" type="checkbox" checked onchange="app.saveState()"> Don</label>
+        <label for="shield-notes">Features</label><input id="shield-notes" type="text" onchange="app.saveState()">
+        <div class="grid-2"><div><label for="shield-carried">Carried</label><select id="shield-carried" onchange="app.saveState()"><option>Yes</option><option>No</option></select></div><div><label for="shield-weight">Weight</label><select id="shield-weight" onchange="app.saveState()"><option>Tiny</option><option>Light</option><option selected>Normal</option><option>Heavy</option></select></div></div>
+        <p class="save-note">Rolls use current Strength, Melee, shield bonus, and modifier. A named shield counts toward encumbrance when Carried is Yes, even when not donned.</p>
+    </section>
+    <section class="panel equipment-block" id="armor-section">
+        <h3>Armor / Helmet</h3>
+        <div class="armor-piece" data-piece="armor">
+            <div class="armor-main">
+                <div><label for="armor-name">Armor type</label><input type="text" id="armor-name" placeholder="Armor name" onchange="app.saveState()"></div>
+                <div><label for="armor-rating">AR / Max</label><div class="grid-2"><input aria-label="Armor current rating" type="number" id="armor-rating" min="0" value="0" onchange="app.saveState()"><input aria-label="Armor maximum rating" type="number" id="armor-max" min="0" value="0" onchange="app.saveState()"></div></div>
+                <div><label for="armor-modifier">Misc / skill</label><input type="number" id="armor-modifier" value="0" onchange="app.saveState()"></div>
+                <div><label>Total</label><output id="armor-total">0</output></div>
+                <div><label for="armor-artifact">Artifact</label><select id="armor-artifact" onchange="app.saveState()"><option>None</option><option>D8</option><option>D10</option><option>D12</option></select></div>
+            </div>
+            <div class="armor-details">
+                <label class="armor-worn"><input type="checkbox" id="armor-worn" checked onchange="app.saveState()"> Don</label>
+                <div><label for="armor-notes">Features</label><input type="text" id="armor-notes" onchange="app.saveState()"></div>
+                <div><label for="armor-carried">Carried</label><select id="armor-carried" onchange="app.saveState()"><option>Yes</option><option>No</option></select></div>
+                <div><label for="armor-weight">Weight</label><select id="armor-weight" onchange="app.saveState()"><option>Tiny</option><option>Light</option><option selected>Normal</option><option>Heavy</option></select></div>
+            </div>
+        </div>
+        <div class="armor-piece" data-piece="helmet">
+            <div class="armor-main">
+                <div><label for="helmet-name">Helmet type</label><input type="text" id="helmet-name" placeholder="Helmet name" onchange="app.saveState()"></div>
+                <div><label for="helmet-rating">AR / Max</label><div class="grid-2"><input aria-label="Helmet current rating" type="number" id="helmet-rating" min="0" value="0" onchange="app.saveState()"><input aria-label="Helmet maximum rating" type="number" id="helmet-max" min="0" value="0" onchange="app.saveState()"></div></div>
+                <div><label for="helmet-modifier">Misc / skill</label><input type="number" id="helmet-modifier" value="0" onchange="app.saveState()"></div>
+                <div><label>Total</label><output id="helmet-total">0</output></div>
+                <div><label for="helmet-artifact">Artifact</label><select id="helmet-artifact" onchange="app.saveState()"><option>None</option><option>D8</option><option>D10</option><option>D12</option></select></div>
+            </div>
+            <div class="armor-details">
+                <label class="armor-worn"><input type="checkbox" id="helmet-worn" checked onchange="app.saveState()"> Don</label>
+                <div><label for="helmet-notes">Features</label><input type="text" id="helmet-notes" onchange="app.saveState()"></div>
+                <div><label for="helmet-carried">Carried</label><select id="helmet-carried" onchange="app.saveState()"><option>Yes</option><option>No</option></select></div>
+                <div><label for="helmet-weight">Weight</label><select id="helmet-weight" onchange="app.saveState()"><option>Tiny</option><option>Light</option><option selected>Normal</option><option>Heavy</option></select></div>
+            </div>
+        </div>
+        <div class="armor-footer"><strong>Armor rating <output id="combined-armor-rating" aria-live="polite">0</output></strong><button onclick="app.stageArmor()" aria-label="Stage armor roll" title="Stage armor roll"><svg class="action-icon" aria-hidden="true"><use href="#icon-shield"></use></svg></button></div>
+        <p class="save-note">Only donned, carried pieces contribute. Total = current AR + modifier. Armor rolls cannot be pushed. Named pieces count toward encumbrance when Carried is Yes, even when not donned.</p>
+    </section>
+
+
+    <section class="panel col-12" id="spells-section">
+        <h3>Spells</h3>
+        <p class="save-note">Record casting options and spell details here. Resolve casting, Willpower spending, and magical mishaps manually.</p>
+        <div id="spells-list"></div>
+        <button class="btn-add" onclick="app.addSpell(); app.saveState()">+ Add Spell</button>
+    </section>
+</main>
+
+</div>
+
+<script>
+/**
+ * Forbidden Lands Character Sheet Single Page Application
+ */
+class ForbiddenLandsApp {
+    constructor() {
+        // Common weapons; all preset values remain editable for variants and house rules.
+        this.weaponPresets = [
+            {name: 'Dagger', bonus: 1, dmg: 1, range: 'Arm', feat: 'Light, Edged, Pointed', skill: 'melee'},
+            {name: 'Short sword', bonus: 2, dmg: 1, range: 'Arm', feat: 'Edged, Pointed', skill: 'melee'},
+            {name: 'Broadsword', bonus: 2, dmg: 2, range: 'Arm', feat: 'Edged, Pointed', skill: 'melee'},
+            {name: 'Longsword', bonus: 2, dmg: 2, range: 'Near', feat: 'Heavy, Two-handed, Edged, Pointed', skill: 'melee'},
+            {name: 'Handaxe', bonus: 2, dmg: 2, range: 'Arm', feat: 'Edged, Hook', skill: 'melee'},
+            {name: 'Battleaxe', bonus: 2, dmg: 3, range: 'Arm', feat: 'Heavy, Two-handed, Edged, Hook', skill: 'melee'},
+            {name: 'Mace', bonus: 2, dmg: 1, range: 'Arm', feat: 'Blunt', skill: 'melee'},
+            {name: 'Short spear', bonus: 1, dmg: 1, range: 'Near', feat: 'Pointed', skill: 'melee'},
+            {name: 'Long spear', bonus: 2, dmg: 1, range: 'Near', feat: 'Two-handed, Pointed', skill: 'melee'},
+            {name: 'Short bow', bonus: 2, dmg: 1, range: 'Short', feat: 'Two-handed', skill: 'marksmanship'},
+            {name: 'Longbow', bonus: 2, dmg: 1, range: 'Long', feat: 'Heavy, Two-handed', skill: 'marksmanship'},
+            {name: 'Light crossbow', bonus: 1, dmg: 2, range: 'Long', feat: 'Two-handed, Slow reload', skill: 'marksmanship'},
+            {name: 'Heavy crossbow', bonus: 1, dmg: 3, range: 'Long', feat: 'Heavy, Two-handed, Slow reload', skill: 'marksmanship'}
+        ];
+        this.skillsConfig = [
+            { id: 'might', name: 'Might', attr: 'strength' },
+            { id: 'endurance', name: 'Endurance', attr: 'strength' },
+            { id: 'melee', name: 'Melee', attr: 'strength' },
+            { id: 'crafting', name: 'Crafting', attr: 'strength' },
+            { id: 'stealth', name: 'Stealth', attr: 'agility' },
+            { id: 'sleightofhand', name: 'Sleight of Hand', attr: 'agility' },
+            { id: 'move', name: 'Move', attr: 'agility' },
+            { id: 'marksmanship', name: 'Marksmanship', attr: 'agility' },
+            { id: 'scouting', name: 'Scouting', attr: 'wits' },
+            { id: 'lore', name: 'Lore', attr: 'wits' },
+            { id: 'survival', name: 'Survival', attr: 'wits' },
+            { id: 'insight', name: 'Insight', attr: 'wits' },
+            { id: 'manipulation', name: 'Manipulation', attr: 'empathy' },
+            { id: 'performance', name: 'Performance', attr: 'empathy' },
+            { id: 'healing', name: 'Healing', attr: 'empathy' },
+            { id: 'animalhandling', name: 'Animal Handling', attr: 'empathy' }
+        ];
+
+        this.fieldIds = [
+            'name', 'kin', 'profession', 'age',
+            'attr-strength', 'attr-strength-regular', 'attr-agility', 'attr-agility-regular', 'attr-wits', 'attr-wits-regular', 'attr-empathy', 'attr-empathy-regular',
+            'willpower', 'xp', 'reputation', 'armor-name', 'armor-rating', 'armor-max', 'armor-modifier', 'armor-artifact', 'armor-notes', 'armor-worn', 'armor-carried', 'armor-weight', 'helmet-name', 'helmet-rating', 'helmet-max', 'helmet-modifier', 'helmet-artifact', 'helmet-notes', 'helmet-worn', 'helmet-carried', 'helmet-weight',
+            'cond-hungry', 'cond-thirsty', 'cond-sleepy', 'cond-cold',
+            'pride', 'dark-secret', 'relationships', 'appearance', 'critical-injuries',
+            'res-food', 'res-water', 'res-arrows', 'res-torches',
+            'shield-name', 'shield-bonus', 'shield-max', 'shield-modifier', 'shield-artifact', 'shield-worn', 'shield-notes', 'shield-carried', 'shield-weight', 'coin-copper', 'coin-silver', 'coin-gold', 'capacity-bonus'
+        ];
+
+        this.artifactDice = [];
+        this.currentRoll = null;
+        this.stagedRoll = null;
+        this.activeCharId = null;
+        this.roster = {};
+    }
+
+    init() {
+        this.renderSkills();
+        this.loadRoster();
+        if (Object.keys(this.roster).length === 0) {
+            this.createNewCharacter();
+        } else {
+            this.activeCharId = Object.keys(this.roster)[0];
+            this.loadCharacter(this.activeCharId);
+        }
+        this.updateRosterSelect();
+        this.renderAttributes();
+        this.renderEncumbrance();
+        this.renderArmor();
+        this.renderShield();
+    }
+
+    renderPoolSelectors() {
+        const area = document.getElementById('pool-selectors');
+        area.replaceChildren();
+        for (const type of ['base', 'skill', 'gear']) {
+            const column = document.createElement('div');
+            column.className = 'pool-column pool-' + type;
+            const title = document.createElement('h4');
+            title.textContent = type[0].toUpperCase() + type.slice(1);
+            const buttons = document.createElement('div');
+            buttons.className = 'pool-buttons';
+            const values = type === 'skill' ? [6,7,5,8,4,9,3,10,2,-1,1,-2,0,-3] : [6,7,5,8,4,9,3,10,2,11,1,12,0];
+            for (const value of values) {
+                const button = document.createElement('button');
+                button.className = 'pool-count';
+                button.textContent = value;
+                button.setAttribute('aria-label', `${type} dice ${value}`);
+                button.setAttribute('aria-pressed', String(Number(document.getElementById('pool-' + type).value) === value));
+                button.onclick = () => {document.getElementById('pool-' + type).value = value; this.editPool();};
+                buttons.appendChild(button);
+            }
+            column.append(title, buttons); area.appendChild(column);
+        }
+        const artifacts = document.getElementById('artifact-options'); artifacts.replaceChildren();
+        [8,8,10,12].forEach((sides, index) => {
+            const button = document.createElement('button');
+            button.textContent = 'D' + sides;
+            button.setAttribute('aria-label', `Artifact D${sides} slot ${index + 1}`);
+            button.setAttribute('aria-pressed', String(this.artifactDice.includes(index)));
+            button.onclick = () => {
+                this.artifactDice = this.artifactDice.includes(index) ? this.artifactDice.filter(i => i !== index) : [...this.artifactDice, index];
+                this.editPool();
+            };
+            artifacts.appendChild(button);
+        });
+    }
+
+    editPool() {
+        if (!this.stagedRoll) this.stagedRoll = {label:'Custom Roll', attribute:null};
+        document.getElementById('staged-label').textContent = 'Current preset: ' + this.stagedRoll.label;
+        document.getElementById('btn-roll-pool').disabled = false;
+        this.updatePoolPreview();
+    }
+
+    clearPool() {
+        this.stagedRoll = null;
+        this.artifactDice = [];
+        for (const field of ['base','skill','gear','modifier']) document.getElementById('pool-' + field).value = 0;
+        document.getElementById('staged-label').textContent = 'No roll staged';
+        document.getElementById('btn-roll-pool').disabled = true;
+        this.currentRoll = null;
+        document.getElementById('dice-results').replaceChildren();
+        document.getElementById('dice-summary').textContent = 'Pool cleared. Choose dice or stage a skill or weapon.';
+        document.getElementById('btn-push').style.display = 'none';
+        this.updatePoolPreview();
+    }
+
+    rollD66() {
+        this.currentRoll = null;
+        const tens = Math.floor(Math.random() * 6) + 1;
+        const ones = Math.floor(Math.random() * 6) + 1;
+        document.getElementById('dice-results').replaceChildren();
+        for (const value of [tens, ones]) {
+            const die = document.createElement('div'); die.className = 'die die-base'; die.textContent = value;
+            document.getElementById('dice-results').appendChild(die);
+        }
+        document.getElementById('dice-summary').textContent = `D66: ${tens}${ones} (tens ${tens}, ones ${ones})`;
+        document.getElementById('btn-push').style.display = 'none';
+    }
+
+    renderShield() {
+        const strength = Math.max(0, Number(document.getElementById('attr-strength').value) || 0);
+        const skill = Number(document.getElementById('skill-melee').value) || 0;
+        const bonus = Math.max(0, Number(document.getElementById('shield-bonus').value) || 0);
+        const modifier = Number(document.getElementById('shield-modifier').value) || 0;
+        document.getElementById('shield-attribute').textContent = strength;
+        document.getElementById('shield-skill').textContent = skill;
+        const enabled = document.getElementById('shield-worn').checked && document.getElementById('shield-carried').value === 'Yes';
+        document.getElementById('shield-total').textContent = enabled ? strength + Math.abs(skill + modifier) + bonus : 0;
+        document.querySelectorAll('#shield-section button').forEach(button=>button.disabled=!enabled);
+    }
+
+    stageShield(action) {
+        if (!document.getElementById('shield-worn').checked || document.getElementById('shield-carried').value !== 'Yes') return;
+        this.stagePool(`Shield ${action}: ${document.getElementById('shield-name').value || 'Shield'}`, 'strength', Number(document.getElementById('attr-strength').value), Number(document.getElementById('skill-melee').value), Math.max(0,Number(document.getElementById('shield-bonus').value)||0));
+        document.getElementById('pool-modifier').value = document.getElementById('shield-modifier').value;
+        const index = {D8:0,D10:2,D12:3}[document.getElementById('shield-artifact').value];
+        this.artifactDice = index === undefined ? [] : [index];
+        this.updatePoolPreview();
+    }
+
+    addSpell(data = {}) {
+        const entry = document.createElement('div'); entry.className='spell-entry';
+        const field = (key,label,type='text',value='') => `<div><label>${label}<input class="spell-${key}" aria-label="Spell ${label}" type="${type}" ${type === 'number' ? 'min="0" step="1"' : ''} value="${this.escapeHTML(data[key] ?? value)}" onchange="app.saveState()"></label></div>`;
+        entry.innerHTML = `<div class="spell-main">
+            <div><label>Mode<select class="spell-mode" aria-label="Spell casting mode" onchange="app.saveState()">${['Normal','Safe','Overcast'].map(mode=>`<option ${data.mode===mode?'selected':''}>${mode}</option>`).join('')}</select></label></div>
+            ${field('wp','WP','number',1)}${field('name','Name')}${field('talent','Talent rank','number',1)}${field('rank','Spell rank','number',1)}${field('type','Type','text','Spell')}
+            <label>Use ingr.<input type="checkbox" class="spell-ingredient" ${data.ingredient?'checked':''} onchange="app.saveState()"></label>
+            <label>Use grim.<input type="checkbox" class="spell-grimoire" ${data.grimoire?'checked':''} onchange="app.saveState()"></label>
+            </div><div class="spell-details">${field('range','Range','text','Personal')}${field('duration','Duration')}${field('ingredients','Ingredients')}</div>
+            <label>Description<textarea class="spell-description" onchange="app.saveState()">${this.escapeHTML(data.description ?? '')}</textarea></label>
+            <button class="spell-remove" onclick="this.closest('.spell-entry').remove(); app.saveState()">Remove spell</button>`;
+        document.getElementById('spells-list').appendChild(entry);
+    }
+
+    getArmorPieces() {
+        return ['armor','helmet'].map(piece => ({
+            piece,
+            enabled: document.getElementById(piece + '-worn').checked && document.getElementById(piece + '-carried').value === 'Yes',
+            rating: Math.max(0, Math.trunc(Number(document.getElementById(piece + '-rating').value) || 0) + Math.trunc(Number(document.getElementById(piece + '-modifier').value) || 0)),
+            artifact: document.getElementById(piece + '-artifact').value
+        }));
+    }
+
+    renderArmor() {
+        const pieces = this.getArmorPieces();
+        for (const piece of pieces) document.getElementById(piece.piece + '-total').textContent = piece.rating;
+        document.getElementById('combined-armor-rating').textContent = pieces.reduce((total,piece)=>total + (piece.enabled ? piece.rating : 0),0);
+    }
+
+    stageArmor() {
+        const pieces = this.getArmorPieces().filter(piece=>piece.enabled);
+        this.stagePool('Armor', null, 0, 0, pieces.reduce((total,piece)=>total+piece.rating,0));
+        this.stagedRoll.isArmor = true;
+        this.artifactDice = pieces.map(piece=>({D8:0,D10:2,D12:3}[piece.artifact])).filter(index=>index !== undefined);
+        if (this.artifactDice.length === 2 && this.artifactDice[0] === 0 && this.artifactDice[1] === 0) this.artifactDice[1] = 1;
+        this.updatePoolPreview();
+    }
+
+    renderEncumbrance() {
+        const weights = {Tiny: 0, Light: 0.5, Normal: 1, Heavy: 2};
+        const gearWeight = Array.from(document.querySelectorAll('#gear-table tbody tr')).reduce((total, row) => {
+            if (!row.querySelector('.g-item').value.trim()) return total;
+            const quantity = Math.max(0, Math.floor(Number(row.querySelector('.g-qty').value) || 0));
+            return total + (weights[row.querySelector('.g-weight').value] ?? 1) * quantity;
+        }, 0);
+        const equipmentWeight = ['armor','helmet','shield'].reduce((total, piece) => {
+            const selected = document.getElementById(piece + '-name').value.trim();
+            const isCarried = document.getElementById(piece + '-carried').value === 'Yes';
+            return total + (selected && isCarried ? (weights[document.getElementById(piece + '-weight').value] ?? 1) : 0);
+        }, 0);
+        const carried = gearWeight + equipmentWeight;
+        const strength = Math.max(1, Math.min(6, Number(document.getElementById('attr-strength-regular').value) || 1));
+        const bonus = Math.max(0, Number(document.getElementById('capacity-bonus').value) || 0);
+        const capacity = strength * 2 + bonus;
+        const summary = document.getElementById('encumbrance-summary');
+        const difference = capacity - carried;
+        summary.classList.toggle('overloaded', difference < 0);
+        summary.textContent = `${carried} / ${capacity} units · ` + (difference < 0 ? `Over capacity by ${-difference}` : `${difference} remaining`);
+    }
+
+    renderAttributes() {
+        for (const attribute of ['strength', 'agility', 'wits', 'empathy']) {
+            const regular = document.getElementById(`attr-${attribute}-regular`);
+            const current = document.getElementById(`attr-${attribute}`);
+            const total = Math.max(1, Math.min(6, Number(regular.value) || 1));
+            const remaining = Math.max(0, Math.min(total, Number(current.value) || 0));
+            const damage = total - remaining;
+            regular.dataset.previous = total;
+            const track = document.getElementById('damage-' + attribute);
+            const signature = `${total}:${damage}`;
+            if (track.dataset.signature !== signature) {
+            track.dataset.signature = signature;
+            track.replaceChildren();
+            for (let index = 1; index <= total; index++) {
+                const button = document.createElement('button');
+                button.type = 'button';
+                button.className = 'damage-skull';
+                button.textContent = '☠';
+                button.setAttribute('aria-pressed', String(index <= damage));
+                button.setAttribute('aria-label', `${attribute} damage ${index} of ${total}`);
+                button.title = index <= damage ? 'Heal to ' + (index - 1) + ' damage' : 'Mark ' + index + ' damage';
+                button.onclick = () => {
+                    current.value = total - (index <= damage ? index - 1 : index);
+                    this.saveState();
+                };
+                track.appendChild(button);
+            }
+            }
+            document.getElementById('current-' + attribute).textContent = `Current ${remaining} / ${total}` + (remaining === 0 ? ' · Broken' : '');
+            const box = regular.closest('.attr-box');
+            box.querySelector('.attribute-arrows button:first-child').disabled = total >= 6;
+            box.querySelector('.attribute-arrows button:last-child').disabled = total <= 1;
+        }
+    }
+
+    stepAttribute(attribute, step) {
+        const regular = document.getElementById(`attr-${attribute}-regular`);
+        regular.value = Number(regular.value) + step;
+        this.updateAttribute(attribute);
+    }
+
+    updateAttribute(attribute) {
+        const regular = document.getElementById(`attr-${attribute}-regular`);
+        const current = document.getElementById(`attr-${attribute}`);
+        const previous = Number(regular.dataset.previous) || Number(regular.value);
+        regular.value = Math.max(1, Math.min(6, Number(regular.value) || 1));
+        current.value = Math.max(0, Math.min(Number(regular.value), Number(current.value) + Number(regular.value) - previous));
+        this.saveState();
+    }
+
+    rollConsumable(resource) {
+        const input = document.getElementById('res-' + resource);
+        const steps = ['None', 'D6', 'D8', 'D10', 'D12'];
+        const index = steps.indexOf(input.value);
+        this.currentRoll = null; // Resource rolls cannot be pushed.
+        document.getElementById('btn-push').style.display = 'none';
+        const results = document.getElementById('dice-results');
+        const summary = document.getElementById('dice-summary');
+        results.replaceChildren();
+        const label = resource[0].toUpperCase() + resource.slice(1);
+        if (index <= 0) {
+            summary.textContent = `${label}: no resource die remaining.`;
+            return;
+        }
+        const die = input.value;
+        const value = Math.floor(Math.random() * Number(die.slice(1))) + 1;
+        const depleted = value <= 2;
+        if (depleted) input.value = steps[index - 1];
+        const result = document.createElement('div');
+        result.className = 'die die-base' + (depleted ? ' die-bane' : '');
+        result.textContent = value;
+        results.appendChild(result);
+        summary.textContent = `${label}: ${die} rolled ${value}. ${depleted ? `Resource reduced to ${input.value}.` : `Keep ${die}.`}`;
+        this.saveState();
+    }
+
+    renderSkills() {
+        const container = document.getElementById('skills-list');
+        container.innerHTML = '';
+        this.skillsConfig.forEach(skill => {
+            const div = document.createElement('div');
+            div.className = 'skill-row';
+            div.innerHTML = `
+                <label>${skill.name} (${skill.attr.substring(0,3).toUpperCase()})</label>
+                <div>
+                    <input type="number" id="skill-${skill.id}" min="0" max="5" value="0" onchange="app.saveState()">
+                    <button class="btn-roll" aria-label="Stage ${skill.name} dice" title="Stage ${skill.name} dice" onclick="app.rollSkill('${skill.id}')"><svg class="action-icon" aria-hidden="true"><use href="#icon-d6"></use></svg></button>
+                </div>
+            `;
+            container.appendChild(div);
+        });
+    }
+
+    // --- Roster & Storage Management ---
+    loadRoster() {
+        const raw = localStorage.getItem('fbl_roster_v1');
+        if (raw) {
+            try { this.roster = JSON.parse(raw); } catch(e) { this.roster = {}; }
+        }
+    }
+
+    saveRoster() {
+        try {
+            localStorage.setItem('fbl_roster_v1', JSON.stringify(this.roster));
+            document.getElementById('save-status').textContent = 'Saved in this browser. Export JSON for a backup or another device.';
+        } catch {
+            document.getElementById('save-status').textContent = 'Browser storage is unavailable or full. Export JSON now to keep your changes.';
+        }
+        this.updateRosterSelect();
+    }
+
+    updateRosterSelect() {
+        const select = document.getElementById('character-select');
+        select.innerHTML = '';
+        Object.keys(this.roster).forEach(id => {
+            const opt = document.createElement('option');
+            opt.value = id;
+            opt.textContent = this.roster[id].name || 'Unnamed Adventurer';
+            if (id === this.activeCharId) opt.selected = true;
+            select.appendChild(opt);
+        });
+    }
+
+    createNewCharacter() {
+        const id = 'char_' + crypto.randomUUID();
+        this.roster[id] = { name: 'New Adventurer' };
+        this.activeCharId = id;
+        this.saveRoster();
+        this.resetForm();
+        this.saveState();
+    }
+
+    deleteCharacter() {
+        if (Object.keys(this.roster).length <= 1) {
+            alert('Cannot delete the last character profile.');
+            return;
+        }
+        if (confirm('Are you sure you want to delete this character?')) {
+            delete this.roster[this.activeCharId];
+            this.activeCharId = Object.keys(this.roster)[0];
+            this.saveRoster();
+            this.loadCharacter(this.activeCharId);
+        }
+    }
+
+    switchCharacter(id) {
+        this.saveState();
+        this.activeCharId = id;
+        this.loadCharacter(id);
+    }
+
+    resetForm() {
+        document.getElementById('spells-list').replaceChildren();
+        this.artifactDice = [];
+        this.currentRoll = null;
+        this.stagedRoll = null;
+        document.getElementById('btn-roll-pool').disabled = true;
+        document.getElementById('btn-push').style.display = 'none';
+        document.getElementById('staged-label').textContent = 'No roll staged';
+        document.getElementById('dice-results').replaceChildren();
+        document.getElementById('dice-summary').textContent = 'Select a skill or weapon to stage its dice.';
+        for (const field of ['base','skill','gear','modifier']) document.getElementById('pool-' + field).value = 0;
+        this.updatePoolPreview();
+        this.fieldIds.forEach(id => {
+            const el = document.getElementById(id);
+            if (el) {
+                if (el.type === 'checkbox') el.checked = el.defaultChecked;
+                else if (el.type === 'number') el.value = el.defaultValue || el.min || 0;
+                else if (el.tagName === 'SELECT') el.selectedIndex = Math.max(0, Array.from(el.options).findIndex(option => option.defaultSelected));
+                else el.value = '';
+            }
+        });
+        this.skillsConfig.forEach(s => {
+            document.getElementById(`skill-${s.id}`).value = 0;
+        });
+        document.querySelector('#talents-table tbody').innerHTML = '';
+        document.querySelector('#weapons-table tbody').innerHTML = '';
+        document.querySelector('#gear-table tbody').innerHTML = '';
+        this.addTalentRow('Kin Talent', 1, '');
+        this.addWeaponRow('Dagger', 1, 1, 'Arm', 'Light, Pointed');
+    }
+
+    saveState() {
+        this.renderAttributes();
+        this.renderEncumbrance();
+        this.renderArmor();
+        this.renderShield();
+        if (!this.activeCharId) return;
+        const data = {};
+        
+        this.fieldIds.forEach(id => {
+            const el = document.getElementById(id);
+            if (el) data[id] = el.type === 'checkbox' ? el.checked : el.value;
+        });
+
+        this.skillsConfig.forEach(s => {
+            data[`skill-${s.id}`] = document.getElementById(`skill-${s.id}`).value;
+        });
+
+        data.talents = Array.from(document.querySelectorAll('#talents-table tbody tr')).map(tr => ({
+            name: tr.querySelector('.t-name').value,
+            rank: tr.querySelector('.t-rank').value,
+            desc: tr.querySelector('.t-desc').value
+        }));
+
+        data.weapons = Array.from(document.querySelectorAll('#weapons-table tbody tr')).map(tr => ({
+            name: tr.querySelector('.w-name').value,
+            bonus: tr.querySelector('.w-bonus').value,
+            dmg: tr.querySelector('.w-dmg').value,
+            range: tr.querySelector('.w-range').value,
+            feat: tr.querySelector('.w-feat').value,
+            skill: tr.querySelector('.w-skill').value,
+            artifact: tr.querySelector('.w-artifact').value
+        }));
+
+        data.gear = Array.from(document.querySelectorAll('#gear-table tbody tr')).map(tr => ({
+            item: tr.querySelector('.g-item').value,
+            weight: tr.querySelector('.g-weight').value,
+            quantity: tr.querySelector('.g-qty').value,
+            notes: tr.querySelector('.g-notes').value
+        }));
+
+        data.spells = Array.from(document.querySelectorAll('.spell-entry')).map(entry => {
+            const spell = {};
+            for (const key of ['mode','wp','name','talent','rank','type','range','duration','ingredients','description']) spell[key] = entry.querySelector('.spell-' + key).value;
+            for (const key of ['ingredient','grimoire']) spell[key] = entry.querySelector('.spell-' + key).checked;
+            return spell;
+        });
+        this.roster[this.activeCharId] = data;
+        this.saveRoster();
+    }
+
+    loadCharacter(id) {
+        const data = this.roster[id];
+        if (!data) return;
+        this.resetForm();
+        this.artifactDice = [];
+        this.currentRoll = null;
+        this.stagedRoll = null;
+        document.getElementById('btn-roll-pool').disabled = true;
+        document.getElementById('staged-label').textContent = 'No roll staged';
+        for (const field of ['base','skill','gear','modifier']) document.getElementById('pool-' + field).value = 0;
+        this.updatePoolPreview();
+        document.getElementById('dice-results').replaceChildren();
+        document.getElementById('dice-summary').textContent = 'Select a Skill or Weapon to roll...';
+        document.getElementById('btn-push').style.display = 'none';
+
+        this.fieldIds.forEach(fid => {
+            const el = document.getElementById(fid);
+            if (el && data[fid] !== undefined) {
+                if (el.type === 'checkbox') el.checked = data[fid];
+                else el.value = data[fid];
+            }
+        });
+
+        for (const piece of ['armor','helmet']) {
+            if (data[piece + '-max'] === undefined) document.getElementById(piece + '-max').value = document.getElementById(piece + '-rating').value;
+        }
+
+        // Older backups have only a single attribute value; preserve it as both values.
+        for (const attribute of ['strength', 'agility', 'wits', 'empathy']) {
+            const key = 'attr-' + attribute;
+            if (data[key + '-regular'] === undefined && data[key] !== undefined) {
+                document.getElementById(key + '-regular').value = Math.max(1, Number(data[key]) || 1);
+            }
+        }
+
+        this.skillsConfig.forEach(s => {
+            const el = document.getElementById(`skill-${s.id}`);
+            if (el && data[`skill-${s.id}`] !== undefined) el.value = data[`skill-${s.id}`];
+        });
+
+        document.querySelector('#talents-table tbody').innerHTML = '';
+        if (data.talents) data.talents.forEach(t => this.addTalentRow(t.name, t.rank, t.desc));
+
+        document.querySelector('#weapons-table tbody').innerHTML = '';
+        if (data.weapons) data.weapons.forEach(w => this.addWeaponRow(w.name, w.bonus, w.dmg, w.range, w.feat, w.skill, w.artifact));
+
+        document.querySelector('#gear-table tbody').innerHTML = '';
+        if (Array.isArray(data.spells)) data.spells.forEach(spell=>{if(spell && typeof spell === 'object') this.addSpell(spell);});
+        if (data.gear) data.gear.forEach(g => this.addGearRow(g.item, g.weight, g.notes, g.quantity));
+        this.renderAttributes();
+        this.renderEncumbrance();
+        this.renderArmor();
+        this.renderShield();
+    }
+
+    escapeHTML(value) {
+        return String(value ?? '').replace(/[&<>"']/g, char => ({'&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;'}[char]));
+    }
+
+    // --- Dynamic Table Adders ---
+    addTalentRow(name = '', rank = 1, desc = '') {
+        this.createTableRow('talents-table', [
+            `<input type="text" value="${this.escapeHTML(name)}" class="t-name" onchange="app.saveState()">`,
+            `<input type="number" value="${this.escapeHTML(rank)}" min="1" max="3" class="t-rank" onchange="app.saveState()">`,
+            `<input type="text" value="${this.escapeHTML(desc)}" class="t-desc" onchange="app.saveState()">`
+        ]);
+    }
+
+    addWeaponRow(name = '', bonus = 0, dmg = 1, range = 'Arm', feat = '', skill = 'melee', artifact = 'None') {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td>
+                <select class="w-preset w-name" aria-label="Weapon name" onchange="app.applyWeaponPreset(this)">
+                    <option value="">Choose weapon…</option>
+                    ${this.weaponPresets.map(weapon => `<option value="${this.escapeHTML(weapon.name)}" ${name === weapon.name ? 'selected' : ''}>${this.escapeHTML(weapon.name)}</option>`).join('')}
+                    ${name && !this.weaponPresets.some(w => w.name === name) ? `<option value="${this.escapeHTML(name)}" selected>${this.escapeHTML(name)}</option>` : ''}
+                    <option value="__custom__">Custom weapon / rename…</option>
+                </select>
+                <select class="w-skill" aria-label="Weapon attack skill" onchange="app.updateWeaponIcon(this.closest('tr')); app.saveState()">
+                    <option value="melee" ${skill === 'melee' ? 'selected' : ''}>Melee (Strength)</option>
+                    <option value="marksmanship" ${skill === 'marksmanship' ? 'selected' : ''}>Marksmanship (Agility)</option>
+                </select>
+            </td>
+            <td><input type="number" value="${this.escapeHTML(bonus)}" class="w-bonus" onchange="app.saveState()"></td>
+            <td><input type="number" value="${this.escapeHTML(dmg)}" class="w-dmg" onchange="app.saveState()"></td>
+            <td><input type="text" value="${this.escapeHTML(range)}" class="w-range" onchange="app.saveState()"></td>
+            <td><input type="text" value="${this.escapeHTML(feat)}" class="w-feat" onchange="app.saveState()"></td>
+            <td><select class="w-artifact" aria-label="Weapon artifact die" onchange="app.saveState()">
+                ${['None','D8','D10','D12'].map(die => `<option ${artifact === die ? 'selected' : ''}>${die}</option>`).join('')}
+            </select></td>
+            <td><button class="btn-roll" aria-label="Stage weapon attack" title="Stage weapon attack" onclick="app.rollWeaponAttack(this)"><svg class="action-icon" aria-hidden="true"><use href="#icon-sword"></use></svg></button></td>
+            <td><button class="btn-del" onclick="this.closest('tr').remove(); app.saveState();">X</button></td>
+        `;
+        for (const [selector, label] of Object.entries({'.w-bonus':'Weapon bonus', '.w-dmg':'Weapon damage', '.w-range':'Weapon range', '.w-feat':'Weapon features'})) {
+            tr.querySelector(selector).setAttribute('aria-label', label);
+        }
+        this.updateWeaponIcon(tr);
+        tr.querySelector('.w-name').dataset.previous = name;
+        document.querySelector('#weapons-table tbody').appendChild(tr);
+    }
+
+    updateWeaponIcon(row) {
+        const ranged = row.querySelector('.w-skill').value === 'marksmanship';
+        row.querySelector('.btn-roll use').setAttribute('href', ranged ? '#icon-arrows' : '#icon-sword');
+        row.querySelector('.btn-roll').title = ranged ? 'Stage ranged attack' : 'Stage melee attack';
+    }
+
+    applyWeaponPreset(select) {
+        if (select.value === '__custom__') {
+            const name = prompt('Custom weapon name', select.dataset.previous || '');
+            if (!name || !name.trim() || name.trim() === '__custom__') {
+                select.value = select.dataset.previous || '';
+                return;
+            }
+            const value = name.trim();
+            if (!Array.from(select.options).some(option => option.value === value)) select.add(new Option(value, value), select.options.length - 1);
+            select.value = value;
+        } else {
+            const weapon = this.weaponPresets.find(weapon => weapon.name === select.value);
+            if (weapon) {
+                const row = select.closest('tr');
+                for (const field of ['bonus', 'dmg', 'range', 'feat', 'skill']) row.querySelector('.w-' + field).value = weapon[field];
+            }
+        }
+        this.updateWeaponIcon(select.closest('tr'));
+        select.dataset.previous = select.value;
+        this.saveState();
+    }
+
+    addGearRow(item = '', weight = 'Normal', notes = '', quantity = 1) {
+        this.createTableRow('gear-table', [
+            `<input type="text" aria-label="Gear item" value="${this.escapeHTML(item)}" class="g-item" onchange="app.saveState()">`,
+            `<input type="number" aria-label="Gear quantity" min="0" step="1" value="${this.escapeHTML(quantity)}" class="g-qty" onchange="app.saveState()">`,
+            `<select class="g-weight" onchange="app.saveState()">
+                <option ${weight==='Tiny'?'selected':''}>Tiny</option>
+                <option ${weight==='Light'?'selected':''}>Light</option>
+                <option ${weight==='Normal'?'selected':''}>Normal</option>
+                <option ${weight==='Heavy'?'selected':''}>Heavy</option>
+            </select>`,
+            `<input type="text" value="${this.escapeHTML(notes)}" class="g-notes" onchange="app.saveState()">`
+        ]);
+    }
+
+    createTableRow(tableId, cellHTMLs) {
+        const tr = document.createElement('tr');
+        cellHTMLs.forEach(html => {
+            const td = document.createElement('td');
+            td.innerHTML = html;
+            tr.appendChild(td);
+        });
+        const delTd = document.createElement('td');
+        delTd.innerHTML = `<button class="btn-del" onclick="this.closest('tr').remove(); app.saveState();">X</button>`;
+        tr.appendChild(delTd);
+        document.querySelector(`#${tableId} tbody`).appendChild(tr);
+        if (tableId === 'gear-table') this.renderEncumbrance();
+    }
+
+    // --- Dice Engine ---
+    rollDice(baseCount, skillCount, gearCount) {
+        const rollArray = (count, type) => {
+            let dice = [];
+            for (let i = 0; i < count; i++) {
+                let val = Math.floor(Math.random() * 6) + 1;
+                dice.push({ value: val, type: type, pushed: false });
+            }
+            return dice;
+        };
+
+        return [
+            ...rollArray(baseCount, 'base'),
+            ...rollArray(Math.abs(skillCount), skillCount < 0 ? 'negative-skill' : 'skill'),
+            ...rollArray(gearCount, 'gear')
+        ];
+    }
+
+    rollAttribute(attribute) {
+        if (!['strength','agility','wits','empathy'].includes(attribute)) return;
+        this.stagePool(attribute[0].toUpperCase() + attribute.slice(1), attribute, Math.max(0, Number(document.getElementById('attr-' + attribute).value) || 0), 0, 0);
+    }
+
+    rollSkill(skillId) {
+        const config = this.skillsConfig.find(s => s.id === skillId);
+        const attrVal = parseInt(document.getElementById(`attr-${config.attr}`).value) || 0;
+        const skillVal = parseInt(document.getElementById(`skill-${skillId}`).value) || 0;
+
+        this.stagePool(config.name, config.attr, attrVal, skillVal, 0);
+    }
+
+    rollWeaponAttack(btn) {
+        const tr = btn.closest('tr');
+        const wName = tr.querySelector('.w-name').value;
+        const wBonus = parseInt(tr.querySelector('.w-bonus').value) || 0;
+        const skill = tr.querySelector('.w-skill').value;
+        const attribute = skill === 'marksmanship' ? 'agility' : 'strength';
+        const skillVal = parseInt(document.getElementById('skill-' + skill).value) || 0;
+        const attrVal = parseInt(document.getElementById('attr-' + attribute).value) || 0;
+
+        this.stagePool(`Attack: ${wName || 'Weapon'}`, attribute, attrVal, skillVal, wBonus);
+        this.stagedRoll.weaponDamage = Math.max(0, Number(tr.querySelector('.w-dmg').value) || 0);
+        const artifactIndex = {D8:0, D10:2, D12:3}[tr.querySelector('.w-artifact').value];
+        this.artifactDice = artifactIndex === undefined ? [] : [artifactIndex];
+        this.updatePoolPreview();
+    }
+
+    stagePool(label, attribute, base, skill, gear) {
+        this.artifactDice = [];
+        this.stagedRoll = {label, attribute};
+        for (const [field, value] of Object.entries({base, skill, gear, modifier:0})) document.getElementById('pool-' + field).value = value;
+        document.getElementById('staged-label').textContent = 'Staged: ' + label;
+        if (!this.currentRoll) {
+            document.getElementById('dice-results').replaceChildren();
+            document.getElementById('dice-summary').textContent = 'Adjust the pool, then roll when ready.';
+            document.getElementById('btn-push').style.display = 'none';
+        }
+        document.getElementById('btn-roll-pool').disabled = false;
+        this.updatePoolPreview();
+    }
+
+    getStagedPool() {
+        const read = (key, min) => Math.max(min, Math.min(100, Math.trunc(Number(document.getElementById('pool-' + key).value) || 0)));
+        return {base: read('base', 0), skill: Math.max(-100, Math.min(100, read('skill', -100) + read('modifier', -100))), gear: read('gear', 0)};
+    }
+
+    updatePoolPreview() {
+        this.renderPoolSelectors();
+        const pool = this.getStagedPool();
+        document.getElementById('pool-preview').textContent = `${pool.base} base + ${Math.abs(pool.skill)} ${pool.skill < 0 ? 'negative skill' : 'skill'} + ${pool.gear} gear dice. Negative skill sixes cancel successes. Artifacts: ${this.artifactDice.map(index => "D" + [8,8,10,12][index]).join(", ") || "none"}.`;
+    }
+
+    rollStagedPool() {
+        if (!this.stagedRoll) return;
+        const pool = this.getStagedPool();
+        this.currentRoll = {...this.stagedRoll, dice:this.rollDice(pool.base, pool.skill, pool.gear), isPushed:false};
+        this.artifactDice.forEach(index => {
+            const sides = [8,8,10,12][index];
+            this.currentRoll.dice.push({type:'artifact', sides, value:Math.floor(Math.random() * sides) + 1});
+        });
+        this.renderRollResults();
+    }
+
+    pushRoll() {
+        if (!this.currentRoll || this.currentRoll.isPushed || this.currentRoll.isArmor) return;
+        if (!this.currentRoll.dice.some(d => d.value < 6 && (d.value !== 1 || ['skill','negative-skill'].includes(d.type)))) return;
+        const successes = Math.max(0, this.currentRoll.dice.reduce((n,d) => n + (d.value >= 6 ? (d.type === 'negative-skill' ? -1 : d.type === 'artifact' ? Math.floor((d.value-6)/2)+1 : 1) : 0), 0));
+        if (successes > 0 && !confirm('Has the GM approved that additional successes can improve this successful roll?')) return;
+
+        let baseBanes = 0;
+        let gearBanes = 0;
+
+        this.currentRoll.dice.forEach(die => {
+            // Successes and banes stay locked
+            if (die.value >= 6) return;
+            if (die.value === 1 && ['base', 'gear', 'artifact'].includes(die.type)) return;
+            // Reroll eligible dice
+            die.value = Math.floor(Math.random() * (die.sides || 6)) + 1;
+            die.pushed = true;
+
+        });
+        baseBanes = this.currentRoll.dice.filter(d => d.value === 1 && d.type === 'base').length;
+        gearBanes = this.currentRoll.dice.filter(d => d.value === 1 && d.type === 'gear').length;
+
+        this.currentRoll.isPushed = true;
+        const attribute = this.currentRoll.attribute;
+        if (attribute && baseBanes) {
+            const input = document.getElementById('attr-' + attribute);
+            input.value = Math.max(0, Number(input.value) - baseBanes);
+        }
+
+        // Apply pushed banes to Willpower automatic tracking
+        if (baseBanes > 0) {
+            const wpInput = document.getElementById('willpower');
+            let currentWP = parseInt(wpInput.value) || 0;
+            wpInput.value = Math.min(10, currentWP + baseBanes);
+            this.saveState();
+        }
+
+        this.renderRollResults(baseBanes, gearBanes);
+    }
+
+    renderRollResults(baseBanes = 0, gearBanes = 0) {
+        const container = document.getElementById('dice-results');
+        const summary = document.getElementById('dice-summary');
+        const actions = document.getElementById('dice-actions');
+        container.innerHTML = '';
+
+        let successes = 0;
+        this.currentRoll.dice.forEach(d => {
+            if (d.value >= 6) successes += d.type === 'negative-skill' ? -1 : (d.type === 'artifact' ? Math.floor((d.value - 6) / 2) + 1 : 1);
+            const el = document.createElement('div');
+            let typeClass = `die-${d.type}`;
+            let statusClass = d.value >= 6 ? 'die-success' : (d.value === 1 && ['base', 'gear'].includes(d.type) ? 'die-bane' : '');
+            el.className = `die ${typeClass} ${statusClass}`;
+            el.textContent = d.value === 6 ? (d.type === 'negative-skill' ? '−⚔️' : '⚔️') : (d.value === 1 && ['base', 'gear'].includes(d.type) ? '💀' : d.value);
+            if (d.type === "artifact") el.textContent = `D${d.sides}: ${d.value}`;
+            el.title = `${d.type}: ${d.value}`;
+            container.appendChild(el);
+        });
+
+        let text = `<strong>${this.escapeHTML(this.currentRoll.label)}</strong>: ${Math.max(0, successes)} Success(es) [⚔️]`;
+        if (this.currentRoll.weaponDamage !== undefined) {
+            const hits = Math.max(0, successes);
+            const damage = hits > 0 ? this.currentRoll.weaponDamage + hits - 1 : 0;
+            text += `<br><strong>Total damage: ${damage}</strong>`;
+            text += hits > 0 ? ` (${this.currentRoll.weaponDamage} weapon + ${hits - 1} extra successes; before armor or defense).` : ' (No successes — attack missed).';
+        }
+        if (this.currentRoll.isArmor) {
+            text += '<br>Armor successes reduce incoming damage. Apply armor wear manually.';
+            document.getElementById('btn-push').style.display = 'none';
+        } else if (this.currentRoll.isPushed) {
+            text += ` | <em>Pushed!</em> (${baseBanes} Base Baned 💀 -> +${baseBanes} WP gained, ${gearBanes} Gear Damaged)`;
+            document.getElementById('btn-push').style.display = 'none';
+        } else {
+            document.getElementById('btn-push').style.display = 'inline-block';
+        }
+        summary.innerHTML = text;
+        const eligible = this.currentRoll.dice.some(d => d.value < 6 && (d.value !== 1 || ['skill','negative-skill'].includes(d.type)));
+        const pushButton = document.getElementById('btn-push');
+        pushButton.style.display = 'inline-block';
+        pushButton.disabled = this.currentRoll.isArmor || this.currentRoll.isPushed || !eligible;
+        document.getElementById('push-status').textContent = this.currentRoll.isArmor ? 'Armor rolls cannot be pushed.' : this.currentRoll.isPushed ? 'Already pushed once.' : eligible ? 'Push available for eligible dice.' : 'No eligible dice to reroll.';
+    }
+
+    // --- Import / Export ---
+    exportJSON() {
+        this.saveState();
+        const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(this.roster[this.activeCharId], null, 2));
+        const dlAnchor = document.createElement('a');
+        dlAnchor.setAttribute("href", dataStr);
+        dlAnchor.setAttribute("download", `${this.roster[this.activeCharId].name || 'character'}_sheet.json`);
+        document.body.appendChild(dlAnchor);
+        dlAnchor.click();
+        dlAnchor.remove();
+    }
+
+    importJSON(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            try {
+                const data = JSON.parse(e.target.result);
+                if (!data || typeof data !== 'object' || Array.isArray(data) || typeof data.name !== 'string') throw new Error('Invalid character');
+                for (const key of ['talents', 'weapons', 'gear', 'spells']) {
+                    if (data[key] !== undefined && (!Array.isArray(data[key]) || data[key].some(row => !row || typeof row !== 'object'))) throw new Error('Invalid table');
+                }
+                const id = 'char_' + crypto.randomUUID();
+                this.roster[id] = data;
+                this.activeCharId = id;
+                this.saveRoster();
+                this.loadCharacter(id);
+            } catch(err) {
+                alert('Invalid JSON character file.');
+            }
+        };
+        reader.readAsText(file);
+        event.target.value = '';
+    }
+}
+
+// Instantiate App
+const app = new ForbiddenLandsApp();
+window.addEventListener('DOMContentLoaded', () => {
+    app.init();
+    document.addEventListener('input', event => {
+        if (event.target.matches('input:not([type=file]):not([id$="-regular"]), textarea')) app.saveState();
+    });
+    document.querySelectorAll('input[id], select[id], textarea[id]').forEach(el => el.setAttribute('aria-label', el.id.replaceAll('-', ' ')));
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,52 @@
+{
+  "name": "ravenland-chronicles",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev --hostname 0.0.0.0",
+    "build": "next build",
+    "start": "next start --hostname 0.0.0.0",
+    "typecheck": "tsc --noEmit",
+    "test": "tsx --test tests/*.test.ts",
+    "db:migrate": "tsx scripts/migrate.ts",
+    "test:persistence": "node tests/persistence-browser.cjs",
+    "predev": "node scripts/generate-sheet.mjs && tsx scripts/prepare-map.ts",
+    "prebuild": "node scripts/generate-sheet.mjs",
+    "pretest": "node scripts/generate-sheet.mjs",
+    "map:import": "tsx scripts/import-map.ts",
+    "test:fog": "node tests/fog-browser.cjs",
+    "test:map": "node tests/map-browser.cjs",
+    "map:prepare": "tsx scripts/prepare-map.ts",
+    "prestart": "tsx scripts/prepare-map.ts",
+    "test:map:real": "node tests/real-map-browser.cjs",
+    "test:quarter": "node tests/quarter-browser.cjs",
+    "test:dice-repair": "node tests/dice-repair-browser.cjs",
+    "test:windows": "node tests/character-windows-browser.cjs",
+    "test:portraits": "node tests/portrait-browser.cjs",
+    "test:groups": "tsx --test tests/group-dice.test.ts",
+    "test:library": "node tests/library-browser.cjs",
+    "test:locations": "node tests/locations-browser.cjs"
+  },
+  "dependencies": {
+    "exceljs": "^4.4.0",
+    "jszip": "^3.10.2",
+    "lucide-react": "^0.468.0",
+    "next": "^16.0.0",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0",
+    "sharp": "^0.35.5",
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4.1.0",
+    "@types/node": "^24.0.0",
+    "@types/react": "^19.2.0",
+    "@types/react-dom": "^19.2.0",
+    "tailwindcss": "^4.1.0",
+    "tsx": "^4.20.0",
+    "typescript": "^5.9.0"
+  },
+  "engines": {
+    "node": ">=24.0.0"
+  }
+}
