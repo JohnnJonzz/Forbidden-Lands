@@ -1,0 +1,13 @@
+import {NextResponse} from 'next/server';
+import {z} from 'zod';
+import {getLocalRepository} from '@/server/sqlite';
+import {SqliteMemoryRepository} from '@/server/ai/memory';
+import {memoryContentSchema} from '@/lib/ai/schema';
+import {aiBody,aiFailure} from '@/server/ai/http';
+import {isGM,requireGM,AIError} from '@/server/ai/config';
+export const runtime='nodejs';
+export async function GET(request:Request){try{const params=new URL(request.url).searchParams,id=z.string().uuid().parse(params.get('campaignId')),repo=getLocalRepository();if(!repo.get(id))throw new AIError('not_found','Campaign not found',404);const suppliedToken=request.headers.get('x-ravenland-gm-token');if(suppliedToken)requireGM(suppliedToken);const store=new SqliteMemoryRepository(repo),privileged=isGM(suppliedToken),historyId=params.get('history');if(historyId){requireGM(request.headers.get('x-ravenland-gm-token'));if(!store.get(id,historyId,true))throw new AIError('not_found','Memory not found',404);return NextResponse.json({history:store.history(id,historyId)},{headers:{'Cache-Control':'no-store'}})}return NextResponse.json({memories:store.list(id,privileged),privileged},{headers:{'Cache-Control':'no-store'}})}catch(e){return aiFailure(e)}}
+export async function POST(request:Request){try{requireGM(request.headers.get('x-ravenland-gm-token'));const base={campaignId:z.string().uuid(),confirmed:z.literal(true)},command=z.discriminatedUnion('type',[z.object({...base,type:z.literal('create'),content:memoryContentSchema,source:z.object({kind:z.enum(['chat','journal']),id:z.string().min(1).max(100)}).strict().nullable()}).strict(),z.object({...base,type:z.literal('review'),id:z.string().uuid(),revision:z.number().int().positive(),operation:z.enum(['approve','reject','archive','edit','lock']),reason:z.string().trim().min(1).max(1000),content:memoryContentSchema.optional(),locked:z.boolean().optional()}).strict()]).parse(await aiBody(request)),repo=getLocalRepository(),store=new SqliteMemoryRepository(repo);
+ if(command.type==='create'){const s=repo.get(command.campaignId)?.session;if(!s)throw new AIError('not_found','Campaign not found',404);if(command.source&&!(command.source.kind==='chat'?s.messages:s.journal).some(e=>e.id===command.source!.id))throw new AIError('source','Source reference not found in this campaign');return NextResponse.json({memory:store.proposeManual(command.campaignId,command.content,command.source)})}
+ return NextResponse.json({memory:store.review(command.campaignId,command.id,command.revision,command.operation,command.reason,command.content,command.locked)});
+ }catch(e){return aiFailure(e)}}

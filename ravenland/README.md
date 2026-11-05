@@ -1,6 +1,6 @@
 # Forbidden Lands — The Ravenland Chronicles
 
-The existing Next.js + TypeScript interface now stores campaigns in **server-side SQLite**. All story content is original mock narrative. The standalone root character sheet is preserved independently.
+The existing Next.js + TypeScript interface now stores campaigns in **server-side SQLite**. Chat supports server-side OpenAI Responses streaming and a clearly labeled offline mock mode. Campaign memory is stored separately from the public snapshot. The standalone root character sheet is preserved independently.
 
 ## Run locally
 
@@ -23,13 +23,13 @@ npm run db:migrate
 npm run dev
 ```
 
-Database files and WAL/SHM sidecars are ignored by Git. Back up using the app's JSON export. Do not copy only a live SQLite main file while WAL writes may be pending; stop the server before filesystem-level backups.
+Database files and WAL/SHM sidecars are ignored by Git. Public campaign snapshots can be backed up using the app's JSON export. AI memory, private review history, usage, configuration and recap records are separate server tables: back up the entire SQLite database to preserve them (see Phase 6A). Do not copy only a live SQLite main file while WAL writes may be pending; stop the server before filesystem-level backups.
 
 ## Use and verify persistence
 
 1. Open Campaign Settings. Under Campaign library, create a named campaign or select and load an existing one. A new campaign has the sample party with empty chat and journal; the first-ever launch seeds the original sample adventure once.
 2. Edit name, description, in-game date, quarter day, hex, location, terrain, weather, objective, tone, and house rules. Click **Apply changes**. Wait for **Saved to SQLite** in the main view.
-3. Submit player actions and receive mock GM replies. Add Journal entries. These save automatically. Party profiles and all public campaign settings are included in snapshots and backups.
+3. Submit player actions and receive GM replies (OpenAI when configured, otherwise labeled mock narration). Add Journal entries. These save automatically. Party profiles and all public campaign settings are included in snapshots and backups.
 4. Close the browser. Stop and restart the development server using the same database path. Reopen the app: the last selected campaign, chat, journal, party, and settings are restored.
 5. Create another campaign, then load the first to confirm both remain separate.
 6. Export JSON backup in Campaign Settings, then import it. Import always creates a **new** record; it never replaces the original. It accepts version 1 `ravenland-campaign` backups only, up to 5 MB. Fields, types, lengths, unique IDs, and unknown properties are validated on the server.
@@ -37,7 +37,7 @@ Database files and WAL/SHM sidecars are ignored by Git. Back up using the app's 
 
 Changes are saved immediately through a serialized queue. Save failures are shown with Retry and Export unsaved backup controls, and leaving with unsaved changes triggers the browser's unload warning. Stale updates from another tab return a conflict instead of overwriting newer data. Export the unsaved version before using **Reload saved copy** to discard it and resolve a conflict. The campaign library blocks switching while unsaved writes remain.
 
-The current campaign selection is server-wide for this local prototype. There is **no authentication, multiplayer synchronization, paid AI API, or OpenAI credential requirement**. Run it on a trusted development machine, not as an exposed public service. The default voice workflow remains separate Discord use. Settings are public campaign information: never enter API keys or GM-only secrets in prose fields or backups.
+The current campaign selection is server-wide for this local prototype. There is **no multiplayer authentication or shared-player synchronization**. OpenAI is optional and requires a server API key; offline mock mode remains available. Run it on a trusted development machine, not as an exposed public service. The default voice workflow remains separate Discord use. Settings are public campaign information: never enter API keys or GM-only secrets in prose fields or backups.
 
 ## Architecture
 
@@ -47,12 +47,12 @@ The current campaign selection is server-wide for this local prototype. There is
 - `src/server/repository.ts`: repository contract supporting synchronous SQLite and future asynchronous PostgreSQL implementations.
 - `src/server/sqlite.ts`: transactions, optimistic revision checks, prepared queries, migration ledger, and local database adapter. Public state is stored as a validated JSON snapshot per campaign; IDs isolate campaigns and party members have stable IDs.
 - `src/server/migrations`: ordered SQL migrations, applied transactionally once per database. Add migrations here for future schema changes; do not delete existing databases as an upgrade strategy.
-- `src/server/campaign-service.ts`: public campaign access and mock GM functions. A future AI adapter can call these functions without holding a database handle.
+- `src/server/campaign-service.ts`: legacy public campaign access and mock GM helpers. `src/server/ai` now assembles bounded context, calls the official Responses SDK, persists exchanges and proposals, and exposes memory/review services.
 - `src/app/api`: server-side HTTP boundary. Responses and JSON exports contain public state only. A separate `campaign_secrets` table is reserved for future GM-only state and is never read by public routes or exports.
 - `src/hooks/use-campaign.ts`: initial load, serialized saves, save status, conflict handling, and campaign operations.
 - `src/components`: the existing layout plus a campaign library inside Settings. No browser storage is used as the source of truth.
 
-The GM remains a deterministic keyword-based mock. Accounts, secret administration, schema upgrades for future backup formats, and actual shared-player sessions remain future work.
+Phase 6A adds the AI adapter and memory/review workflow described below. The deterministic keyword-based mock remains available offline. Authenticated accounts, private character chat, production authorization, schema upgrades for future backup formats, and actual shared-player sessions remain future work.
 
 ## Automated checks
 
@@ -63,7 +63,7 @@ npm run build
 npm run test:persistence
 ```
 
-Fifteen unit/storage tests exercise reducer behavior, dice rules, strict validation, migrations, complete public snapshots, stale-write conflicts, multiple campaigns, imports, secret separation, and closing/reopening SQLite.
+Unit/storage tests exercise reducer behavior, dice rules, strict validation, migrations, complete public snapshots, stale-write conflicts, multiple campaigns, imports, secret separation, and closing/reopening SQLite.
 
 `test:persistence` requires Playwright and Chromium (provided in the Codex environment); set `CHROMIUM_PATH` if Chromium is elsewhere. It launches a production server on an available local port with a **temporary database**, modifies settings/chat/journal in a real browser, closes the browser, stops/restarts the server, and asserts exact restoration. It also tests tools, mobile layout, create/load, backup export/import, invalid imports, stale writes, and confirmed/cancelled resets. It removes only its own temporary database. Run `npm run build` first. `node tests/browser.cjs` is an alias for this isolated browser check.
 
@@ -160,7 +160,7 @@ Any current party member can **Submit to Game Master** during development. Submi
 
 With no paid AI connected, expand **Resolve quarter-day · development GM controls** in the submitted card. Record the actual ending hex (start or intended adjacent destination), explicit adjudication, weather for the next quarter, and optional narrative. **Complete quarter-day** validates the ruling against current geography and the submitted clock, then atomically commits location, advances exactly one quarter-day, updates weather/map/sidebar and marks the Journal view **Completed**. Night rolls into the next day. Replayed actions cannot apply effects again. Pending information requests must receive a response before completion. A new activity card becomes available automatically.
 
-**Journey Settings is configuration only**: weather mode, default leader/watcher, and default Hike outcome requirement. Manual weather can be retained or edited when completing. AI weather is not connected, so that mode requests an explicit weather entry before completion; no substitute weather or modifiers are invented. Legacy journey/roll-matching management is disabled once the chat workflow is initialized. Existing saves, old activity/dice records and journal notes are retained.
+**Journey Settings is configuration only**: weather mode, default leader/watcher, and default Hike outcome requirement. Manual weather can be retained or edited when completing. Phase 6A can propose next-quarter weather, which must be reviewed or entered explicitly before completion; no substitute rules modifiers are invented. Legacy journey/roll-matching management is disabled once the chat workflow is initialized. Existing saves, old activity/dice records and journal notes are retained.
 
 `quarterDayGM()` in `src/server/journey/gm-contract.ts` is the future server integration contract: request a form, read a submitted packet, request information, publish narration and propose a resolution. A proposal has no mechanical effect. The application validates and explicitly commits completion through `/api/journey`. Submitted packets omit raw dice histories and private campaign secrets; React renders all narrative text, never arbitrary AI HTML. No OpenAI calls occur in this workflow.
 
@@ -265,3 +265,60 @@ Storage uses the existing SQLite campaign snapshot and backup format (`session.l
 The future server-side AI adapter can call `proposeLocation(campaignId, candidate, repository)` in `src/server/map/locations.ts`. It validates a structured name/type/hex/status/notes/optional Journal narrative and returns `requiresConfirmation: true` without writing anything. Present that proposal to a player/GM for review, then use the application's confirmed recording action (`POST /api/map/locations`, unique `actionId`, `confirmed: true`). AI adapters must never invoke the confirmed write on their own. Local development intentionally allows any player; enforce authenticated campaign membership/GM permissions at the existing `requireMapAccess` boundary when multiplayer identity is introduced. No OpenAI API is called.
 
 Verification: `npm test`, `npm run typecheck`, `npm run build`, then `npm run test:locations`. The browser test uses an isolated SQLite database and actual map, creates discoveries from both interfaces, checks duplicate prevention, history preservation, names/icons/layer controls, SVG placement while panning/zooming, fog and rumors, Journal links, restart persistence, and mobile width. `npm run test:fog` and `npm run test:quarter` cover the existing exploration and journey workflows.
+
+## Phase 6A: AI Game Master and persistent campaign memory
+
+The existing chat now uses the official `openai` Node SDK and **Responses API**. One bounded, schema-constrained request streams public narration and returns memory/action proposals together; it does not make a separate extraction call after every reply. The application persists both sides of each exchange. No AI calls occur when staging, pushing, displaying, or submitting dice. Quarter-day submission stays deterministic and does not call AI automatically; the explicit **Ask AI GM to review results** button sends the saved manual outcomes once per submission/information-response round; repeated clicks replay the saved reply. Answering an AI information request allows a fresh explicit review. Ordinary chat also includes the current pending quarter-day packet when present.
+
+### First live test
+
+1. Use Node 24+, run `npm ci`, and copy `.env.example` to **`.env.local` inside `ravenland/`**. Set `OPENAI_API_KEY` to your own API key and choose `OPENAI_MODEL` (default `gpt-4.1-mini`, which must support Responses streaming and Structured Outputs). Set `RAVENLAND_AI_MODE=openai`. Never put keys in browser settings, chat, Journal entries, campaign records, screenshots, Git, or public backups.
+2. Generate a separate development review secret, for example with `openssl rand -hex 32`, and set it as `RAVENLAND_GM_REVIEW_TOKEN`. It must be at least 24 characters; leaving it blank disables privileged review. This is **not** the OpenAI API key. The token is entered only in the clearly labeled privileged development review controls and is held in component memory, not campaign data or localStorage.
+3. Restart `npm run dev` (or build/start for production). In **Campaign Settings → AI Game Master**, click **Test Connection**. This sends a small Responses request and shows a sanitized success/failure. The selected model, recent error codes, narration style, autonomy, request attempts, token totals, and optional cost estimates appear here. Prices are not hardcoded: optionally configure per-million input/output USD rates for your selected model in the server environment. Unknown token counts/prices remain unknown, not falsely reported as free.
+4. Choose **Start test conversation in a separate campaign**, confirm, and use the resulting `/campaigns/<id>` page. This explicitly creates an isolated copy of public campaign state and approved/corrected party-known memory. Private memories and API usage are not copied. **Reset test conversation (new copy)** creates another fresh copy from the original source; old test campaigns remain available and the source campaign is preserved. Real API requests in test campaigns are billable.
+5. Speak to the GM in the existing chat, for example establish a promise with a new NPC. Narration streams in the current styling; quoted NPC speech stays within the narrative. Significant facts appear as **Proposed**, not approved history, under **Journal → GM Memory**. If no proposal is warranted, a privileged GM can add one manually and select its source message or Journal entry.
+6. Expand **GM Memory**, enter the development review token, and unlock the **PRIVILEGED DEVELOPMENT GM VIEW**. Review the proposed summary, correct it if needed, and approve it. Search/filter by category, status, and visibility; inspect source references and correction history; archive/reject obsolete proposals or lock canonical facts. Corrections preserve the original Journal and audited memory versions. Locked facts cannot be automatically rewritten by AI proposals; deliberate GM corrections remain available and audited.
+7. Restart the application with the same database, then ask the GM about that NPC or promise. The context assembler retrieves approved/corrected relevant facts from SQLite; memory does not depend on an OpenAI conversation ID or a browser tab staying open.
+8. At the end of a session, use **Journal → Session Recaps → End Session**. Review/edit the draft, review its proposed memories in GM Memory, then **Save recap to Adventure Journal**. This appends one entry, preserves the transcript, and starts the next session boundary. Previously saved recaps can be reopened. Repeating a save or retrying generation does not overwrite previous entries or duplicate a recap for the same session.
+
+Without credentials and without an explicit OpenAI override, the app uses clearly labeled **mock narration** so existing offline workflows still run. `RAVENLAND_AI_MODE=mock` forces it. Mock recap text is explicitly a placeholder, and mock mode never proposes facts pretending to come from an AI. With `RAVENLAND_AI_MODE=openai`, a missing key is an explicit recoverable error. Missing/rejected credentials, quota/rate limits, network failures, interrupted streams, and incomplete/invalid structured responses produce safe messages without returning provider error payloads or key values.
+
+For a cloud workspace, the environment network policy must also allow **`api.openai.com` over HTTPS**. A running workspace alone does not establish that outbound access is allowed. This implementation's verification uses an injected SDK transport and does not require or consume a real API key.
+
+### Authority, privacy and review
+
+`src/server/ai/instructions-v1.ts` is the versioned original GM instruction configuration. Guided and Autonomous Narrative modes differ in fictional initiative, **not** mechanical authority. The model has no SQL, filesystem, shell, image-generation or arbitrary tool access. Character attributes, damage, Willpower, inventory, experience, dice, position, clock, fog and discoveries remain under existing application services. The only proposed application actions are requesting the existing quarter-day form, asking for additional information, publishing a quarter-day narrative, and proposing a resolution. Applying one is explicit and idempotent; a resolution proposal still waits for the existing **Complete quarter-day** control. The application validates the intended adjacent destination again. Unverified rules and failed-roll consequences still require a GM ruling; neither AI mode automates combat, healing, encounters or travel mishaps.
+
+Campaign memory has categories, summaries, character/NPC/hex associations, faction/quest context, active/resolved/historical story state, first/current campaign date/quarter, sources, importance, visibility, revisions, timestamps and proposed/approved/corrected/archived status. Proposals deduplicate by entity and normalized fact content; approved updates keep stable canonical IDs and audited corrections. Semantic deduplication is not claimed. Rejected/archived/proposed records are excluded from authoritative retrieval, and historical narration linked to explicitly rejected public proposals is omitted from new AI context.
+
+**Party Known**, **Character Specific**, and **GM Only** are stored separately from the public Session JSON in `campaign_memories`. Public memory routes return only party-known records. Private views/history/writes require the separate server-validated development token; invalid credentials are rejected. Character selection in the chat is not identity authentication, so **private and character-specific memory is deliberately withheld from all public AI requests**, even in Test Mode. Authenticated private channels and GM-only reasoning can be added later. Never rely on a prompt alone to keep private context out of a public model response. Reclassification does not retract information already published in public chat or Journal text.
+
+The existing image library is player-visible. AI receives only metadata explicitly shared through the **Privileged development scene image sharing** controls in AI Settings. Images default to unshared, and a returned image ID is checked again against the campaign's shared library before display. No image files or paid image generation are sent to OpenAI; only the allowlisted metadata is offered for scene selection. Do not store secret GM art in the current player-visible library; private image authorization is future multiplayer work.
+
+### Context, reliability and storage
+
+`assembleContext` always includes current campaign/party state and selects a bounded set of approved/corrected memories using importance, current hex, active quests/threats, mentioned names/factions and keywords. It includes only a small recent chat window and selected public Journal excerpts, not the entire campaign database. Context size is bounded; session recaps retain at most 60 recent non-form messages, 15 new Journal entries and 12 day records and explicitly count omissions. The underlying transcript is preserved; long sessions can be reviewed in the Journal. Responses input is explicit application JSON with versioned instructions, `store:false`, and no global/shared OpenAI conversation. The memory repository interface leaves room for PostgreSQL and semantic retrieval later.
+
+Settings can preview public context and inspect the saved context for a request. Ordinary views redact memory records that have since been reclassified private; the privileged development gate is required to inspect those historical records. Usage records include failed attempts with unknown usage where the provider supplied no counts. Response limits and timeouts are server-configured; SDK automatic retries are disabled to avoid hidden extra calls. Errors expose fixed, sanitized messages, never raw SDK bodies. Tokens/costs are estimates when available; configured flat input/output rates do not include taxes, discounts or other provider billing details.
+
+A stable request UUID owns the player message, assistant reply, memory proposals and receipts. Retrying a failed turn uses that UUID; completed turns replay their saved reply. Concurrent duplicate turns are rejected, and campaign-wide single-flight checks prevent overlapping AI turns. Expired attempts cannot overwrite a newer completed reply. If the server stops mid-request, allow the 150-second lease to expire, then use **Retry GM response** or Settings → Request recovery; a provider may have billed an interrupted attempt even if the response was not saved. Local requests continue persisting after a browser disconnect when the server remains running. Production deployments will need durable background execution for stronger completion guarantees.
+
+Migration **009** adds AI configuration, memory, audited history, request/usage receipts, recaps and image sharing tables without replacing existing campaign data. JSON campaign export remains a **public snapshot**: it does not include these separate AI/private tables, credential values or usage. For complete backups, stop the application and back up the SQLite database (or use SQLite's supported online backup tooling), plus the existing persistent image directory. Do not copy only the live main database file while WAL writes may be pending.
+
+The current development token is a temporary privileged local gate, not multiplayer authentication. Before hosting, add authenticated campaign membership/GM roles, character ownership/private channels, per-user rate/budget limits, durable request workers, and shared persistent database/object storage. Do not expose the unauthenticated local prototype directly to the public internet.
+
+### Phase 6A verification
+
+```sh
+npm test
+npm run typecheck
+npm run build
+npm run test:ai
+npm run test:persistence
+npm run test:quarter
+npm run test:dice-repair
+npm run test:fog
+npm run test:locations
+```
+
+Tests isolate their databases and use controlled responses through the **official SDK**. They cover streaming, connection checks, missing/invalid credentials, rate limits, usage, duplicate requests, restart recall, memory approvals/rejections/corrections/locks, private-data filtering, recap saving, test campaign isolation, migration safety, and existing game features. `tests/fixtures/ai-provider-preload.mjs` is installed only by the isolated browser test via `NODE_OPTIONS`; production has no test endpoint or alternate-provider configuration. No real OpenAI requests are made by automated checks. The first live connection must be performed locally with your own key and allowed outbound network access.

@@ -1,0 +1,18 @@
+// Test-only transport installed through NODE_OPTIONS in an isolated test server.
+// Production application code has no alternate endpoint or fake-provider switch.
+import {appendFileSync} from 'node:fs';
+const nativeFetch=globalThis.fetch,attempts=new Map();
+globalThis.fetch=async function(input,init){const url=typeof input==='string'?input:input instanceof URL?input.href:input.url;if(!url.startsWith('https://api.openai.com/'))return nativeFetch(input,init);
+ const body=JSON.parse(init?.body??'{}');if(process.env.RAVENLAND_AI_FIXTURE_LOG)appendFileSync(process.env.RAVENLAND_AI_FIXTURE_LOG,JSON.stringify({model:body.model,input:body.input,stream:!!body.stream,store:body.store})+'\n');
+ if(!body.stream)return new Response(JSON.stringify({id:'resp_test_connection',status:'completed',model:body.model,output:[],usage:{input_tokens:4,output_tokens:1}}),{headers:{'Content-Type':'application/json'}});
+ const value=JSON.parse(body.input),action=value.playerAction??'',context=value.context,first=!(attempts.get(action)??0);attempts.set(action,(attempts.get(action)??0)+1);
+ if(action==='simulate rate limit'&&first)return new Response(JSON.stringify({error:{message:'TEST_API_KEY must never be returned to the browser',type:'rate_limit_error'}}),{status:429,headers:{'Content-Type':'application/json'}});
+ const remembered=context.memories?.find(m=>m.title==='Promise at the ferry');
+ let narration=value.kind==='recap'?'The party met Mara at the ferry and remembered her promise. A sealed letter remains undelivered.':remembered?'Mara remembers: '+remembered.summary:'The lantern sways. Mara offers a dawn crossing, her weathered hand resting on the ferry rope.';
+ const proposals=[];const base={category:'Relationship',title:'Promise at the ferry',summary:'Mara promised safe passage at dawn.',characterIds:[],npcIds:['mara-ferryman'],hexIds:[context.campaign.hex],faction:'River Wardens',quest:'Cross the river',visibility:'Party Known',importance:4,storyState:'active',targetMemoryId:null};
+ if(/establish/i.test(action)){proposals.push(base,{...base,category:'Secret',title:'AI_PRIVATE_PROPOSAL',summary:'AI-only proposed offscreen secret.',visibility:'GM Only'})}
+ if(value.kind==='recap')proposals.push({...base,category:'Unresolved Story Thread',title:'Deliver the sealed letter',summary:'The party still owes delivery of a sealed letter.'});
+ const actions=value.kind==='quarter'?[{type:'propose_quarter_resolution',entryId:context.quarterDay.entryId,text:'Review this stationary outcome.',resolution:{endingHex:context.quarterDay.from,quarterDays:1,nextWeather:'Mist',adjudication:'Player or GM ruling is still required.',narrative:'The party rests.'}}]:[];
+ const output={narration,memoryProposals:proposals,actions,selectedImageId:context.sceneImages?.[0]?.id??null},text=JSON.stringify(output),encoder=new TextEncoder();
+ const stream=new ReadableStream({async start(controller){const emit=e=>controller.enqueue(encoder.encode('data: '+JSON.stringify(e)+'\n\n'));emit({type:'response.output_text.delta',delta:text.slice(0,36)});await new Promise(r=>setTimeout(r,action==='sheet-in-flight'?4000:450));for(let i=36;i<text.length;i+=40)emit({type:'response.output_text.delta',delta:text.slice(i,i+40)});emit({type:'response.completed',response:{id:'resp_fixture',status:'completed',model:body.model,usage:{input_tokens:120,output_tokens:80}}});controller.close()}});return new Response(stream,{headers:{'Content-Type':'text/event-stream'}})
+};

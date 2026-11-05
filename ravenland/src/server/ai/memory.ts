@@ -1,0 +1,49 @@
+import {createHash,randomUUID} from 'node:crypto';
+import {memoryContentSchema,type Memory,type MemoryContent} from '../../lib/ai/schema';
+import type {SqliteCampaignRepository} from '../sqlite';
+import {AIError} from './config';
+interface Row {id:string;campaign_id:string;entity_key:string;data:string;visibility:Memory['visibility'];status:Memory['status'];importance:number;locked:number;revision:number;target_memory_id:string|null;target_revision:number|null;proposal_hash:string|null;created_at:string;updated_at:string}
+export interface MemoryRepository {list(campaignId:string,privileged?:boolean):Memory[];get(campaignId:string,id:string,privileged?:boolean):Memory|null;retrieve(campaignId:string,query:string,hex:string):Memory[]}
+const normalize=(s:string)=>s.normalize('NFKC').toLowerCase().replace(/\s+/g,' ').trim();
+const entityKey=(m:MemoryContent)=>JSON.stringify([m.category,normalize(m.title),m.visibility,[...m.characterIds].sort()]);
+export class SqliteMemoryRepository implements MemoryRepository {
+ constructor(readonly repo:SqliteCampaignRepository){}
+ private decode(r:Row):Memory{return {...JSON.parse(r.data),id:r.id,campaignId:r.campaign_id,visibility:r.visibility,status:r.status,importance:r.importance,locked:!!r.locked,revision:r.revision,targetMemoryId:r.target_memory_id,createdAt:r.created_at,updatedAt:r.updated_at}}
+ private row(campaignId:string,id:string){return this.repo.db.prepare('SELECT * FROM campaign_memories WHERE campaign_id=? AND id=?').get(campaignId,id) as Row|undefined}
+ get(campaignId:string,id:string,privileged=false){const r=this.row(campaignId,id);return r&&(privileged||r.visibility==='Party Known')?this.decode(r):null}
+ list(campaignId:string,privileged=false){return (this.repo.db.prepare("SELECT * FROM campaign_memories WHERE campaign_id=? AND (?=1 OR visibility='Party Known') ORDER BY updated_at DESC,id LIMIT 1000").all(campaignId,privileged?1:0) as unknown as Row[]).map(r=>this.decode(r))}
+ private validate(campaignId:string,raw:unknown){const data=memoryContentSchema.parse(raw),s=this.repo.get(campaignId)?.session;if(!s)throw new AIError('not_found','Campaign not found',404);if(data.characterIds.some(id=>!s.characters.some(c=>c.id===id)))throw new AIError('memory_reference','Memory references an unknown party member');if(data.visibility==='Character Specific'&&!data.characterIds.length)throw new AIError('memory_reference','Character-specific memory needs at least one character');if(data.hexIds.some(id=>!this.repo.db.prepare('SELECT 1 FROM geography_hexes WHERE coordinate=?').get(id)))throw new AIError('memory_reference','Memory references an unknown canonical hex');return data}
+ private audit(id:string,campaignId:string,reason:string){const row=this.row(campaignId,id);if(row)this.repo.db.prepare('INSERT INTO memory_history VALUES (?,?,?,?,?,?)').run(randomUUID(),id,campaignId,JSON.stringify(this.decode(row)),reason,new Date().toISOString())}
+ // Called inside the owning turn transaction; proposals can never rewrite facts.
+ propose(campaignId:string,raw:unknown,source:Memory['source'],targetId:string|null=null){const m=this.validate(campaignId,raw),s=this.repo.get(campaignId)!.session,key=entityKey(m);let target=targetId?this.row(campaignId,targetId):undefined;if(target&&target.visibility!==m.visibility)throw new AIError('visibility','AI proposals cannot change the visibility of existing facts');if(targetId&&!target)throw new AIError('memory_reference','Target memory not found');if(!target)target=this.repo.db.prepare("SELECT * FROM campaign_memories WHERE campaign_id=? AND entity_key=? AND status IN ('approved','corrected')").get(campaignId,key) as Row|undefined;
+  if(target?.locked)return null;
+  if(target&&normalize(this.decode(target).summary)===normalize(m.summary))return null;
+  const hash=createHash('sha256').update(JSON.stringify([target?.id??null,key,normalize(m.summary),[...m.hexIds].sort(),m.storyState])).digest('hex');
+  const prior=this.repo.db.prepare('SELECT id FROM campaign_memories WHERE campaign_id=? AND proposal_hash=?').get(campaignId,hash) as {id:string}|undefined;if(prior)return this.get(campaignId,prior.id,true);
+  const id=randomUUID(),now=new Date().toISOString(),data={...m,day:s.campaign.date,quarter:s.campaign.quarter,source};
+  this.repo.db.prepare('INSERT INTO campaign_memories VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)').run(id,campaignId,key,JSON.stringify(data),m.visibility,'proposed',m.importance,0,1,target?.id??null,target?.revision??null,hash,now,now);
+  this.audit(id,campaignId,'Proposed; not authoritative');return this.get(campaignId,id,true);
+ }
+ proposeManual(campaignId:string,content:MemoryContent,source:Memory['source']){const db=this.repo.db;db.exec('BEGIN IMMEDIATE');try{const result=this.propose(campaignId,content,source);db.exec('COMMIT');return result}catch(e){db.exec('ROLLBACK');throw e}}
+ review(campaignId:string,id:string,revision:number,operation:'approve'|'reject'|'archive'|'edit'|'lock',reason:string,content?:MemoryContent,locked?:boolean){const db=this.repo.db;db.exec('BEGIN IMMEDIATE');try{const row=this.row(campaignId,id);if(!row)throw new AIError('not_found','Memory not found',404);if(row.revision!==revision)throw new AIError('conflict','Memory changed. Reload before reviewing.',409);if(!reason.trim())throw new AIError('reason','Explain this correction or review decision');const now=new Date().toISOString();this.audit(id,campaignId,reason);
+  if(operation==='approve'){
+   if(row.status!=='proposed')throw new AIError('memory_status','Only proposed memories can be approved');
+   if(row.target_memory_id){const target=this.row(campaignId,row.target_memory_id);if(!target||target.locked||target.revision!==row.target_revision)throw new AIError('locked','The target is locked or changed; correct and review the proposal again.',409);this.audit(target.id,campaignId,'Approved correction: '+reason);const next={...JSON.parse(row.data),source:JSON.parse(row.data).source};db.prepare("UPDATE campaign_memories SET data=?,entity_key=?,visibility=?,importance=?,status='corrected',revision=revision+1,updated_at=? WHERE id=?").run(JSON.stringify(next),row.entity_key,row.visibility,row.importance,now,target.id);db.prepare("UPDATE campaign_memories SET status='archived',revision=revision+1,updated_at=? WHERE id=?").run(now,id)}
+   else{const duplicate=db.prepare("SELECT id FROM campaign_memories WHERE campaign_id=? AND entity_key=? AND status IN ('approved','corrected')").get(campaignId,row.entity_key);if(duplicate)throw new AIError('duplicate','An approved fact already exists. Correct that record instead.',409);db.prepare("UPDATE campaign_memories SET status='approved',revision=revision+1,updated_at=? WHERE id=?").run(now,id)}
+  }else if(operation==='edit'){
+   const data=this.validate(campaignId,content),prior=JSON.parse(row.data),target=row.target_memory_id?this.row(campaignId,row.target_memory_id):undefined;
+   const collision=db.prepare("SELECT id FROM campaign_memories WHERE campaign_id=? AND entity_key=? AND id<>? AND status IN ('approved','corrected')").get(campaignId,entityKey(data),id);if(collision&&row.status!=='proposed')throw new AIError('duplicate','This canonical fact already exists.',409);
+   db.prepare('UPDATE campaign_memories SET data=?,entity_key=?,visibility=?,importance=?,status=?,proposal_hash=NULL,target_revision=?,revision=revision+1,updated_at=? WHERE id=?').run(JSON.stringify({...prior,...data}),entityKey(data),data.visibility,data.importance,['approved','corrected'].includes(row.status)?'corrected':row.status,target?.revision??null,now,id);
+  }else if(operation==='lock'){db.prepare('UPDATE campaign_memories SET locked=?,revision=revision+1,updated_at=? WHERE id=?').run(locked?1:0,now,id)}
+  else if(operation==='reject')db.prepare("UPDATE campaign_memories SET data=?,status='archived',revision=revision+1,updated_at=? WHERE id=?").run(JSON.stringify({...JSON.parse(row.data),decision:'rejected'}),now,id);
+  else db.prepare("UPDATE campaign_memories SET status='archived',revision=revision+1,updated_at=? WHERE id=?").run(now,id);
+  this.audit(id,campaignId,operation==='reject'?'Rejected proposal: '+reason:'After '+operation+': '+reason);db.exec('COMMIT');return this.get(campaignId,id,true)!;
+ }catch(e){db.exec('ROLLBACK');throw e}}
+ history(campaignId:string,id:string){return this.repo.db.prepare('SELECT snapshot,reason,created_at AS createdAt FROM memory_history WHERE campaign_id=? AND memory_id=? ORDER BY created_at,id').all(campaignId,id).map(r=>({...r,snapshot:JSON.parse(r.snapshot as string)}))}
+ retrieve(campaignId:string,query:string,hex:string){const tokens=[...new Set(normalize(query).match(/[\p{L}\p{N}]{3,}/gu)??[])].filter(t=>!['the','and','what','did','does','with','that','this','our','party','remember'].includes(t)).slice(0,12),db=this.repo.db;
+  const base=db.prepare("SELECT * FROM campaign_memories WHERE campaign_id=? AND visibility='Party Known' AND status IN ('approved','corrected') ORDER BY importance DESC,updated_at DESC LIMIT 100").all(campaignId) as unknown as Row[];
+  const search=[...tokens,hex],matched=db.prepare("SELECT * FROM campaign_memories WHERE campaign_id=? AND visibility='Party Known' AND status IN ('approved','corrected') AND ("+search.map(()=>"data LIKE ?").join(' OR ')+") ORDER BY updated_at DESC LIMIT 100").all(campaignId,...search.map(t=>'%'+t+'%')) as unknown as Row[];
+  const rows=[...new Map([...base,...matched].map(r=>[r.id,r])).values()];
+  return rows.map(r=>{const m=this.decode(r),hay=normalize([m.title,m.summary,m.faction,m.quest,...m.npcIds].join(' '));return {m,score:m.importance*3+(m.importance===5?100:0)+(m.hexIds.includes(hex)?35:0)+(m.storyState==='active'&&['Quest','Unresolved Story Thread'].includes(m.category)?25:0)+tokens.filter(t=>hay.includes(t)).length*8}}).sort((a,b)=>b.score-a.score||b.m.updatedAt.localeCompare(a.m.updatedAt)).slice(0,12).map(({m})=>m)
+ }
+}

@@ -25,13 +25,15 @@
     "test:portraits": "node tests/portrait-browser.cjs",
     "test:groups": "tsx --test tests/group-dice.test.ts",
     "test:library": "node tests/library-browser.cjs",
-    "test:locations": "node tests/locations-browser.cjs"
+    "test:locations": "node tests/locations-browser.cjs",
+    "test:ai": "node tests/ai-browser.cjs"
   },
   "dependencies": {
     "exceljs": "^4.4.0",
     "jszip": "^3.10.2",
     "lucide-react": "^0.468.0",
     "next": "^16.0.0",
+    "openai": "^7.52.0",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
     "sharp": "^0.35.5",
