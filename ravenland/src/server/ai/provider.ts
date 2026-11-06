@@ -4,7 +4,7 @@ import {gmOutputSchema,type GMOutput} from '../../lib/ai/schema';
 import {narrationPrefix} from '../../lib/ai/stream';
 import {AIError,serverAIConfig} from './config';
 import {gmInstructions,instructionVersion} from './instructions-v1';
-export interface ProviderResult {output:GMOutput;inputTokens:number|null;outputTokens:number|null;model:string;provider:'openai'|'mock'}
+export interface ProviderResult {output:GMOutput;inputTokens:number|null;outputTokens:number|null;model:string;provider:'openai'|'mock'|'application'}
 export interface GMProvider {generate(input:unknown,settings:{style:string;autonomy:string},onText:(text:string)=>void):Promise<ProviderResult>;test():Promise<{inputTokens:number|null;outputTokens:number|null;model:string}>}
 // Tests inject an SDK client/fetch transport; production uses only OPENAI_API_KEY
 // and the official API endpoint. There is no browser-controlled base URL.
