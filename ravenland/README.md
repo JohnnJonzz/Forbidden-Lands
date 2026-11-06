@@ -390,3 +390,67 @@ The focused unit tests cover defaults, persistence, reset, input validation, con
 For manual verification, launch `npm run dev`, unlock the editor, append a harmless preference such as “Use shorter NPC dialogue,” and save. Refresh, unlock again, and confirm it remains. Send a new action and inspect the next reply with your configured model; this is a normal metered API request. Restart the server and verify the saved text. Ask “Who is Titus the Halfling?” in a campaign without Titus evidence; then separately request a new Titus introduction. Recall the approved Orvik ring/bridge/promise facts. Finally test Revert and confirmed Restore Defaults, and verify the editor cannot be read or changed without the token.
 
 This phase does not add rules/adventure ingestion, retrieval, autonomous mechanical execution, production authentication, or multiplayer hosting. Existing manual canon review remains in place. Deterministic tests establish wiring and guards, not a guarantee of live-model narrative quality or perfect natural-language recall classification. Phase 6B remains unimplemented.
+
+## Phase 6B.1: local Sourcebook Knowledge Library
+
+Open **Campaign Settings → Sourcebook Library**, enter the existing development GM review token, and choose **Unlock Sourcebook Library**. Select a text-based PDF, give it a title/category, choose visibility, then **Upload and Index**. Upload progress is shown as a percentage; indexing status and processed/total physical PDF pages appear on the document card. Files default to **GM Only**. Failed documents remain listed with a safe error and **Retry indexing**; textless PDFs explicitly require external OCR. Password-protected documents are not supported.
+
+Each campaign has its own library. Documents show their original filename, title, size, upload time in America/Chicago, PDF page count, status, category, and visibility. Expand **Classification and document actions** to change title/category/visibility, reindex, or confirm deletion. Identical PDF bytes uploaded again in the same campaign reuse the existing document and preserve its current classification; use Save classification to change it. Concurrent indexing and stale classification/deletion requests are rejected. If a server is interrupted during indexing, after four minutes the abandoned status becomes Failed and can be retried. Existing Indexed documents remain searchable through refresh/restart. AI test campaign copies do not automatically grant access to the original campaign's document library.
+
+Use **Search sourcebooks** and optional category/title filters, then **Search indexed content**. FTS5 ranks matching passages and handles punctuation and multiword terms safely. Each result includes the actual uploaded title and **physical PDF page** (cover = PDF p. 1). **Read surrounding context** expands neighboring chunks, including their page references. These are PDF indices, not inferred printed page numbers. Extraction preserves page order and line breaks where possible, but complex tables, columns, lists and unusual fonts can lose layout; verify the PDF when precision matters. Search is local and makes no AI or embedding calls.
+
+### Storage and database
+
+The maintained dependency **`pdfjs-dist` 6.5.438** (Mozilla PDF.js, plus its locked transitive/optional packages) handles server-side text extraction. A separate Node process reads the PDF locally, page by page, without rendering or executing PDF actions. It has a three-minute timeout, a 384 MB JavaScript heap limit, and caps of 2,000 pages, 200,000 extracted characters per page and 30 million characters per document. The upload request streams to a temporary file, enforces the byte limit even without Content-Length, checks PDF header/trailer and hashes the file; full PDF parsing validates its structure before it becomes Indexed. Extraction failures never publish partially indexed passages to search.
+
+PDFs are stored under `data/sourcebooks/` by default, next to the configured SQLite database, with generated UUID filenames and private file permissions. This is outside `public/`, ignored by Git through the existing `data/` rule, and survives application restarts on this development workspace. No public PDF download endpoint is provided. Original filenames are display metadata only; paths, traversal and symlinked document files are rejected. `SourcebookStorage` abstracts streaming writes, local extraction staging and deletion so a future cloud-object adapter can replace local disk. Cloud storage is not implemented. Use a durable mounted directory for another hosting environment; stateless/ephemeral deployments are not suitable.
+
+Optional server configuration (also documented in `.env.example`):
+
+```dotenv
+# Default is sourcebooks/ beside RAVENLAND_DB_PATH. Must be outside public/.
+# RAVENLAND_SOURCEBOOK_DIR=/absolute/persistent/private/sourcebooks
+RAVENLAND_SOURCEBOOK_MAX_MB=64
+RAVENLAND_RULES_MAX_CHUNKS=4
+RAVENLAND_RULES_TOKEN_BUDGET=3000
+```
+
+Upload size is configurable within 1–256 MB. Retrieval allows 1–6 chunks and an estimated 500–4,000-token budget. Keep a custom storage directory outside version control. Back up **both SQLite and the private sourcebook directory** together; player campaign JSON backups intentionally contain neither private library metadata nor PDF text/files. No source PDFs or extracted copyrighted material are committed to Git.
+
+Migration **011_sourcebook_library.sql** adds `source_documents` (campaign-scoped metadata, content hash, portable storage key, classification, progress, status/error and revision), `source_chunks` (IDs, sequence, text, optional heading and physical start/end pages), and the FTS5 `source_search` index. Insert/update/delete triggers synchronize FTS; deleting a document cascades through chunks and index entries. Reindex replaces chunks rather than duplicating them. It never updates existing campaign snapshots, approved memories, recaps, AI instruction settings, geography or character sheets. Use `npm run db:migrate` or normal app startup. FTS5 is required; the migrator reports a clear requirement if the SQLite runtime lacks it. The supported Node 24 runtime includes FTS5.
+
+### AI retrieval and security
+
+The existing chat request pipeline detects likely rules questions locally, searches authorized passages with SQLite FTS5, ranks matches, applies a minimum keyword-coverage check, skips adjacent overlapping chunks, and applies the configured chunk/token budget. Chunks remain within a physical page, target about 2,400 characters with roughly 220-character overlap, and prefer line/word boundaries. Retrieved passages carry document/chunk IDs, title and page indices. Whole PDFs are never sent to OpenAI. No model call is added for classification or search.
+
+**Automatic player-facing retrieval uses only Indexed documents explicitly classified Public Rules in Rules, Bestiary or House Rules.** GM Only documents and all Adventure, Campaign Reference and Other documents are excluded at the database query boundary, even if the request includes the GM token or asks for hidden text. Public Rules applies to the entire uploaded file, so only classify a file public when all of its contents are suitable for players. Adventure-internal retrieval and secrecy rules are deferred to Phase 6B.2.
+
+Protected application instructions, private editable GM behavior, campaign state/approved memory, sourcebook reference passages, history and the player message remain separate. Source text is untrusted reference data, cannot override instructions or authorize mechanical actions, and is not an automatic source of campaign canon. Existing memory evidence/review requirements remain in force. Recap and quarter-day requests do not automatically retrieve rules in this phase. If a likely rules question has no sufficiently matching authorized passage, an application-labeled uncertainty answer is saved with no official citation and no paid call; it explicitly identifies any table ruling as provisional. Other narrative chat and approved-memory recall continue through their existing paths.
+
+AI replies attach **server-selected structured reference metadata** for retrieved passages, displayed under the normal chat reply as `Source: <actual title>, PDF p. <physical page>`. The model is instructed to ground its rules explanation and cite only these sources. These metadata identify retrieved references, not a proof that every sentence is supported. Model-generated prose is still fallible. Saved request context previews recheck current public visibility before returning raw passages if a document is subsequently made private or deleted; already published public chat is historical information and is not erased by changing classification.
+
+All management, list, unrestricted search and surrounding-context operations use **`/api/sourcebooks`**, require `x-ravenland-gm-token` on every request, and return private/no-store responses. Upload, reindex, classify and confirmed deletion are server-authorized. JSON mutations and raw streaming uploads validate same-origin requests. The token uses existing `RAVENLAND_GM_REVIEW_TOKEN` (at least 24 characters); it is not stored in browser localStorage. Locking or closing Settings clears the library view. This remains a development gate, not multiplayer authentication.
+
+Retrieved-context use, chunk count and approximate tokens are saved with the request/reply and displayed with references. The token estimate uses UTF-8 byte length divided by three plus a per-passage allowance; it is deliberately approximate, not model-tokenizer accounting or measured savings. Existing OpenAI usage/cost tracking records actual API token counts normally. Longer passages add input-token cost to that one existing request. Unknown rules can be answered by the deterministic guard without an API call; searches, indexing and library administration make no paid calls.
+
+### Verification and manual checks
+
+```bash
+npm test
+npm run typecheck
+npm run build
+npm run test:sourcebooks
+npm run test:ai
+npm run test:ai-instructions
+npm run test:persistence
+npm run test:quarter
+npm run test:dice-repair
+```
+
+Tests use original synthetic PDFs, temporary databases/private storage, and a test-only fake official-SDK transport. They cover multi-page upload/extraction and physical citations; all example search terms; malformed/blank/OCR/oversize/path handling; authorization on library operations; cross-campaign, category and visibility restrictions; context budgets; failed-document retry; duplicate-free reindex; cascading file/chunk/search deletion; restart persistence; one-request AI retrieval and unknown-rule uncertainty; and existing AI, instructions, memory, recap, campaign, character/dice and quarter-day features. No paid API calls or live campaign-memory changes are required. No lint script is configured.
+
+For a manual check, run `npm run dev`, unlock the library and upload a small text-based PDF as GM Only. Search a known term and confirm PDF page indices against the file. Ask a rules question in the main chat: the private file must not be used. Explicitly classify an appropriate Rules document as Public Rules, ask again and inspect references/context-token estimate. With OpenAI enabled, this second question uses one normal metered request. Try an unknown rule, refresh and restart the server, reindex, then cancel and confirm deletion. Confirm the prior campaign, editable GM instructions, approved Orvik memory and session recaps are still present.
+
+Known limits: local keyword intent/relevance heuristics can miss paraphrases or match irrelevant material; no semantic retrieval, embeddings or OCR. PDF layout extraction is imperfect. Model grounding still needs verification. Interrupted uploads can leave an unreferenced `.tmp` file after a hard process kill; partial indexing is never searched, and interrupted processing can be retried. This local Node implementation is not a durable distributed job queue. Phase 6B.2 adventure access, Phase 6B.3 retrieval improvements, autonomous mechanics and multiplayer hosting are not implemented.
+
+Implementation files: `src/lib/sourcebooks/schema.ts`; `src/server/sourcebooks/{storage,extract,library,retrieval}.ts`; `scripts/extract-sourcebook.mjs`; migration 011; `src/app/api/sourcebooks/route.ts`; `src/components/sourcebook-library.tsx` mounted in the existing Settings panel and styled in `globals.css`; AI request, reply-reference and saved-context integration in `service.ts`, `instructions-v1.ts`, `schema.ts`, `ai-reply-actions.tsx`, and the context endpoint; the SQLite migrator's FTS5 diagnostic; environment/package/lock configuration; and focused sourcebook unit/browser tests, synthetic PDF generator and SDK fixture updates. Existing migration-count tests now expect eleven migrations.

@@ -27,7 +27,8 @@
     "test:library": "node tests/library-browser.cjs",
     "test:locations": "node tests/locations-browser.cjs",
     "test:ai": "node tests/ai-browser.cjs",
-    "test:ai-instructions": "node tests/ai-instructions-browser.cjs"
+    "test:ai-instructions": "node tests/ai-instructions-browser.cjs",
+    "test:sourcebooks": "node tests/sourcebooks-browser.cjs"
   },
   "dependencies": {
     "exceljs": "^4.4.0",
@@ -35,6 +36,7 @@
     "lucide-react": "^0.468.0",
     "next": "^16.0.0",
     "openai": "^7.52.0",
+    "pdfjs-dist": "6.5.438",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
     "sharp": "^0.35.5",

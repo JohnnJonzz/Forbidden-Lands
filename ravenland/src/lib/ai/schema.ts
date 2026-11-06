@@ -1,3 +1,4 @@
+import type {SourceCitation} from '../sourcebooks/schema';
 import {z} from 'zod';
 export const memoryCategories=['NPC','Location','Quest','Faction','Relationship','Discovery','Significant Event','Rumor','Secret','Unresolved Story Thread'] as const;
 export const visibilities=['Party Known','Character Specific','GM Only'] as const;
@@ -22,5 +23,5 @@ export const gmOutputSchema=z.object({narration:z.string().min(1).max(18000),mem
 export type GMOutput=z.infer<typeof gmOutputSchema>;
 export const gmTurnSchema=z.object({campaignId:z.string().uuid(),requestId:z.string().uuid(),kind:z.enum(['chat','quarter','recap']),action:z.string().trim().max(3000).default(''),characterId:z.string().max(100).default(''),entryId:z.string().uuid().optional()}).strict().refine(v=>v.kind!=='chat'||!!v.action&&!!v.characterId,'Choose a character and enter an action').refine(v=>v.kind!=='quarter'||!!v.entryId,'Quarter-day entry required');
 export type GMTurn=z.infer<typeof gmTurnSchema>;
-export interface AIReply {requestId:string;provider:'openai'|'mock'|'application';narration:string;actions:GMOutput['actions'];selectedImageId:string|null;partyProposals:number;recapId?:string;replayed?:boolean}
+export interface AIReply {sources?:SourceCitation[];retrieval?:{used:boolean;chunks:number;estimatedTokens:number};requestId:string;provider:'openai'|'mock'|'application';narration:string;actions:GMOutput['actions'];selectedImageId:string|null;partyProposals:number;recapId?:string;replayed?:boolean}
 export type GMStreamEvent={type:'text';text:string}|{type:'done';reply:AIReply}|{type:'error';error:string;code:string};

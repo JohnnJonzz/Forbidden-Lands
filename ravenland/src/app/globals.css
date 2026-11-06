@@ -48,3 +48,12 @@ button.party-member{width:100%;padding:4px 0;border:0;background:transparent;tex
 .gm-instructions-editor { margin: 1.25rem 0; padding: 1rem 0; border-top: 1px solid var(--border, #5b503d); border-bottom: 1px solid var(--border, #5b503d); }
 .gm-instructions-editor textarea { width: 100%; min-height: 25rem; resize: vertical; line-height: 1.55; }
 .gm-instruction-actions { display: flex; flex-wrap: wrap; gap: .5rem; }
+
+.sourcebook-library { border-top: 1px solid #5b503d; padding-top: 1rem; margin: 1rem 0; }
+.source-fields { display: grid; grid-template-columns: repeat(auto-fit,minmax(min(100%,180px),1fr)); gap: .75rem; }
+.source-document, .source-passage { border: 1px solid #5b503d; padding: .8rem; margin: .75rem 0; border-radius: .3rem; overflow-wrap: anywhere; }
+.source-document h5 { font-size: 1.05rem; color: #cfb36d; }
+.source-actions { display: flex; gap: .5rem; flex-wrap: wrap; margin-top: .6rem; }
+.source-passage pre { white-space: pre-wrap; font: inherit; line-height: 1.55; max-height: 24rem; overflow-y: auto; }
+.sourcebook-library progress { display:block; width:100%; accent-color:#b49851; }
+.rule-references { border-left: 2px solid #b49851; padding-left: .75rem; font-size: .85rem; }

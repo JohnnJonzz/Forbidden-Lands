@@ -9,6 +9,7 @@ globalThis.fetch=async function(input,init){const url=typeof input==='string'?in
  if(action==='simulate rate limit'&&first)return new Response(JSON.stringify({error:{message:'TEST_API_KEY must never be returned to the browser',type:'rate_limit_error'}}),{status:429,headers:{'Content-Type':'application/json'}});
  const remembered=context.memories?.find(m=>m.title==='Promise at the ferry');
  let narration=value.kind==='recap'?'The party met Mara at the ferry and remembered her promise. A sealed letter remains undelivered.':remembered?'Mara remembers: '+remembered.summary:'The lantern sways. Mara offers a dawn crossing, her weathered hand resting on the ferry rope.';
+ if(context.rules?.used){const source=context.rules.passages[0];narration='The supplied reference says: '+source.text+' Source: '+source.title+', PDF p. '+source.startPage;}
  if(action==='Introduce a new halfling NPC named Titus.')narration='Titus, a new halfling wayfarer, pauses by the clearing and offers a cautious greeting.';
  const behavior=Array.isArray(body.input)?body.input.find(m=>m.role==='developer')?.content[0].text??'':'';if(behavior.includes('TEST_PREFERENCE: Begin narration with Ravenwatch.'))narration='Ravenwatch. '+narration;
  const proposals=[];const base={category:'Relationship',title:'Promise at the ferry',summary:'Mara promised safe passage at dawn.',characterIds:[],npcIds:['mara-ferryman'],hexIds:[context.campaign.hex],faction:'River Wardens',quest:'Cross the river',visibility:'Party Known',importance:4,storyState:'active',targetMemoryId:null,evidence:null};
