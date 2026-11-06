@@ -26,7 +26,8 @@
     "test:groups": "tsx --test tests/group-dice.test.ts",
     "test:library": "node tests/library-browser.cjs",
     "test:locations": "node tests/locations-browser.cjs",
-    "test:ai": "node tests/ai-browser.cjs"
+    "test:ai": "node tests/ai-browser.cjs",
+    "test:ai-instructions": "node tests/ai-instructions-browser.cjs"
   },
   "dependencies": {
     "exceljs": "^4.4.0",

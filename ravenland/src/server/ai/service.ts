@@ -1,3 +1,4 @@
+import {readGMInstructions} from './instructions';
 import {validateAutomaticEvidence} from './evidence';
 import {createHash,randomUUID} from 'node:crypto';
 import {gmTurnSchema,type GMTurn,type AIReply,type GMStreamEvent,type GMOutput} from '../../lib/ai/schema';
@@ -37,7 +38,7 @@ export class AIService {
   const model=serverAIConfig();if(c.kind==='chat'&&context.recall.mode==='historical_recall'&&!context.recall.hasEvidence){const narration="I don't have enough established campaign evidence to answer that reliably. I won't invent an earlier promise or relationship.";result={provider:'application',model:'canon-guard-v1',inputTokens:0,outputTokens:0,output:{narration,memoryProposals:[],actions:[],selectedImageId:null}};emit({type:'text',text:narration})}else if(model.provider==='mock'){
    const character=start.session.characters.find(ch=>ch.id===c.characterId)?.name??'The party';const narration=c.kind==='recap'?`Mock recap · ${start.session.campaign.date}: Review the recorded session events and add your own summary. No AI API was called.`:mockGameMaster.respond(c.action||'Review the submitted quarter-day activities',character);
    result={provider:'mock',model:'mock',inputTokens:0,outputTokens:0,output:{narration,memoryProposals:[],actions:[],selectedImageId:null}};emit({type:'text',text:narration});
-  }else result=await this.provider.generate({kind:c.kind,context,playerAction:c.action,actingCharacterId:c.characterId},config.settings,text=>emit({type:'text',text}));
+  }else result=await this.provider.generate({kind:c.kind,context,playerAction:c.action,actingCharacterId:c.characterId},{...config.settings,instructions:readGMInstructions(this.repo,c.campaignId).text},text=>emit({type:'text',text}));
   const output=result.output,db=this.repo.db;db.exec('BEGIN IMMEDIATE');try{
    const lease=db.prepare('SELECT attempts,status FROM ai_requests WHERE campaign_id=? AND id=?').get(c.campaignId,c.requestId);if(lease?.attempts!==claim.attempt||lease?.status!=='running')throw new AIError('superseded','This request attempt was superseded; reload its saved response.',409);
    const current=this.repo.get(c.campaignId)!;let next=current.session;const memory=new SqliteMemoryRepository(this.repo);let partyProposals=0;
