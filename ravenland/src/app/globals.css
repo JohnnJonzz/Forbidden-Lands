@@ -57,3 +57,18 @@ button.party-member{width:100%;padding:4px 0;border:0;background:transparent;tex
 .source-passage pre { white-space: pre-wrap; font: inherit; line-height: 1.55; max-height: 24rem; overflow-y: auto; }
 .sourcebook-library progress { display:block; width:100%; accent-color:#b49851; }
 .rule-references { border-left: 2px solid #b49851; padding-left: .75rem; font-size: .85rem; }
+
+.rules-compendium { border-top: 1px solid #5b503d; margin-top: 1.5rem; padding-top: 1rem; }
+.rule-editor { margin: 1rem 0; border: 1px solid #5b503d; padding: 1rem; }
+.rule-editor textarea { min-height: 22rem; resize: vertical; line-height: 1.6; }
+.rules-results article { padding: 1rem 0; border-bottom: 1px solid #514a3d; overflow-wrap: anywhere; }
+.rule-result-title { text-align: left; color: #dec17b; font: inherit; font-size: 1.1rem; text-decoration: underline; text-underline-offset: .2rem; }
+.rules-reader { line-height: 1.7; overflow-wrap: anywhere; }
+.rules-reader pre { white-space: pre-wrap; font: inherit; }
+.rule-markdown { line-height: 1.75; overflow-wrap: anywhere; }
+.rule-markdown h1,.rule-markdown h2,.rule-markdown h3,.rule-markdown h4 { color: #d5bb7e; margin: 1.2em 0 .5em; font-weight: 600; }
+.rule-markdown h1 { font-size: 1.6rem; } .rule-markdown h2 { font-size: 1.35rem; } .rule-markdown h3 { font-size: 1.15rem; }
+.rule-markdown p { margin: .8rem 0; } .rule-markdown ul { list-style: disc; padding-left: 1.5rem; } .rule-markdown ol { list-style: decimal; padding-left: 1.5rem; }
+.rule-markdown blockquote { border-left: 2px solid #b49851; padding-left: 1rem; } .rule-markdown a { color:#dec17b; text-decoration:underline; }
+.rule-markdown pre { white-space:pre-wrap; background:#181b1a; padding: .8rem; }
+.rule-table { max-width: 100%; overflow-x: auto; } .rule-table th,.rule-table td { border:1px solid #665a42; padding:.5rem .75rem; text-align:left; } .rule-table th { color:#dec17b; }

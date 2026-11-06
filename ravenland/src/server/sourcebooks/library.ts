@@ -37,3 +37,5 @@ export class SourcebookLibrary {
  }
  passage(campaignId:string,chunkId:string){this.campaign(campaignId);idSchema.parse(chunkId);const row=this.repo.db.prepare("SELECT d.id,c.sequence FROM source_chunks c JOIN source_documents d ON d.id=c.document_id WHERE c.id=? AND d.campaign_id=? AND d.status='Indexed'").get(chunkId,campaignId);if(!row)throw new AIError('not_found','Passage not found',404);return this.repo.db.prepare('SELECT sequence,start_page AS startPage,end_page AS endPage,text,heading FROM source_chunks WHERE document_id=? AND sequence BETWEEN ? AND ? ORDER BY sequence').all(row.id as string,(row.sequence as number)-1,(row.sequence as number)+1)}
 }
+
+export function safeFTSExpression(query:string){const phrases=[...query.matchAll(/"([^"\n]{1,200})"/g)].map(m=>(m[1].normalize('NFKC').toLowerCase().match(/[\p{L}\p{N}]+/gu)??[]).join(' ')).filter(Boolean),remaining=query.replace(/"([^"\n]{1,200})"/g,' ');return [...phrases,...searchTerms(remaining)].map(t=>'"'+t+'"').join(' OR ')}

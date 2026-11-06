@@ -1,4 +1,5 @@
 'use client';
+import {RulesLibrary} from './rules-library';
 import {SourcebookLibraryPanel} from './sourcebook-library';
 import {AIGMSettings} from './ai-settings';
 import {GMMemory} from './gm-memory';
@@ -23,6 +24,7 @@ export function PanelContent({onOpenJournal,selectedCharacter,onDice,actorId,rec
  const [name,setName]=useState(session.campaign.name),[objective,setObjective]=useState(session.campaign.objective),[quarter,setQuarter]=useState(session.campaign.quarter);
  if(panel==='Journey Settings') return <JourneySettings record={record} onCommand={onJourney}/>;
  if(panel==='Quarter-Day Activities') return <p>Quarter-day activities are in the main chat.</p>;
+ if(panel==='Rules Library') return <RulesLibrary key={record.id} campaignId={record.id}/>;
  if(panel==='Image Library') return <ImageLibraryPanel campaignId={record.id}/>;
  if(panel==='Map') return <HexMap record={record} onPlanJourney={onPlanJourney} onOpenJournal={onOpenJournal}/>;
  if(panel==='Dice Roller') return <DicePanel dice={session.dice} onDice={onDice} campaignId={record.id} characters={session.characters} onChange={onSheet}/>;
