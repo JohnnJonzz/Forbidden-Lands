@@ -29,7 +29,8 @@
     "test:ai": "node tests/ai-browser.cjs",
     "test:ai-instructions": "node tests/ai-instructions-browser.cjs",
     "test:sourcebooks": "node tests/sourcebooks-browser.cjs",
-    "test:compendium": "node tests/compendium-browser.cjs"
+    "test:compendium": "node tests/compendium-browser.cjs",
+    "test:ai-diagnostics": "node tests/ai-diagnostics-browser.cjs"
   },
   "dependencies": {
     "exceljs": "^4.4.0",

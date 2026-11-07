@@ -517,3 +517,48 @@ Manual check: launch `npm run dev`, create a synthetic “Pushing a Roll” summ
 Implementation: `src/lib/compendium/schema.ts`; `src/server/compendium/{store,search}.ts`; migration 012; administrator `/api/compendium` and player `/api/rules`; `rules-compendium.tsx`, `rules-library.tsx`, `rule-markdown.tsx` and the shared `rule-draft-guard.ts`; their integration in existing campaign navigation, panel routing, Sourcebook Library and styles; shared source/citation types, safe FTS phrase handling and existing AI retrieval/reference rendering; protected source instructions; package/lock updates and focused tests/SDK fixtures. No new environment variables are required.
 
 Remaining limits: bounded search result lists (no pagination), keyword-based relevance/override applicability, approximate context tokens, no semantic search or guaranteed conflict detection, and no automatic verification of free-text administrator source references. Very large sections/tables may cross retrieval chunks even though the reader retains the full Markdown document. PDF topic metadata is unchanged. Raw HTML and images are intentionally not rendered. Adventure-secret retrieval, autonomous mechanics and multiplayer permissions remain out of scope.
+
+## AI GM request diagnostics and long procedural questions
+
+A reproducible application bug was identified: chat actions accept up to **3,000 characters**, but the curated and PDF search schemas accept **400**. Previously, rules retrieval passed the entire action directly to both searches. A longer procedural question could therefore throw a local validation exception **before OpenAI was called**, which the service reported as a generic connectivity/model error. The automated test reproduces this contract mismatch directly against the search stores. The workspace did not contain the user's original failed-request database/logs, so this establishes a concrete matching failure mode, not proof of the exact cause of every historical failure.
+
+`rulesSearchQuery()` now derives a safe keyword query within the existing 400-character local search limit for long actions. Short search queries keep their previous behavior, and the **complete original question remains unchanged in the OpenAI prompt**. Search still uses the existing relevance, visibility and retrieval budgets. The model, protected/editable instructions, approved memory, context selection, 90-second default timeout (configurable up to 120 seconds), response-token default/cap and manual retry policy are unchanged. No schema migration or new dependencies are required.
+
+Every validated GM turn emits one structured JSON completion/error/replay record to server stdout with `event: "ravenland.ai.request"`. It includes:
+
+- Application `requestId` and attempt number, requested model, outcome and failure stage.
+- Total service duration, retrieval/context-assembly duration, API duration and response-processing duration in milliseconds.
+- Retrieved passage count and estimated retrieval tokens.
+- Estimated total input tokens when the official provider has constructed the request (UTF-8 bytes/3 over the request envelope, including the output schema; approximate, not tokenizer accounting).
+- Response status or safe error category, upstream HTTP status when available, output-character count and recognized incomplete-response reason.
+- Configured timeout, configured output-token budget and whether the request timed out.
+
+Stages distinguish claim/replay, retrieval, prompt construction, API execution, response processing and persistence. Tiny Test Connection requests also receive correlated completion/error diagnostics. No log record includes the action text, full prompts, instructions, retrieved passages, GM-only documents, API keys, upstream error bodies or stack traces. Model identifiers that resemble API credentials are masked. Usage/cost tracking continues to use actual API usage when returned, including incomplete/invalid responses; estimates and unknown token counts remain labeled as such.
+
+The normal chat error now includes **Request ID: UUID**, and the streamed response also carries that ID in `X-Request-ID`. The frontend retains it for transport/interrupted-response errors too. Safe categories distinguish timeout, rate limit, credentials/model configuration, input-context limit, temporary upstream failure, retrieval failure, output-token limit, invalid/incomplete response and unexpected server error. Check server logs by this identifier; the existing Settings request-recovery view retains saved error codes and retryable actions. For local troubleshooting you can capture the server terminal output, then search its JSON lines for the displayed request ID. Diagnostics cannot reconstruct old failures that were never logged, and a hard process/host termination can prevent a final record from being emitted.
+
+SDK abort errors and deadlines are recognized explicitly, including a stream that ends silently after abort. Incomplete output caused by `max_output_tokens` receives a specific output-limit error instead of suggesting connectivity failure. Malformed/invalid responses never publish a GM message, memory proposal or recap. SQLite retrieval failures are separated from API errors. Failure-recording errors are flagged without masking the original failure category. The application continues to retain the queued **player message and request/error/usage metadata** for recovery; failed requests do not apply mechanical state, GM memories or partial GM narration. Successful responses and memory proposals remain subject to their existing validation/transaction rules.
+
+**Retry GM response** reuses the saved request ID. A transient failure can be retried explicitly without duplicating the queued player message; completed requests replay their saved result without another model call. There are no new hidden automatic API retries. A manually retried failed upstream call can incur normal API usage. If diagnostics actually show an output limit, an administrator may adjust `OPENAI_MAX_OUTPUT_TOKENS` within the existing bounds, or request a shorter answer. If they show timeout, review `OPENAI_TIMEOUT_MS` and hosting limits. Do not change model/context simply on the assumption that question length caused an upstream failure.
+
+Verification commands:
+
+```bash
+npm test
+npm run typecheck
+npm run build
+npm run test:ai-diagnostics
+npm run test:ai
+npm run test:sourcebooks
+npm run test:compendium
+npm run test:ai-instructions
+npm run test:persistence
+npm run test:quarter
+npm run test:dice-repair
+```
+
+Focused tests cover ordinary conversation, short rules questions, journey/melee procedure questions over 400 characters, complete-question preservation, bounded retrieval, correlated safe logs, simulated official-SDK timeout, upstream 503 and successful same-ID retry/replay, SQLite retrieval failure, output-token exhaustion, invalid output, privacy and unchanged mechanics/canon. Browser tests verify the user-visible categories/identifiers and log correlation through the real application, with the official SDK using a test-only fake transport. These are not paid live-model quality tests. Existing suites cover approved GM Memory, recaps, editable instructions, PDF/curated retrieval, persistence, journey and dice workflows. No lint script is configured.
+
+The unrelated sheet adjustment alphabetizes the existing sixteen skills in both the standalone source and generated integrated sheet, beginning with **Animal Handling (EMP)**. IDs, governing attributes and saved values are unchanged. The dice browser regression checks the rendered alphabetical order and continues to test skill staging/pushing, damage/Willpower and persistence.
+
+Changed implementation: `src/server/sourcebooks/retrieval.ts`; new `src/server/ai/diagnostics.ts`; AI config/error mapping, provider and service; `/api/gm`, shared HTTP/stream-event types and the existing GM hook; root `index.html` and generated sheet field/version modules; focused diagnostics unit/browser tests, SDK fixture and the dice browser assertion. The package script adds `test:ai-diagnostics`. Existing sourcebook files, campaign data, protected instruction text and editable instruction records are not reset or reseeded.
