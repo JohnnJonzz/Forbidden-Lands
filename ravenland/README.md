@@ -562,3 +562,87 @@ Focused tests cover ordinary conversation, short rules questions, journey/melee 
 The unrelated sheet adjustment alphabetizes the existing sixteen skills in both the standalone source and generated integrated sheet, beginning with **Animal Handling (EMP)**. IDs, governing attributes and saved values are unchanged. The dice browser regression checks the rendered alphabetical order and continues to test skill staging/pushing, damage/Willpower and persistence.
 
 Changed implementation: `src/server/sourcebooks/retrieval.ts`; new `src/server/ai/diagnostics.ts`; AI config/error mapping, provider and service; `/api/gm`, shared HTTP/stream-event types and the existing GM hook; root `index.html` and generated sheet field/version modules; focused diagnostics unit/browser tests, SDK fixture and the dice browser assertion. The package script adds `test:ai-diagnostics`. Existing sourcebook files, campaign data, protected instruction text and editable instruction records are not reset or reseeded.
+
+## Phase 6B.1b: rules interpretation, related retrieval and persistent windows
+
+This phase refines the existing library and GM pipeline. It does not add a combat/dice/journey execution engine, paid search, new model, new API call, or sourcebook ingestion requirement. The recent **3,000-character chat / 400-character local search** fix remains: the complete question goes into the prompt and only the local search query is bounded.
+
+### Heading-aware indexing and automatic upgrade
+
+Migration **013_heading_aware_rules.sql** adds derived section metadata: parent `heading_path`, `section_order`, `chunk_order`, original `start_offset`/`end_offset`, and locally inferred `mechanical_topics`. Document ID, title, topic, source reference and section text remain in the section index; document type and current visibility are joined from the source record on every read. The FTS5 index now indexes parent-heading context as well as title/topic/body/reference.
+
+The existing SQLite migrator calls the same shared TypeScript indexer used by Save/Reindex **inside the migration transaction**, before writing the migration ledger entry. It automatically reindexes every existing curated document once, including private entries. No reupload, manual splitting or reorganization is required. The replacement external-content FTS index is seeded before old derived sections are removed so delete triggers remain consistent during backfill. A failed migration rolls back; the ledger entry is not recorded until indexing succeeds. Normal startup, `npm run db:migrate`, and `npm run dev` all use this migrator. Do not apply only the raw SQL in an unrelated migration runner and omit the TypeScript backfill hook.
+
+Original `curated_rules` rows are not updated by reindexing: Markdown/plain text, CRLF/whitespace, titles, timestamps/revisions, topics, visibility, house-rule type/scope and references remain intact. PDF files, metadata, chunks and indexes, approved memory, campaign state and private editable GM instructions are untouched. New section IDs are derived-index references; historical published chat is retained, and old raw-context previews continue to redact sections no longer present/currently public. A complete backup is still the SQLite database plus private sourcebook/image storage.
+
+The indexer recognizes ATX heading levels `#` through `######`, maintains a level-aware parent stack (including skipped levels), retains preface/unheaded text, and ignores headings inside fenced code. Heading-only containers provide context rather than wasting a retrieval slot. Sections keep their original source slices and offsets. Paragraphs, list runs, tables and code blocks stay together when practical. Oversized sections use a 6,000-character cap with modest overlap; splitting prefers paragraph/line and complete-block boundaries. A procedure larger than the hard bound may still span chunks. The reader always renders the unchanged full document.
+
+### Topics, procedures, ranking and authority
+
+`src/lib/rules/topics.ts` defines a small local vocabulary and associations, not official mechanical formulas. It recognizes dice mechanics, combat actions, initiative, melee/ranged attacks, defensive reactions, damage, armor, Broken/critical injuries, recovery, journeys, quarter-days, navigation/watch, camp/survival, foraging, hunting/fishing, mishaps, magic, talents and equipment/crafting. Leaf headings are preferred for section classification; parent headings, body, title and document topic provide context/fallback.
+
+Related procedure maps connect melee/ranged attacks to action availability, defense, damage and armor; journeys to quarter-day activities, navigation/watch, camp and mishaps; magic to dice/mishaps; Broken/injuries to recovery. These associations retrieve supporting sources without encoding rule constants, automatically resolving mechanics or making a classification API call. Candidate acquisition combines bounded FTS searches and a bounded, player-visible metadata query for associated curated sections, so a related armor/defense section can be found even when the question does not contain its exact words.
+
+Ranking considers exact titles, heading-path words, title/body words, direct/related mechanical topics, source type, scoped house-rule applicability and FTS candidate order. Topic diversity favors distinct relevant steps rather than multiple chunks covering the same topic. Ties use stable source/section order. A clearly magic-specific document/section is excluded from an ordinary nonmagical melee query. Other relevance filtering prevents sources with no topic or meaningful heading/title relationship from occupying slots solely through a common body word. This remains a deterministic heuristic, not semantic understanding.
+
+Identical and substantially overlapping material is removed where safe, while distinct sections from one document remain eligible. Offset overlap and text shingles detect redundancy. Different source-authority tiers are retained for verification rather than deduplicating away the original PDF. Different numeric/negation qualifiers and different section headings make deduplication more conservative to avoid hiding important exceptions/conflicts. Default maximum chunks and approximate context-token budgets are unchanged; a bounded result may omit steps, and the GM must identify insufficient source coverage instead of inventing details.
+
+An applicable, explicitly scoped, **player-visible House Rule** receives an explicit priority tier before other sources. If potentially applicable override material cannot fit the bounded selection, the context flags the omission and directs clarification rather than silently defaulting to an official mechanic. It remains a campaign-specific override. A curated Official Rules Summary remains an interpretation aid; original PDFs remain the published-rule verification source. Conflicts require uncertainty/identification unless an applicable house rule resolves them. Physical PDF pages come only from PDF metadata. Curated source references remain administrator attribution with no invented physical page numbers.
+
+### Interpretation safeguards
+
+The protected application policy now adds targeted requirements without replacing saved editable instructions:
+
+- Use retrieved Forbidden Lands procedures rather than generic RPG assumptions. Ask for missing attributes, skill ratings, bonuses, armor, talents or dice results; do not infer them from profession or invent example results as actual rolls.
+- Distinguish a declared, proposed and completed action. Follow source-supported fast/slow action availability and defensive-reaction timing, compare successes according to sources, and distinguish weapon damage calculations from dice rolls and armor resolution from flat reduction assumptions.
+- Use attribute damage and Broken terminology. Identify applicable talents/exceptions and missing source support. No guessed numerical constants are added.
+- For a complete procedure, explain the relevant state/actions, declaration, defense timing, pools/modifiers, success comparison, damage, armor and consequences in the source-supported order. This framework is not an official rule or a substitute for the retrieved details.
+
+Locally recognized hypothetical/procedural explanations carry `explanationOnly`/`procedureRequested` flags in the request context. The GM is instructed to return no actions or memories for an explanation; the server also drops generated action/memory proposals in that mode. The queued question and answer still persist normally, but hypothetical examples cannot trigger the existing quarter-day proposal controls or add campaign-memory proposals. Actual submitted quarter-day workflows retain their existing validation/confirmation path.
+
+These are retrieval, prompt and application-boundary improvements. They do **not** prove that a live model will correctly interpret every opposed roll or exception. Reference citations alone do not establish mechanical correctness. Live table verification remains necessary.
+
+### Authorized diagnostics
+
+In **Settings → Sourcebook Library → Rules Compendium**, expand **Rules retrieval diagnostics**, enter a rules question and choose **Inspect rules retrieval**. This makes a local authorized query only, not an OpenAI request. `GET /api/rules/diagnostics` requires the existing development GM token on every request and returns private/no-store metadata: selected public document titles/IDs, source types, heading paths, physical PDF pages or administrator references, section count, estimated tokens/budget, selected topics, related-procedure use, overlap removals and applicable-house-rule status. It returns no passage bodies, private AI reasoning or hidden documents. Player-facing queries and AI retrieval remain restricted before assembly to Player Visible curated rules and eligible Public Rules PDFs. Ordinary raw-context previews redact the selection-diagnostics block and recheck source visibility. Existing request IDs, stage/timing diagnostics, usage/error tracking, long-question fix and retry behavior are preserved.
+
+### Persistent application windows
+
+The shared companion dialog (Journal, Rules Library, Campaign Settings, Map, character sheets and comparable tool panels) and nested portrait chooser now ignore **backdrop/outside clicks and Escape**. Underlying content remains inert through the native modal dialog. Clicking inside still operates normal controls. Use the visible, labeled **X/Close** or another explicit close action. The portrait chooser now also has a labeled X.
+
+The policy is applied through native `closedBy="none"`, a shared dialog cancel-handler fallback, and removal of light-dismiss click handlers, not a global Escape listener. Native selects, transient sidebar/menu controls, tooltips and JavaScript confirmation dialogs keep their normal behavior. Native dialog semantics/focus trapping remain intact; the companion restores focus to its opener and close controls remain keyboard-accessible. A standalone browser character window retains its own browser close control.
+
+An aggregated draft-close guard gives one confirmation for meaningful unsaved edits when explicitly closing/locking/navigating away. It covers journal entries, campaign/journey settings, curated rules, sourcebook classification/upload drafts, GM instruction edits, GM memory edits, recaps, discovery and image-upload drafts. Portrait selection uses a local explicit-close confirmation. Backdrop/Escape do not attempt dismissal, discard data or prompt unnecessarily. Unchanged/saved editors close without a draft warning. Browser refresh/navigation retains the browser's existing unsaved-change protection. The journal Notes field has an explicit accessible label so its name remains stable while the controlled textarea contains text.
+
+### Verification and manual checks
+
+```bash
+npm test
+npm run typecheck
+npm run build
+npm run test:rules-windows
+npm run test:compendium
+npm run test:sourcebooks
+npm run test:ai-diagnostics
+npm run test:ai
+npm run test:ai-instructions
+npm run test:persistence
+npm run test:dice-repair
+npm run test:portraits
+npm run test:quarter
+npm run test:fog
+npm run test:locations
+npm run test:map:real
+```
+
+Focused tests cover heading paths/source offsets/order/fences, complete lists/tables where bounded, skipped heading levels, unheaded/oversized sections, automatic upgrade of an old private Markdown source with unchanged content/metadata, repeat-start idempotency, related combat/journey/recovery retrieval, distinct sections, overlap removal, unrelated spell exclusion, numeric/authority preservation, privacy, house rules, long questions, missing-stat/no-invented-roll policy wiring, and server rejection of hypothetical action proposals. A three-PDF migration fixture continues to assert unchanged PDF rows/chunks/classifications.
+
+The new browser suite checks desktop/mobile Journal/Settings/Rules/character/portrait windows against outside/backdrop/Escape dismissal, explicit keyboard close/focus restoration, draft preservation and confirmed discard, ordinary select interaction, authenticated safe diagnostics, original Markdown reading and actual SDK request metadata/policy wiring. Existing suites cover compendium editing/imports, PDFs, request errors/retries, approved memory/recaps, character dice, persistence, journeys and fog/discoveries. Regression tests that previously used Escape as their close shortcut now use the explicit Close button to match the new policy. No lint script is configured.
+
+All rule fixtures are original synthetic material and model calls use the official SDK with a test-only fake transport. No paid/live-model mechanical-accuracy claim follows from these tests. Manually verify representative attacks and journey procedures against your uploaded official rules, including missing ratings, defensive timing, success handling, weapon damage and armor, before relying on a live answer.
+
+Manual preview: run `npm run dev`; existing curated entries are automatically reindexed during the safe startup migration. Inspect an admin diagnostic query for a melee procedure and confirm relevant heading paths and absence of unrelated/private spell material. Check an associated journey query and a scoped house rule. Open Journal, type a draft, click outside/press Escape and confirm it remains; X must warn before discarding. Save an entry and close/reopen normally. Repeat Settings/Rules/character/portrait cases on desktop and a narrow viewport. Confirm existing PDF searches, approved campaign facts and character rolls still behave normally.
+
+Implementation files: `src/lib/rules/topics.ts`; shared `src/server/compendium/indexer.ts`; migration 013 and the migrator hook; compendium metadata/search/types; `sourcebooks/selection.ts` and refined retrieval/citation types; protected interpretation policy and explanation-only service guard; the authorized diagnostics route/component; shared persistent-dialog and aggregated draft guards; affected dialog/editor components; focused rules/window tests and existing regression updates. No new dependency, secret or environment variable is required.
+
+Remaining limits: keyword/topic inference can miss synonyms or misclassify mixed sections, deduplication is conservative, context tokens are approximate and bounded retrieval can omit necessary steps. No OCR, semantic embedding service, exhaustive mechanical interpreter, automatic rules-conflict adjudication, adventure-secret retrieval or multiplayer authentication is introduced. Very large list/table/code blocks can still exceed a chunk boundary. Reindexing is transactional and synchronous at upgrade, so large libraries may increase the first startup time.

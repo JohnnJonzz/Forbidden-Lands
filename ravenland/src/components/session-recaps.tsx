@@ -1,9 +1,11 @@
 'use client';
+import {usePanelDraftGuard} from './rule-draft-guard';
 import {useEffect,useRef,useState} from 'react';
 import {aiTimestamp} from '@/lib/ai/time';
 import {readGMStream} from '@/lib/ai/stream';
 interface Recap {id:string;text:string;journalEntryId:string|null;revision:number;createdAt:string}
 export function SessionRecaps({campaignId}:{campaignId:string}){const [recaps,setRecaps]=useState<Recap[]>([]),[selected,setSelected]=useState<Recap|null>(null),[draft,setDraft]=useState(''),[error,setError]=useState(''),[busy,setBusy]=useState(false),requestId=useRef<string|null>(null);
+ usePanelDraftGuard(!!selected&&!selected.journalEntryId&&draft!==selected.text,'session recap');
  async function load(){const r=await fetch('/api/ai/recaps?campaignId='+campaignId,{cache:'no-store'}),body=await r.json();if(!r.ok)throw Error(body.error);setRecaps(body.recaps);return body.recaps as Recap[]}
  useEffect(()=>{load().catch(e=>setError(e.message))},[campaignId]);
  async function end(){if(!confirm('Generate a draft recap and memory proposals for this session? Review them before saving to the Adventure Journal.'))return;setBusy(true);setError('');setSelected(null);setDraft('');requestId.current??=crypto.randomUUID();try{let recapId='';await readGMStream(await fetch('/api/gm',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({campaignId,requestId:requestId.current,kind:'recap',action:'',characterId:''})}),e=>{if(e.type==='text')setDraft(e.text);if(e.type==='done')recapId=e.reply.recapId??''});const all=await load(),recap=all.find(r=>r.id===recapId);if(recap){setSelected(recap);setDraft(recap.text)}window.dispatchEvent(new Event('ravenland:ai-refresh'));requestId.current=null}catch(e){setError((e as Error).message)}finally{setBusy(false)}}

@@ -1,4 +1,5 @@
 'use client';
+import {usePanelDraftGuard} from './rule-draft-guard';
 import {useEffect,useRef,useState} from 'react';
 import {maxGMInstructionCharacters,type GMInstructionRecord} from '@/lib/ai/instructions';
 import {aiTimestamp} from '@/lib/ai/time';
@@ -7,7 +8,7 @@ export function GMInstructionsEditor({campaignId}:{campaignId:string}) {
  const [token,setToken]=useState(''),[saved,setSaved]=useState<GMInstructionRecord|null>(null),[draft,setDraft]=useState(''),[busy,setBusy]=useState(false),[error,setError]=useState(''),[notice,setNotice]=useState('');
  const generation=useRef(0),dirty=saved!==null&&draft!==saved.text;
  useEffect(()=>()=>{generation.current++},[]);
- useEffect(()=>{if(!dirty)return;const warn=(event:BeforeUnloadEvent)=>{event.preventDefault();event.returnValue=''};window.addEventListener('beforeunload',warn);return()=>window.removeEventListener('beforeunload',warn)},[dirty]);
+ usePanelDraftGuard(dirty,'AI GM instructions');
  function lock(){generation.current++;setToken('');setSaved(null);setDraft('');setError('');setNotice('');setBusy(false)}
  async function request(command?:'save'|'restore') {
   const ticket=++generation.current;setBusy(true);setError('');setNotice('');

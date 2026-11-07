@@ -1,3 +1,4 @@
+import {reindexExistingCuratedRules} from './compendium/indexer';
 import {explorationFor} from '../lib/map/exploration';
 import { DatabaseSync } from 'node:sqlite';
 import { mkdirSync, readFileSync, readdirSync } from 'node:fs';
@@ -16,7 +17,7 @@ export class SqliteCampaignRepository implements CampaignRepository {
   this.db.exec('CREATE TABLE IF NOT EXISTS schema_migrations (version TEXT PRIMARY KEY);');
   const dir=join(process.cwd(),'src/server/migrations');
   for(const file of readdirSync(dir).filter(f=>f.endsWith('.sql')).sort()){
-   this.db.exec('BEGIN IMMEDIATE');try{if(!this.db.prepare('SELECT version FROM schema_migrations WHERE version=?').get(file)){try{this.db.exec(readFileSync(join(dir,file),'utf8'))}catch(error){if(file==='011_sourcebook_library.sql'&&String(error).includes('no such module: fts5'))throw new Error('Sourcebook Library requires SQLite FTS5. Use the supported Node 24 runtime with FTS5 enabled.');throw error};this.db.prepare('INSERT INTO schema_migrations VALUES (?)').run(file)}this.db.exec('COMMIT')}catch(e){this.db.exec('ROLLBACK');throw e}
+   this.db.exec('BEGIN IMMEDIATE');try{if(!this.db.prepare('SELECT version FROM schema_migrations WHERE version=?').get(file)){try{this.db.exec(readFileSync(join(dir,file),'utf8'))}catch(error){if(file==='011_sourcebook_library.sql'&&String(error).includes('no such module: fts5'))throw new Error('Sourcebook Library requires SQLite FTS5. Use the supported Node 24 runtime with FTS5 enabled.');throw error};if(file==='013_heading_aware_rules.sql')reindexExistingCuratedRules(this.db);this.db.prepare('INSERT INTO schema_migrations VALUES (?)').run(file)}this.db.exec('COMMIT')}catch(e){this.db.exec('ROLLBACK');throw e}
   }
  }
  private decode(row:Row):CampaignRecord{return {id:row.id,revision:row.revision,session:sessionSchema.parse(JSON.parse(row.public_state)),createdAt:row.created_at,updatedAt:row.updated_at}}

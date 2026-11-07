@@ -3,7 +3,7 @@
 import {appendFileSync} from 'node:fs';
 const nativeFetch=globalThis.fetch,attempts=new Map();
 globalThis.fetch=async function(input,init){const url=typeof input==='string'?input:input instanceof URL?input.href:input.url;if(!url.startsWith('https://api.openai.com/'))return nativeFetch(input,init);
- const body=JSON.parse(init?.body??'{}');if(process.env.RAVENLAND_AI_FIXTURE_LOG)appendFileSync(process.env.RAVENLAND_AI_FIXTURE_LOG,JSON.stringify({model:body.model,input:body.input,stream:!!body.stream,store:body.store})+'\n');
+ const body=JSON.parse(init?.body??'{}');if(process.env.RAVENLAND_AI_FIXTURE_LOG)appendFileSync(process.env.RAVENLAND_AI_FIXTURE_LOG,JSON.stringify({model:body.model,input:body.input,stream:!!body.stream,store:body.store,policyChecks:{missingStats:/Never invent missing/.test(body.instructions??''),armor:/automatic flat damage reduction/.test(body.instructions??''),damage:/separate damage roll/.test(body.instructions??''),hypothetical:/memoryProposals=\[\]/.test(body.instructions??'')}})+'\n');
  if(!body.stream)return new Response(JSON.stringify({id:'resp_test_connection',status:'completed',model:body.model,output:[],usage:{input_tokens:4,output_tokens:1}}),{headers:{'Content-Type':'application/json'}});
  const value=JSON.parse(Array.isArray(body.input)?body.input.find(m=>m.role==='user').content[0].text:body.input),action=value.playerAction??'',context=value.context,first=!(attempts.get(action)??0);attempts.set(action,(attempts.get(action)??0)+1);
  if(action==='simulate transient API error'&&first)return new Response(JSON.stringify({error:{message:'SECRET_DIAGNOSTIC_UPSTREAM must never leak',type:'server_error'}}),{status:503,headers:{'Content-Type':'application/json'}});

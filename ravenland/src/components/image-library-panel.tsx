@@ -1,9 +1,11 @@
 'use client';
+import {usePanelDraftGuard} from './rule-draft-guard';
 import {useEffect,useRef,useState} from 'react';
 import {imageCategories,imageUrl,type ImageCategory,type LibraryImage} from '@/lib/images';
 import {listImages,uploadImage,validateImageFile,updateImageCategory} from '@/lib/image-client';
 export function ImageLibraryPanel({campaignId}:{campaignId:string}){
  const [images,setImages]=useState<LibraryImage[]>([]),[file,setFile]=useState<File|null>(null),[preview,setPreview]=useState(''),[name,setName]=useState(''),[category,setCategory]=useState<ImageCategory>('Terrain'),[filter,setFilter]=useState<ImageCategory|'All'>('All'),[busy,setBusy]=useState(false),[error,setError]=useState(''),[status,setStatus]=useState('');
+ usePanelDraftGuard(!!file,'image upload');
  const input=useRef<HTMLInputElement>(null);
  useEffect(()=>{let alive=true;listImages(campaignId).then(data=>{if(alive)setImages(data)}).catch(e=>{if(alive)setError(e.message)});return()=>{alive=false}},[campaignId]);
  useEffect(()=>{if(!file){setPreview('');return}const url=URL.createObjectURL(file);setPreview(url);return()=>URL.revokeObjectURL(url)},[file]);
