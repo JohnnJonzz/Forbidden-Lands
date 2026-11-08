@@ -11,7 +11,8 @@ import { ConflictError, type CampaignRepository } from './repository';
 type Row={id:string;revision:number;public_state:string;created_at:string;updated_at:string};
 export class SqliteCampaignRepository implements CampaignRepository {
  readonly db:DatabaseSync;
- constructor(filename:string){
+ constructor(filename:string,options:{readOnly?:boolean}={}){
+  if(options.readOnly){this.db=new DatabaseSync(filename,{readOnly:true});this.db.exec('PRAGMA query_only=ON; PRAGMA foreign_keys=ON; PRAGMA busy_timeout=5000;');return}
   if(filename!==':memory:')mkdirSync(dirname(filename),{recursive:true});
   this.db=new DatabaseSync(filename);this.db.exec('PRAGMA foreign_keys=ON; PRAGMA journal_mode=WAL; PRAGMA busy_timeout=5000;');
   this.db.exec('CREATE TABLE IF NOT EXISTS schema_migrations (version TEXT PRIMARY KEY);');

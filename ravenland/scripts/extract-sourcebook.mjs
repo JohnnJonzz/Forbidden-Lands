@@ -6,12 +6,12 @@ async function send(value){if(!process.stdout.write(JSON.stringify(value)+'\n'))
 let task;
 try {
  task=getDocument({url:pathToFileURL(process.argv[2]).href,isEvalSupported:false,stopAtErrors:true,disableFontFace:true,useSystemFonts:false,verbosity:0});
- const pdf=await task.promise;if(pdf.numPages>2000)throw Error('limit');await send({type:'document',pages:pdf.numPages});let characters=0,nonempty=0;
+ const pdf=await task.promise,labels=await pdf.getPageLabels().catch(()=>null);if(pdf.numPages>2000)throw Error('limit');await send({type:'document',pages:pdf.numPages});let characters=0,nonempty=0;
  for(let number=1;number<=pdf.numPages;number++){
   const page=await pdf.getPage(number),content=await page.getTextContent();let text='',lastY=null;
   for(const item of content.items){if(!('str'in item))continue;const y=Math.round(item.transform[5]);if(lastY!==null&&Math.abs(y-lastY)>3&&!text.endsWith('\n'))text+='\n';text+=item.str+(item.hasEOL?'\n':' ');lastY=y}
   text=text.replace(/[ \t]+\n/g,'\n').trim();characters+=text.length;if(text.length>200000||characters>30000000)throw Error('limit');if(text)nonempty++;
-  await send({type:'page',page:number,text});page.cleanup();
+  const bottom=page.view[1]+(page.view[3]-page.view[1])*.12,footerLabels=[...new Set(content.items.filter(item=>'str'in item&&/^\d{1,4}$/.test(item.str.trim())&&item.transform[5]<=bottom).map(item=>item.str.trim()))].slice(0,8);await send({type:'page',page:number,text,pageLabel:labels?.[number-1]??null,footerLabels});page.cleanup();
  }
  if(!nonempty){await send({type:'error',code:'ocr'});process.exitCode=1}else await send({type:'complete'});
 }catch(error){await send({type:'error',code:error?.name==='PasswordException'?'password':error?.message==='limit'?'limit':'invalid'});process.exitCode=1}

@@ -1,0 +1,20 @@
+import {access} from 'node:fs/promises';
+import type {SqliteCampaignRepository} from '../sqlite';
+import {SourcebookLibrary} from './library';
+import {retrieveRules} from './retrieval';
+import {extractPDF,type PDFPageEvidence} from './extract';
+import type {SourcebookStorage} from './storage';
+export const handbookQuestion="Using the official Player's Handbook PDF, find the Hunter profession description on printed page 25. Identify its key attribute and five listed skills. Do not use curated rules summaries.";
+export const handbookQueries=['Hunter','Hunter profession','Stealth Move Marksmanship Scouting Survival','Key Attribute Agility',"Player's Handbook Hunter"];
+// Read-only developer audit: no source classification, indexing, AI call or canon writes.
+export async function diagnoseHandbook(repo:SqliteCampaignRepository,campaignId:string,documentId:string,storage:SourcebookStorage){
+ const source=repo.db.prepare("SELECT id,title,status,page_count,processed_pages,storage_key FROM source_documents WHERE campaign_id=? AND id=? AND visibility='Public Rules' AND category IN ('Rules','Bestiary','House Rules')").get(campaignId,documentId);
+ if(!source)return {source:{id:null,title:null,status:'not_found_or_not_authorized',pageCount:null,processedPages:null,fileAccessible:false,fileExtraction:'not_attempted' as const,chunks:0,indexedChunks:0}};
+ const library=new SourcebookLibrary(repo,storage),rawSearches=handbookQueries.map(query=>({query,hits:library.search({campaignId,documentId,query},'player',40).map(p=>({documentId:p.documentId,chunkId:p.chunkId,physicalPage:p.startPage,heading:p.heading}))}));
+ const count=repo.db.prepare('SELECT COUNT(*) AS chunks,COUNT(f.id) AS indexedChunks FROM source_chunks c LEFT JOIN source_search_docsize f ON f.id=c.rowid WHERE c.document_id=?').get(documentId),texts=repo.db.prepare('SELECT text,start_page FROM source_chunks WHERE document_id=? ORDER BY sequence').all(documentId);
+ const relevant=new Set(rawSearches[0].hits.map(h=>h.physicalPage)),pageEvidence:{physicalPage:number;pdfPageLabel:string|null;observedFooterLabels:string[];requestedPrintedLabelObserved:boolean;indexedExpectedTermsPresent:boolean;fileExpectedTermsPresent:boolean}[]=[];
+ const expected=(text:string)=>['Hunter','Agility','Stealth','Move','Marksmanship','Scouting','Survival'].every(term=>new RegExp('\\b'+term+'\\b','i').test(text));let fileAccessible=false,fileExtraction:'not_attempted'|'completed'|'failed'='not_attempted';
+ try{await storage.withLocalFile(source.storage_key as string,async filename=>{await access(filename);fileAccessible=true;await extractPDF(filename,()=>{},(page,text,evidence?:PDFPageEvidence)=>{if(!relevant.has(page)&&!/^\s*HUNTER\s*$/im.test(text))return;const label=evidence?.pageLabel??null,footer=evidence?.footerLabels??[];pageEvidence.push({physicalPage:page,pdfPageLabel:label,observedFooterLabels:footer,requestedPrintedLabelObserved:label==='25'||footer.includes('25'),indexedExpectedTermsPresent:expected(texts.filter(t=>t.start_page===page).map(t=>t.text).join('\n')),fileExpectedTermsPresent:expected(text)})});fileExtraction='completed'})}catch{fileExtraction=fileAccessible?'failed':'not_attempted'}
+ const pipeline=retrieveRules(repo,campaignId,handbookQuestion,'chat',{diagnostics:true,documentTitle:source.title as string});
+ return {source:{id:source.id,title:source.title,status:source.status,pageCount:source.page_count,processedPages:source.processed_pages,fileAccessible,fileExtraction:fileExtraction as 'not_attempted'|'completed'|'failed',chunks:Number(count?.chunks??0),indexedChunks:Number(count?.indexedChunks??0)},pageEvidence,pageEvidenceNotice:'PDF labels and observed numeric footer text are evidence, not an assumed pagination offset. Verify ambiguous/multiple labels against the source image. No mapping is invented when evidence is absent.',rawSearches,pipeline:{requested:pipeline.requested,used:pipeline.used,plan:pipeline.planner,notice:pipeline.notice,selected:pipeline.passages.map(p=>({documentId:p.documentId,chunkId:p.chunkId,physicalPage:p.startPage})),audit:pipeline.audit}};
+}

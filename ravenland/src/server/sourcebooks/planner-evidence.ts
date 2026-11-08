@@ -4,8 +4,16 @@ const norm=(s:string)=>s.toLowerCase().replace(/[^\p{L}\p{N}]+/gu,' ').trim();
 const contains=(text:string,term:string)=>norm(text).includes(norm(term));
 export function referenceIdentity(p:RulePassage){return p.title+' '+('primaryTopic'in p?p.primaryTopic??'':'')+' '+('headingPath'in p?p.headingPath?.join(' ')??p.heading??'':p.heading??'')}
 export function requirementEvidence(p:RulePassage,r:SourceRequirement):'covered'|'limited'|'missing'{
- const identity=referenceIdentity(p),body=p.text.replace(/^#{1,6}[^\n]*$/gm,'').trim();
- const anchored=r.id==='site'?(p.category==='Adventure'||p.category==='Campaign Reference')&&r.anchors.some(a=>contains(identity+' '+body,a)):r.anchors.some(a=>contains(identity,a));
+ const identity=referenceIdentity(p);let body=p.text.replace(/^#{1,6}[^\n]*$/gm,'').trim();
+ // PDF chunks often start with a running page number/header rather than the
+ // entry heading. Recognize a standalone entry inside the extracted body,
+ // bounded before another all-caps entry; a prose mention alone is insufficient.
+ let bodyAnchor=false;
+ if(!('sourceType'in p)&&(r.id==='entry'||r.role==='governing'&&r.id!=='site')){
+  const lines=body.split('\n'),start=lines.findIndex(line=>r.anchors.some(a=>norm(line)===norm(a)||norm(line)===norm(a)+' profession'||norm(line)===norm(a)+' skill'||r.id!=='entry'&&norm(line).startsWith(norm(a)+' ')&&line.trim().length<=80));
+  if(start>=0){let end=lines.length;for(let i=start+1;i<lines.length;i++){const line=lines[i].trim();if(/^[A-Z][A-Z -]{2,60}$/.test(line)&&!['KEY ATTRIBUTE','SKILLS','SKILL','PROFESSION','KIN','TALENTS','TALENT'].includes(line)&&!['KEY ATTRIBUTE','SKILLS'].includes(lines[i-1]?.trim())){end=i;break}}body=lines.slice(start,end).join('\n');bodyAnchor=true}
+ }
+ const anchored=r.id==='site'?(p.category==='Adventure'||p.category==='Campaign Reference')&&r.anchors.some(a=>contains(identity+' '+body,a)):bodyAnchor||r.anchors.some(a=>contains(identity,a));
  const substantive=(body.match(/[\p{L}\p{N}]+/gu)??[]).length>=8;
  const groups=r.contentGroups.every(group=>group.some(term=>contains(body,term)));
  if(anchored&&substantive&&groups)return 'covered';
