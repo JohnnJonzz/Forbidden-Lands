@@ -646,3 +646,38 @@ Manual preview: run `npm run dev`; existing curated entries are automatically re
 Implementation files: `src/lib/rules/topics.ts`; shared `src/server/compendium/indexer.ts`; migration 013 and the migrator hook; compendium metadata/search/types; `sourcebooks/selection.ts` and refined retrieval/citation types; protected interpretation policy and explanation-only service guard; the authorized diagnostics route/component; shared persistent-dialog and aggregated draft guards; affected dialog/editor components; focused rules/window tests and existing regression updates. No new dependency, secret or environment variable is required.
 
 Remaining limits: keyword/topic inference can miss synonyms or misclassify mixed sections, deduplication is conservative, context tokens are approximate and bounded retrieval can omit necessary steps. No OCR, semantic embedding service, exhaustive mechanical interpreter, automatic rules-conflict adjudication, adventure-secret retrieval or multiplayer authentication is introduced. Very large list/table/code blocks can still exceed a chunk boundary. Reindexing is transactional and synchronous at upgrade, so large libraries may increase the first startup time.
+
+## Multi-procedure compendium retrieval diagnostic and fix
+
+The reported comparison was reproducible with synthetic sources: without a question mark, `Compare …` skipped rules retrieval; with one, four broad PDFs displaced all three dedicated curated procedures. Hunting and Fishing also shared one retrieval topic, and topic diversity was only a ranking bonus. These are demonstrated pipeline defects, not evidence that the eight live documents are missing. The live campaign database was not attached to this checkout, so their actual presence could not be inspected here.
+
+Create/update/delete already synchronize curated sections and FTS transactionally. This change adds **no migration**, changes no source documents, and does not write campaign state during retrieval. Dedicated subject searches now complement the existing bounded query. Selection covers each requested major subject with a relevant titled/headed curated procedure before filling with supporting PDFs. Hunting/Fishing are separate topics; existing Fishing metadata is interpreted compatibly without requiring a reindex. Applicable explicit house overrides still precede official sources; PDFs remain verification sources and conflicts must be disclosed. Topic matching generalizes to combat, magic, conditions and equipment; no document titles are hardcoded. Existing section/token limits remain in force, and missing/limited subject coverage is disclosed instead of silently claiming a complete procedure.
+
+Protected mechanical-answer instructions require source-supported skill names, ordered checks, modifiers, success/failure/mishap branches and separate resource outcomes. They prohibit guessing absent steps and do not change storytelling personality or introduce game mechanics.
+
+To inspect your existing documents:
+
+1. Run `npm run dev`, open your campaign, then **Campaign Settings → Sourcebook Library** and unlock with your configured administrator token.
+2. Expand **Rules retrieval diagnostics** and enter: `Compare the official Forbidden Lands procedures for Foraging, Hunting, and Fishing, including their skill rolls, mishap triggers, and resource outcomes.`
+3. Optionally enter an exact document title, e.g. `Fishing — Official Procedure`, and select **Inspect rules retrieval**. Check `coverage`, selected sections, `audit.curatedDocuments`, per-candidate omission reasons and `audit.index`. Repeat the title check for the other seven documents. `indexed` means derived sections have FTS postings and a title search matches; title/heading/body CRUD search is covered by tests. Empty exact-title results mean no matching *player-visible* record was found, not proof of a hidden record.
+4. If an existing visible source has missing/incomplete search data, choose **Rebuild curated search index** and confirm. This regenerates derived sections for the selected campaign and restores the shared FTS postings transactionally. Original content, IDs, revisions, timestamps, visibility and campaign state are unchanged. It is an explicit administrator repair, not an automatic rewrite on every read. The confirmed command is `POST /api/compendium` with `type: "repair-index"`, `campaignId` and `confirmed: true`, using the existing GM review header. Other campaigns' source documents/sections are not rewritten.
+5. Ask the same comparison in AI GM chat. Expect separate Foraging/Hunting/Fishing references, plus a supporting PDF when available and within budget. Check the answer against your actual rules: correct supplied skill names, all required checks in order, water/food distinctions, failure versus mishap triggers, and no unsupported seasonal modifiers. A missing procedure must be acknowledged. This manual check uses your configured API and can incur its normal cost; the diagnostic itself makes no model call.
+
+Diagnostics return metadata only, require administrator authorization on every call, and omit GM-only/foreign sources, passage bodies and private prompts. Candidate output is capped at 100, index inspection at 200 visible documents (an exact-title check avoids broad-list truncation). Ordinary player snapshots omit the administrator audit and recheck passage visibility. This remains local keyword retrieval: headings can be ambiguous, large procedures may exceed budgets, and metadata coverage does not prove that every check/exception is present. The live model's mechanical answer accuracy has **not** been verified by the fake-provider tests.
+
+Verification for this fix:
+
+```bash
+npm test
+npm run typecheck
+npm run build
+npm run test:procedure-retrieval
+npm run test:compendium
+npm run test:sourcebooks
+npm run test:ai
+npm run test:ai-instructions
+npm run test:ai-diagnostics
+npm run test:persistence
+```
+
+The seven new automated tests cover immediate title/heading/body search, update/delete synchronization, all eight synthetic titles and three-procedure coverage against broad PDFs, supporting PDF retention, distinct-procedure preservation, legacy Fishing metadata, missing-posting/section repair without source/campaign changes, privacy and public-audit redaction, house-rule precedence, explicit bounded omissions, and generalized topics/grounding policy. The new browser test exercises authenticated diagnostics, optional exact-title health, confirmation/cancellation and validation of repair, immediate indexing, and all three curated procedures entering the official SDK request through chat. Existing compendium/PDF/AI/memory/persistence suites remain applicable. All fixtures are original synthetic content; no uploaded rules or paid AI calls are used by tests.

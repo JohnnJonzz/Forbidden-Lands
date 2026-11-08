@@ -16,10 +16,12 @@ export async function POST(request:Request){try{requireGM(request.headers.get('x
   let body:string;try{body=new TextDecoder('utf-8',{fatal:true}).decode(Buffer.concat(buffers))}catch{throw new AIError('encoding','Use a UTF-8 encoded text file.');}if(!body.trim()||body.length>160000||/[\x00-\x08\x0b\x0e-\x1f]/.test(body))throw new AIError('file','Enter readable text of at most 160,000 characters.');return NextResponse.json({body,title:filename.replace(/\.(md|txt)$/i,'').slice(0,200),visibility:'GM Only',saved:false},{headers});
  }
  const c=z.discriminatedUnion('type',[
+  z.object({type:z.literal('repair-index'),campaignId:id,confirmed:z.literal(true)}).strict(),
   z.object({type:z.literal('create'),campaignId:id,input:ruleInputSchema}).strict(),
   z.object({type:z.literal('save'),campaignId:id,id,revision:z.number().int().positive(),input:ruleInputSchema}).strict(),
   z.object({type:z.literal('delete'),campaignId:id,id,revision:z.number().int().positive(),confirmed:z.literal(true)}).strict(),
   z.object({type:z.literal('reindex'),campaignId:id,id,revision:z.number().int().positive()}).strict(),
  ]).parse(await aiBody(request,1048576)),store=new CompendiumStore(getLocalRepository());
+ if(c.type==='repair-index')return NextResponse.json({reindexed:store.rebuild(c.campaignId)},{headers});
  if(c.type==='create')return NextResponse.json({rule:store.save(c.campaignId,c.input)},{headers});if(c.type==='save')return NextResponse.json({rule:store.save(c.campaignId,c.input,c.id,c.revision)},{headers});if(c.type==='reindex')return NextResponse.json({rule:store.reindex(c.campaignId,c.id,c.revision)},{headers});store.delete(c.campaignId,c.id,c.revision);return NextResponse.json({deleted:true},{headers});
  }catch(e){return fail(e)}}
