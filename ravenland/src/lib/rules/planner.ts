@@ -1,15 +1,16 @@
+import {weaponRequest,type WeaponFactRequest,type WeaponField} from './weapon-request';
 import {sourceRequest} from './source-request';
 import {mechanicalTopics,requestedSubjects,type MechanicalTopic} from './topics';
 export type RequestIntent='rules_reference'|'gameplay_adjudication'|'adventure_narration'|'general_conversation';
-export type RetrievalDomain='character_rules'|'combat'|'journeying'|'magic'|'adventure_sites'|'generic';
+export type RetrievalDomain='equipment'|'character_rules'|'combat'|'journeying'|'magic'|'adventure_sites'|'generic';
 export interface SourceRequirement {
- id:string;label:string;query:string;role:'governing'|'supporting';
+ fact?:{kind:'weapon';weapon:string;fields:WeaponField[]}|{kind:'extra_damage'}|{kind:'first_hit'};id:string;label:string;query:string;role:'governing'|'supporting';
  // Each group requires at least one source-content term. These are retrieval
  // vocabulary, not a canonical skill list or executable game rules.
  anchors:string[];contentGroups:string[][];topic?:MechanicalTopic;
 }
 export interface RetrievalPlan {
- sourcePreference:'any'|'pdf_only';sourceTitle?:string;pageReference?:{kind:'printed'|'physical';value:number};version:1;intent:RequestIntent;modes:RequestIntent[];profile:RetrievalDomain;secondaryDomains:RetrievalDomain[];
+ weaponFacts?:WeaponFactRequest;sourcePreference:'any'|'pdf_only';sourceTitle?:string;pageReference?:{kind:'printed'|'physical';value:number};version:1;intent:RequestIntent;modes:RequestIntent[];profile:RetrievalDomain;secondaryDomains:RetrievalDomain[];
  subjects:string[];requirements:SourceRequirement[];sourceCategories:string[];campaignContext:string[];
  optionalExceptions:string[];characterDataNeeded:boolean;stateChangesPermitted:false;proposalsPermitted:boolean;explanationOnly:boolean;
  entry?:{name:string;category:string};maxTargetedRetries:1;
@@ -33,9 +34,13 @@ export function planRetrieval(action:string,kind='chat'):RetrievalPlan {
  if(!entry&&/\b(?:hunt\w*|forag\w*|fish\w*|journey\w*|quarter.day|hike|camp|travel\w*)\b/i.test(action))domains.push('journeying');
  if(/\b(?:magic|spells?|spellcasting|cast|willpower)\b/i.test(action))domains.push('magic');
  if(narration)domains.push('adventure_sites');
+ const facts=readonly?weaponRequest(action):null;if(facts){domains.unshift('equipment')}
  const profile=domains[0]??'generic',requirements:SourceRequirement[]=[];
  const topics=requestedSubjects(action);
- if(entry)requirements.push(req('entry',`${entry.name} ${entry.category}`,`${entry.name} ${entry.category} ${entry.category==='skill'?'roll test':'skills key attribute'}`,[entry.name],entry.category==='skill'?[[entry.name],['skill','roll','test','check','attribute','success','failure']]:[[entry.category,'skills','skill'],['skills','skill']],'governing'));
+ if(facts){
+  for(const weapon of facts.weapons)requirements.push({...req('weapon:'+weapon,weapon+' equipment facts',weapon+' ranged weapons gear bonus damage range',[weapon],[],'governing'),fact:{kind:'weapon',weapon,fields:facts.fields}});
+  if(facts.extraSuccessRule){requirements.push({...req('extra-damage','Extra-success damage rule','extra additional success increase damage ranged attack',[],[],'governing'),fact:{kind:'extra_damage'}});requirements.push({...req('first-hit','Successes needed to hit','first success hit ranged attack',[],[],'supporting'),fact:{kind:'first_hit'}})}
+ }else if(entry)requirements.push(req('entry',`${entry.name} ${entry.category}`,`${entry.name} ${entry.category} ${entry.category==='skill'?'roll test':'skills key attribute'}`,[entry.name],entry.category==='skill'?[[entry.name],['skill','roll','test','check','attribute','success','failure']]:[[entry.category,'skills','skill'],['skills','skill']],'governing'));
  else if(profile==='journeying'){
   const activities=topics.filter(t=>['forage','hunt','fish','journey','quarter','navigation','camp','recovery'].includes(t));
   for(const t of activities)requirements.push(req(t,mechanicalTopics[t].label,mechanicalTopics[t].terms,[mechanicalTopics[t].label,...mechanicalTopics[t].terms.split(' ')],[mechanicalTopics[t].terms.split(' ')],'governing',t));
@@ -72,5 +77,5 @@ export function planRetrieval(action:string,kind='chat'):RetrievalPlan {
  if(narration)requirements.push(req('site','Current party-known site description','',[],[],'governing'));
  const characterDataNeeded=declared||/\b(?:my|our|this character)\b/i.test(action),campaignContext=profile==='adventure_sites'||modes.includes('adventure_narration')?['current location','party-known discoveries','approved campaign modifications','established room/NPC/event state','journal']:profile==='journeying'?['clock','terrain','weather','quarter-day assignments']:declared?['current situation','conditions']:[];
  const preference=sourceRequest(action);
- return {sourcePreference:readonly&&preference.pdfOnly?'pdf_only':'any',...(readonly&&preference.sourceTitle?{sourceTitle:preference.sourceTitle}:{}),...(preference.pageReference?{pageReference:preference.pageReference}:{}),version:1,intent,modes,profile,secondaryDomains:domains.slice(1),subjects:entry?[entry.name]:topics.map(t=>mechanicalTopics[t].label),requirements:[...new Map(requirements.map(r=>[r.id,r])).values()].slice(0,10),sourceCategories:profile==='adventure_sites'?['Adventure','Campaign Reference']:readonly&&preference.pdfOnly?['Rules','Bestiary','House Rules']:['Rules','Bestiary','House Rules','Curated Official Rules Summary'],campaignContext,optionalExceptions:characterDataNeeded?['applicable saved talents','current conditions','carried equipment']:[],characterDataNeeded,stateChangesPermitted:false,proposalsPermitted:!readonly&&intent!=='general_conversation',explanationOnly:readonly,...(entry?{entry}:{}),maxTargetedRetries:1};
+ return {...(facts?{weaponFacts:facts}:{}),sourcePreference:readonly&&preference.pdfOnly?'pdf_only':'any',...(readonly&&preference.sourceTitle?{sourceTitle:preference.sourceTitle}:{}),...(preference.pageReference?{pageReference:preference.pageReference}:{}),version:1,intent,modes,profile,secondaryDomains:domains.slice(1),subjects:entry?[entry.name]:topics.map(t=>mechanicalTopics[t].label),requirements:[...new Map(requirements.map(r=>[r.id,r])).values()].slice(0,10),sourceCategories:profile==='adventure_sites'?['Adventure','Campaign Reference']:readonly&&preference.pdfOnly?['Rules','Bestiary','House Rules']:['Rules','Bestiary','House Rules','Curated Official Rules Summary'],campaignContext,optionalExceptions:characterDataNeeded?['applicable saved talents','current conditions','carried equipment']:[],characterDataNeeded,stateChangesPermitted:false,proposalsPermitted:!readonly&&intent!=='general_conversation',explanationOnly:readonly,...(entry?{entry}:{}),maxTargetedRetries:1};
 }

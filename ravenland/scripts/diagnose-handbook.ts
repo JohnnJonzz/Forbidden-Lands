@@ -1,3 +1,4 @@
+import {diagnoseEquipment} from '../src/server/sourcebooks/diagnose-equipment';
 import {loadEnvConfig} from '@next/env';
 import {existsSync} from 'node:fs';
 import {dirname,join} from 'node:path';
@@ -17,7 +18,7 @@ async function main(){
   const active=repo.db.prepare("SELECT value FROM application_meta WHERE key='active_campaign'").get(),campaign=z.string().uuid().parse(args.get('--campaign')??active?.value);
   let source=args.get('--source');
   if(!source){const matches=repo.db.prepare("SELECT id,title,original_filename FROM source_documents WHERE campaign_id=? AND visibility='Public Rules' AND category IN ('Rules','Bestiary','House Rules')").all(campaign).filter(row=>sourceNameMatches(row.title as string,row.original_filename as string,"Player's Handbook"));if(matches.length!==1)throw Error('Select an unambiguous authorized source with --source.');source=matches[0].id as string}
-  console.log(JSON.stringify(await diagnoseHandbook(repo,campaign,z.string().uuid().parse(source),storage),null,2));repo.db.exec('ROLLBACK');
+  const diagnose=args.get('--mode')==='equipment'?diagnoseEquipment:diagnoseHandbook;console.log(JSON.stringify(await diagnose(repo,campaign,z.string().uuid().parse(source),storage),null,2));repo.db.exec('ROLLBACK');
  }finally{repo.close()}
 }
 main().catch(()=>{console.error('Handbook audit could not run. Check the existing database/current schema, active campaign, an unambiguous authorized handbook (or explicit --campaign/--source UUIDs), and private storage directory. No migration or indexing was attempted.');process.exitCode=1});
