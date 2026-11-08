@@ -47,7 +47,7 @@ export function planRetrieval(action:string,kind='chat'):RetrievalPlan {
   if(!/\bcompare\b/i.test(action))requirements.push(req('mishaps','Activity mishaps and outcomes','journey hunting foraging fishing mishap resource outcomes',['mishap','hunt','forag','fish'],[['mishap','mishaps','failure'],['outcome','outcomes','food','water','resource','resources','failure']]));
  }else if(profile==='combat'){
   const ranged=/\b(?:shoot\w*|ranged|bow|longbow|marksmanship)\b/i.test(action),t=ranged?'ranged':'melee';
-  requirements.push(req(t,mechanicalTopics[t].label,mechanicalTopics[t].terms,[ranged?'ranged':'melee',ranged?'marksmanship':'close combat'],[[ranged?'marksmanship':'melee','attack','attacks']],'governing',t));
+  requirements.push(req(t,mechanicalTopics[t].label,mechanicalTopics[t].terms,[ranged?'ranged':'melee',ranged?'marksmanship':'close combat'],[[ranged?'marksmanship':'melee'],['attack','attacks','roll','pool','procedure']],'governing',t));
   requirements.push(req('actions','Action economy','fast slow actions combat',['combat','action','actions'],[['action','actions'],['fast','slow','cost']],'supporting','actions'));
   if(declared)requirements.push(req('pool','Applicable attack pool',ranged?'marksmanship agility ranged attack pool':'melee strength attack pool',['attack','marksmanship','melee'],[[ranged?'marksmanship':'melee'],['attribute','agility','strength','pool','dice']]));
   const weapon=action.match(/\bwith\s+(?:my |a |the |an )?([\p{L}-]+)(?:\s|[.!?]|$)/iu)?.[1];

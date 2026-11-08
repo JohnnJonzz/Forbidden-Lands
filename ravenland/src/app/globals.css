@@ -72,3 +72,7 @@ button.party-member{width:100%;padding:4px 0;border:0;background:transparent;tex
 .rule-markdown blockquote { border-left: 2px solid #b49851; padding-left: 1rem; } .rule-markdown a { color:#dec17b; text-decoration:underline; }
 .rule-markdown pre { white-space:pre-wrap; background:#181b1a; padding: .8rem; }
 .rule-table { max-width: 100%; overflow-x: auto; } .rule-table th,.rule-table td { border:1px solid #665a42; padding:.5rem .75rem; text-align:left; } .rule-table th { color:#dec17b; }
+
+.rule-tags {display:flex;flex-wrap:wrap;gap:.35rem;list-style:none;padding:0;margin:.5rem 0}
+.rule-tags li {color:var(--gold,#bda36b);border:1px solid #665937;border-radius:4px;padding:.15rem .4rem;font-size:.8rem;overflow-wrap:anywhere}
+.rules-results article {overflow-wrap:anywhere}
