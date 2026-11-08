@@ -707,3 +707,17 @@ The local **read-only** `npm run sourcebooks:diagnose` command (with optional `-
 Weapon ratings are now explicit retrieval requirements. A general combat overview cannot establish Longbow/Heavy Crossbow statistics. Named handbook requests bind the authorized PDF even without the word “PDF”; missing facts use the existing bounded targeted retry. Supported read-only equipment questions produce cited application reference answers and arithmetic only when each required numerical input/rule is evidenced. Missing/conflicting facts, unparseable house overrides and unsupported explicit modifiers yield an unverified result. No attack is executed and no paid model call is needed for this reference path.
 
 See [root cause, retrieved test passages, files, regression results and limits](docs/mechanical-fact-coverage.md). Run `npm run test:mechanical-facts` after a production build. To inspect the real library without changing it, run `npm run sourcebooks:diagnose -- --mode equipment` where the existing campaign database/private books reside. The live handbook was unavailable here; synthetic PDF regressions do not verify its extraction or pagination. No migration, dependency, general GM personality change or complete mechanical execution engine was added.
+
+## Real fifth-printing PDF regression tests
+
+The owner's actual Handbook and Gamemaster's Guide attachments have now been tested through application extraction, isolated SQLite/FTS indexing and final retrieval selection. See the [real-file results, demonstrated fixes, selected passage IDs and limitations](docs/real-sourcebook-regressions.md). This adds real-file evidence beyond the earlier synthetic-only investigations; the live campaign database remains unverified and untouched.
+
+Keep legitimate sourcebook copies outside Git, or in the ignored private fixture directory. Follow [private fixture setup](tests/fixtures/private-sourcebooks/README.md), then run from `ravenland/`:
+
+```bash
+RAVENLAND_REAL_SOURCEBOOK_DIR=/tmp/ravenland-private-sourcebooks npm run test:real-sourcebooks
+# Required pre-merge check: unit/synthetic coverage and real PDFs; missing books fail.
+RAVENLAND_REAL_SOURCEBOOK_DIR=/tmp/ravenland-private-sourcebooks npm run test:retrieval-check
+```
+
+The optional real-file command explicitly skips if books are unavailable; it never substitutes synthetic PDFs. The required check fails instead. Both use disposable databases and copied files, preserve source permissions, clean up after execution, and make no external AI calls. Never commit PDFs, extracted source bodies or private database fixtures. The real Longbow table and damage procedure are now retrieved, but the existing guard still withholds numerical damage when hit-threshold evidence is missing; further mechanical validation is deferred.

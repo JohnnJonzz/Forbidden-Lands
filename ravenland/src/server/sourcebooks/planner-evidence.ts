@@ -5,6 +5,7 @@ const norm=(s:string)=>s.toLowerCase().replace(/[^\p{L}\p{N}]+/gu,' ').trim();
 const contains=(text:string,term:string)=>norm(text).includes(norm(term));
 export function referenceIdentity(p:RulePassage){return p.title+' '+('primaryTopic'in p?p.primaryTopic??'':'')+' '+('headingPath'in p?p.headingPath?.join(' ')??p.heading??'':p.heading??'')}
 export function requirementEvidence(p:RulePassage,r:SourceRequirement):'covered'|'limited'|'missing'{
+ if(r.id.startsWith('action:')){const name=r.anchors[0].replace(/ /g,'\\s+'),m=p.text.match(new RegExp('\\b'+name+'\\s*:\\s*(?:Fast|Slow)\\s+action\\b','i'));return m&&p.text.slice(m.index).split(/\s+/).length>=8?'covered':r.anchors.some(a=>contains(p.text,a))?'limited':'missing'}
  if(r.fact){const eligible=!('sourceType'in p)||p.sourceType==='house-rule';if(!eligible)return 'missing';if(r.fact.kind==='weapon'){const row=weaponRow(p,r.fact.weapon);return r.fact.fields.every(field=>row[field])?'covered':p.text.toLowerCase().includes(r.fact.weapon.toLowerCase())?'limited':'missing'}const rule=damageRule(p),found=r.fact.kind==='extra_damage'?rule.extra:rule.first;return found?'covered':'missing'}
  const identity=referenceIdentity(p);let body=p.text.replace(/^#{1,6}[^\n]*$/gm,'').trim();
  // PDF chunks often start with a running page number/header rather than the
