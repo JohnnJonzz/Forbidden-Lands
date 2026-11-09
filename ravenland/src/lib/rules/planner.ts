@@ -23,7 +23,8 @@ const site=/\b(?:enter|explore|examine|investigate|inspect|room|altar|doorway|la
 const noAction=/\b(?:do not|don't|without)\s+(?:perform|do|roll|advance|resolve|take|execute)\b/i;
 function req(id:string,label:string,query:string,anchors:string[],contentGroups:string[][]=[],role:SourceRequirement['role']='supporting',topic?:MechanicalTopic):SourceRequirement{return {id,label,query,anchors,contentGroups,role,...(topic?{topic}:{})}}
 export function planRetrieval(action:string,kind='chat'):RetrievalPlan {
- const declared=declaration.test(action)&&!noAction.test(action),reference=(mechanical.test(action)||requestedSubjects(action).length>0)&&(explanation.test(action)||referenceCommand.test(action)||/\?/.test(action))&&!declared;
+ const candidate=weaponRequest(action);
+ const declared=declaration.test(action)&&!noAction.test(action),reference=!declared&&((mechanical.test(action)||requestedSubjects(action).length>0)&&(explanation.test(action)||referenceCommand.test(action)||/\?/.test(action))||candidate?.attackSuccesses!=null||!!candidate?.inputIssues.length);
  const narration=site.test(action)&&!reference,modes:RequestIntent[]=kind!=='chat'?['general_conversation']:declared?['gameplay_adjudication',...(narration?['adventure_narration' as const]:[])]:reference?['rules_reference']:narration?['adventure_narration']:['general_conversation'];
  if(declared&&explanation.test(action))modes.push('rules_reference');
  const intent=modes[0],readonly=intent==='rules_reference'||noAction.test(action);
@@ -34,7 +35,7 @@ export function planRetrieval(action:string,kind='chat'):RetrievalPlan {
  if(!entry&&/\b(?:hunt\w*|forag\w*|fish\w*|journey\w*|quarter.day|hike|camp|travel\w*)\b/i.test(action))domains.push('journeying');
  if(/\b(?:magic|spells?|spellcasting|cast|willpower)\b/i.test(action))domains.push('magic');
  if(narration)domains.push('adventure_sites');
- const facts=readonly?weaponRequest(action):null;if(facts){domains.unshift('equipment')}
+ const facts=readonly?candidate:null;if(facts){domains.unshift('equipment')}
  const profile=domains[0]??'generic',requirements:SourceRequirement[]=[];
  const topics=requestedSubjects(action);
  if(facts){

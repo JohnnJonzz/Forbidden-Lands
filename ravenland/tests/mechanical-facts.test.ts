@@ -1,4 +1,5 @@
 import {planRetrieval} from '../src/lib/rules/planner';
+import {playerInputCases} from './fixtures/attack-input-cases';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {createRequire} from 'node:module';
@@ -69,4 +70,27 @@ test('curated thresholds cannot substitute for missing official evidence and hou
   curated(f,'Longbow damage success rule','An unverified Longbow damage success rule needs manual adjudication.',{documentType:'House Rule',overrideScope:'Longbow damage success rule'});
   r=retrieveRules(f.repo,f.id,questions[1],'chat');assert.equal(r.mechanicalFacts?.firstHit.status,'unverified_override');assert.equal(r.mechanicalFacts?.calculation.status,'unverified');
  }finally{f.close()}
+});
+
+test('player inputs survive validation, saved request context, streamed reply and final answer',async()=>{
+ const f=await fixture(),mode=process.env.RAVENLAND_AI_MODE;process.env.RAVENLAND_AI_MODE='openai';
+ try{
+  const before=f.repo.get(f.id)!.session,provider:GMProvider={async generate(){throw Error('Reference answer must not call AI')},async test(){throw Error('No model call')}};
+  for(const c of playerInputCases){
+   const requestId=randomUUID(),r=retrieveRules(f.repo,f.id,c.question,'chat'),facts=r.mechanicalFacts!;
+   assert.equal(facts.request.attackSuccesses,c.attack,c.name);assert.equal(facts.firstHit.value,1);assert.equal(facts.calculation.additionalSuccesses,Math.max(0,c.attack-1));assert.equal(facts.calculation.damageSuccesses,c.allocated);assert.equal(facts.calculation.damage,c.damage);
+   let streamed='';const reply=await new AIService(f.repo,provider).run({campaignId:f.id,characterId:f.actor,kind:'chat',requestId,action:c.question},e=>{if(e.type==='text')streamed+=e.text});
+   assert.equal(streamed,reply.narration);assert.ok(reply.narration.includes('With '+c.attack+' attack successes'),c.name);assert.ok(reply.narration.includes(c.damage===0?'no hit, 0 damage':'= '+c.damage+' damage before armor'),c.name);
+   const row=f.repo.db.prepare('SELECT payload,context_json FROM ai_requests WHERE campaign_id=? AND id=?').get(f.id,requestId)!;assert.equal(JSON.parse(row.payload as string).action,c.question);assert.equal(JSON.parse(row.context_json as string).rules.mechanicalFacts.request.attackSuccesses,c.attack);
+  }
+  const short=await new AIService(f.repo,provider).run({campaignId:f.id,characterId:f.actor,kind:'chat',requestId:randomUUID(),action:'I rolled three sixes.'});assert.match(short.narration,/supplied 3 successes/);assert.match(short.narration,/Which weapon/);
+  for(const action of ['How much Longbow damage?','How much Longbow damage with three or four successes?','Longbow: three successes but I spend four extra successes on damage. How much damage?']){
+   const r=retrieveRules(f.repo,f.id,action,'chat');assert.equal(r.mechanicalFacts?.calculation.status,'unverified');assert.match(groundedWeaponAnswer(r)!,/clarify/i);
+  }
+  const legacy=structuredClone(retrieveRules(f.repo,f.id,questions[1],'chat')),old=legacy.mechanicalFacts!.request as unknown as Record<string,unknown>;
+  old.successes=old.attackSuccesses;delete old.attackSuccesses;delete old.damageSuccesses;delete old.inputIssues;
+  const safe=publicRetrieval(f.repo,f.id,legacy);assert.equal(safe.mechanicalFacts?.request.attackSuccesses,3);assert.equal(safe.mechanicalFacts?.calculation.damage,3);assert.ok(!('successes'in safe.mechanicalFacts!.request));
+  old.attackSuccesses=null;old.successes=1;assert.equal(publicRetrieval(f.repo,f.id,legacy).mechanicalFacts?.calculation.status,'unverified','An explicit missing new input must not fall back to a legacy value');
+  assert.deepEqual(f.repo.get(f.id)!.session.campaign,before.campaign);assert.deepEqual(f.repo.get(f.id)!.session.characters,before.characters);
+ }finally{if(mode===undefined)delete process.env.RAVENLAND_AI_MODE;else process.env.RAVENLAND_AI_MODE=mode;f.close()}
 });
