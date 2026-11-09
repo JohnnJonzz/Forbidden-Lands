@@ -16,6 +16,7 @@ import {AIService} from '../src/server/ai/service';
 import type {GMProvider} from '../src/server/ai/provider';
 import {weaponRequest} from '../src/lib/rules/weapon-request';
 import {playerInputCases} from './fixtures/attack-input-cases';
+import {prepareAction} from '../src/server/action-preparation';
 const files=['Forbidden_Lands_Players_Handbook_5th_printing.pdf','Forbidden_Lands_Gamemasters_Guide_5th_printing.r.pdf'],fixtureDir=process.env.RAVENLAND_REAL_SOURCEBOOK_DIR??join(process.cwd(),'tests/fixtures/private-sourcebooks'),required=process.env.RAVENLAND_REQUIRE_REAL_SOURCEBOOKS==='1';
 const unavailable=files.filter(file=>{try{accessSync(join(fixtureDir,file),constants.R_OK);return false}catch{return true}});
 const digest=(value:unknown)=>createHash('sha256').update(JSON.stringify(value)).digest('hex');
@@ -130,6 +131,24 @@ test('REAL fifth-printing sourcebooks: extraction, persisted FTS and complete re
     check(r.audit?.searches?.filter(s=>s.stage==='targeted'&&s.query==='sixes succeed success action').length===1,'Missing threshold retrieval repeated or absent');
     check(groundedWeaponAnswer(r)?.includes('numerical damage result remains unverified'),'Missing evidence no longer produces the safe response');
    }finally{db.db.exec('ROLLBACK TO missing_threshold; RELEASE missing_threshold')}
+  });
+  await t.test('Authorized character preparation uses real official skill, attribute, weapon and pool evidence without writes',async()=>{
+   db.db.exec('SAVEPOINT character_preparation');
+   try{
+    const record=db.get(id)!,actor=record.session.characters[0];
+    actor.sheet={'attr-agility':'3','attr-agility-regular':'4','skill-marksmanship':'2','cond-hungry':false,'cond-thirsty':false,'cond-sleepy':false,'cond-cold':false,talents:[],weapons:[{name:'Longbow',bonus:'2',dmg:'1',range:'Long',skill:'marksmanship',artifact:'None',equipped:true}],'dark-secret':'NEVER_EXPOSE_CHARACTER_SECRET'};
+    db.update(id,record.revision,record.session);
+    const principal={playerId:'real-fixture-owner',grants:[{campaignId:id,characterIds:[actor.id]}]},changes=db.db.prepare('SELECT total_changes() AS n').get()!.n;
+    const p=prepareAction(db,{campaignId:id,characterId:actor.id,declaration:'I shoot the bandit with my longbow.'},principal);
+    check(p.status==='ready','Real preparation missing: '+p.missing.join('; '));
+    check(p.basePool?.base===3&&p.basePool.skill===2&&p.basePool.gear===2&&p.basePool.total===7,'Real character pool is incorrect');
+    check(p.ruleInputs.skill==='marksmanship'&&p.ruleInputs.attribute==='agility'&&p.ruleInputs.poolRuleVerified,'Real skill/attribute/pool evidence is missing');
+    check(!JSON.stringify(p).includes('NEVER_EXPOSE'),'Character secret entered proposal');
+    const reply=await new AIService(db,{async generate(){throw Error('No AI call during preparation')},async test(){throw Error('No AI call')}},principal).run({campaignId:id,characterId:actor.id,requestId:randomUUID(),kind:'chat',action:'I shoot the bandit with my longbow.'});
+    check(reply.preparation?.basePool?.total===7&&!reply.actions.length,'Preparation did not reach final GM reply');
+    check(db.db.prepare('SELECT total_changes() AS n').get()!.n===changes,'Preparation wrote database state');
+    report.checks.push({name:'Authorized character Longbow preparation',status:'PASS',basePool:p.basePool,ruleInputs:p.ruleInputs,sourcePages:p.sources.map(s=>s.startPage),evidence:p.evidence.map(e=>({kind:e.kind,chunkId:e.chunkId,physicalPage:e.physicalPage})),databaseWrites:0});
+   }finally{db.db.exec('ROLLBACK TO character_preparation; RELEASE character_preparation')}
   });
   await t.test('Printed-page evidence is observed from the original file, never a hardcoded offset',async()=>{await extractPDF(join(fixtureDir,files[0]),()=>{},(page,_text,evidence)=>{if([29,46,101,102,107].includes(page))report.pagination.push({physicalPage:page,pdfPageLabel:evidence?.pageLabel??null,observedFooterLabels:evidence?.footerLabels??[]})});for(const [physical,printed] of [[29,'25'],[46,'42'],[107,'103']] as const)check(report.pagination.some(value=>{const p=value as {physicalPage:number;pdfPageLabel:string|null;observedFooterLabels:string[]};return p.physicalPage===physical&&(p.pdfPageLabel===printed||p.observedFooterLabels.includes(printed))}),'Printed footer not verified on real physical page '+physical);});
   check(digest({campaign:db.get(id)!.session.campaign,characters:db.get(id)!.session.characters,journal:db.get(id)!.session.journal,dayTracker:db.get(id)!.session.dayTracker})===before,'Live/mechanical campaign state changed');check(digest(db.db.prepare('SELECT id,visibility FROM source_documents ORDER BY id').all())===permissionBefore,'Source visibility changed during real tests');

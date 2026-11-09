@@ -622,6 +622,7 @@
             <thead>
                 <tr>
                     <th>Weapon</th>
+                    <th>Equipped</th>
                     <th style="width: 50px;">Bonus</th>
                     <th style="width: 50px;">Dmg</th>
                     <th style="width: 60px;">Range</th>
@@ -718,23 +719,87 @@ class ForbiddenLandsApp {
             {name: 'Heavy crossbow', bonus: 1, dmg: 3, range: 'Long', feat: 'Heavy, Two-handed, Slow reload', skill: 'marksmanship'}
         ];
         this.skillsConfig = [
-            { id: 'animalhandling', name: 'Animal Handling', attr: 'empathy' },
-            { id: 'crafting', name: 'Crafting', attr: 'strength' },
-            { id: 'endurance', name: 'Endurance', attr: 'strength' },
-            { id: 'healing', name: 'Healing', attr: 'empathy' },
-            { id: 'insight', name: 'Insight', attr: 'wits' },
-            { id: 'lore', name: 'Lore', attr: 'wits' },
-            { id: 'manipulation', name: 'Manipulation', attr: 'empathy' },
-            { id: 'marksmanship', name: 'Marksmanship', attr: 'agility' },
-            { id: 'melee', name: 'Melee', attr: 'strength' },
-            { id: 'might', name: 'Might', attr: 'strength' },
-            { id: 'move', name: 'Move', attr: 'agility' },
-            { id: 'performance', name: 'Performance', attr: 'empathy' },
-            { id: 'scouting', name: 'Scouting', attr: 'wits' },
-            { id: 'sleightofhand', name: 'Sleight of Hand', attr: 'agility' },
-            { id: 'stealth', name: 'Stealth', attr: 'agility' },
-            { id: 'survival', name: 'Survival', attr: 'wits' }
-        ];
+          {
+                    "id": "animalhandling",
+                    "name": "Animal Handling",
+                    "attr": "empathy"
+          },
+          {
+                    "id": "crafting",
+                    "name": "Crafting",
+                    "attr": "strength"
+          },
+          {
+                    "id": "endurance",
+                    "name": "Endurance",
+                    "attr": "strength"
+          },
+          {
+                    "id": "healing",
+                    "name": "Healing",
+                    "attr": "empathy"
+          },
+          {
+                    "id": "insight",
+                    "name": "Insight",
+                    "attr": "wits"
+          },
+          {
+                    "id": "lore",
+                    "name": "Lore",
+                    "attr": "wits"
+          },
+          {
+                    "id": "manipulation",
+                    "name": "Manipulation",
+                    "attr": "empathy"
+          },
+          {
+                    "id": "marksmanship",
+                    "name": "Marksmanship",
+                    "attr": "agility"
+          },
+          {
+                    "id": "melee",
+                    "name": "Melee",
+                    "attr": "strength"
+          },
+          {
+                    "id": "might",
+                    "name": "Might",
+                    "attr": "strength"
+          },
+          {
+                    "id": "move",
+                    "name": "Move",
+                    "attr": "agility"
+          },
+          {
+                    "id": "performance",
+                    "name": "Performance",
+                    "attr": "empathy"
+          },
+          {
+                    "id": "scouting",
+                    "name": "Scouting",
+                    "attr": "wits"
+          },
+          {
+                    "id": "sleightofhand",
+                    "name": "Sleight of Hand",
+                    "attr": "agility"
+          },
+          {
+                    "id": "stealth",
+                    "name": "Stealth",
+                    "attr": "agility"
+          },
+          {
+                    "id": "survival",
+                    "name": "Survival",
+                    "attr": "wits"
+          }
+];
 
         this.fieldIds = [
             'name', 'kin', 'profession', 'age',
@@ -1131,7 +1196,8 @@ class ForbiddenLandsApp {
             range: tr.querySelector('.w-range').value,
             feat: tr.querySelector('.w-feat').value,
             skill: tr.querySelector('.w-skill').value,
-            artifact: tr.querySelector('.w-artifact').value
+            artifact: tr.querySelector('.w-artifact').value,
+            equipped: tr.querySelector('.w-equipped').checked
         }));
 
         data.gear = Array.from(document.querySelectorAll('#gear-table tbody tr')).map(tr => ({
@@ -1195,7 +1261,7 @@ class ForbiddenLandsApp {
         if (data.talents) data.talents.forEach(t => this.addTalentRow(t.name, t.rank, t.desc));
 
         document.querySelector('#weapons-table tbody').innerHTML = '';
-        if (data.weapons) data.weapons.forEach(w => this.addWeaponRow(w.name, w.bonus, w.dmg, w.range, w.feat, w.skill, w.artifact));
+        if (data.weapons) data.weapons.forEach(w => this.addWeaponRow(w.name, w.bonus, w.dmg, w.range, w.feat, w.skill, w.artifact, w.equipped));
 
         document.querySelector('#gear-table tbody').innerHTML = '';
         if (Array.isArray(data.spells)) data.spells.forEach(spell=>{if(spell && typeof spell === 'object') this.addSpell(spell);});
@@ -1219,7 +1285,7 @@ class ForbiddenLandsApp {
         ]);
     }
 
-    addWeaponRow(name = '', bonus = 0, dmg = 1, range = 'Arm', feat = '', skill = 'melee', artifact = 'None') {
+    addWeaponRow(name = '', bonus = 0, dmg = 1, range = 'Arm', feat = '', skill = 'melee', artifact = 'None', equipped = false) {
         const tr = document.createElement('tr');
         tr.innerHTML = `
             <td>
@@ -1234,6 +1300,7 @@ class ForbiddenLandsApp {
                     <option value="marksmanship" ${skill === 'marksmanship' ? 'selected' : ''}>Marksmanship (Agility)</option>
                 </select>
             </td>
+            <td><input type="checkbox" class="w-equipped" aria-label="Weapon equipped" ${equipped === true ? 'checked' : ''} onchange="app.saveState()"></td>
             <td><input type="number" value="${this.escapeHTML(bonus)}" class="w-bonus" onchange="app.saveState()"></td>
             <td><input type="number" value="${this.escapeHTML(dmg)}" class="w-dmg" onchange="app.saveState()"></td>
             <td><input type="text" value="${this.escapeHTML(range)}" class="w-range" onchange="app.saveState()"></td>
