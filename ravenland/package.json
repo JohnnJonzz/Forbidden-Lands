@@ -3,7 +3,9 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev --hostname 0.0.0.0",
+    "dev": "node scripts/dev-local.mjs",
+    "dev:hosted": "next dev --hostname 0.0.0.0",
+    "predev:hosted": "node scripts/generate-sheet.mjs && tsx scripts/prepare-map.ts",
     "build": "next build",
     "start": "next start --hostname 0.0.0.0",
     "typecheck": "tsc --noEmit",
@@ -42,7 +44,8 @@
     "test:procedure-retrieval": "node tests/procedure-retrieval-browser.cjs",
     "test:rules-windows": "node tests/rules-windows-browser.cjs",
     "test:character-preparation": "node tests/character-preparation-browser.cjs",
-    "player-access:inspect": "tsx scripts/inspect-player-access.ts"
+    "player-access:inspect": "tsx scripts/inspect-player-access.ts",
+    "test:character-awareness": "node tests/local-character-awareness-browser.cjs"
   },
   "dependencies": {
     "exceljs": "^4.4.0",

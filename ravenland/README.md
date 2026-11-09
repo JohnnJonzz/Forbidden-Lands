@@ -13,6 +13,8 @@ npm run db:migrate
 npm run dev
 ```
 
+`npm run dev` starts trusted local play on loopback only: choose **ACTING AS**, with no separate player token. See [read-only character awareness and access limits](docs/read-only-character-awareness.md). `npm run dev:hosted` preserves network development with scoped player access.
+
 Open **http://localhost:3000**. Migrations also run automatically when the server first opens the database. Production: `npm run build`, then `npm start`. Use `npm run dev -- --port 3001` if 3000 is occupied.
 
 The default database is `ravenland/data/ravenland.sqlite`, resolved from the application working directory. Keep this directory between restarts. To choose a different database, export an absolute path before running migration and server commands:
@@ -726,14 +728,12 @@ The [missing hit-threshold evidence repair](docs/missing-mechanical-evidence.md)
 
 The [player-input preservation repair](docs/player-mechanical-inputs.md) keeps rolled successes separate from source hit requirements and additional successes spent on damage. It recognizes word/digit/sixes reports and explicit partial or zero damage allocation. Missing/ambiguous counts and overspending request clarification. Real-file tests now check the original request, saved context, streamed answer and final reply for 0–4 successes, the reported full question and Heavy Crossbow; existing evidence/security tests remain required. Historical saved replies stay unchanged, so send a new question to calculate with the corrected parser.
 
-## Character-aware action preparation
+## Character awareness and advisory action preparation
 
-Ranged declarations now produce an application-validated, read-only preparation card from the actual saved character. Current Agility, Marksmanship and the explicitly equipped weapon's verified Gear Bonus form the base pool; absent data, ambiguous equipment, talents, conditions, artifacts or unresolved overrides require review. Preparation never rolls, spends resources or changes campaign state. The standalone dice roller remains independent.
+The GM uses saved character values for narration and reminders. Current/maximum attributes, Broken, conditions, injury notes, talents, equipment and resource dice are read-only context. Relevant Pride, Dark Secret and Relationships are limited to the authorized acting character and the current narrative; unrelated fields and other characters’ secrets are omitted. Public diagnostics are redacted.
 
-The root `character-rules.json` is the canonical source for the four attributes and sixteen standard skills, shared with the sheet generator and AI rules context. Professions and activities cannot become standard skills. Optional/house definitions remain separately labeled and require reviewed integration.
+**Trusted local play needs no player token:** run `npm run dev`, open loopback, and choose ACTING AS. The local launcher validates real loopback connections and stamps an internal proof; production and `dev:hosted` retain player-grant ownership checks. GM review and sourcebook permissions remain separate.
 
-**Fixing “Connect player access before preparing an action”:** follow [the investigation and four-player setup guide](docs/player-access-setup.md). Campaign Settings → Player access for action preparation → Setup for this campaign shows the loaded campaign’s real IDs. `npm run player-access:inspect` reads existing server IDs without creating or changing a campaign. There is no existing authenticated owner login or automatic GM-token ownership to inherit.
+Normal declarations reach narration. Equipped is advisory, and missing weapon data leaves calculations unverified without blocking the scene. The separate read-only preparation endpoint and official-PDF numerical validation remain available. The canonical four-attribute/sixteen-skill registry, existing character persistence and manual dice/push controls are preserved. No dice UI or automated resource/stat changes were added.
 
-**Configure player access before using character-aware preparation.** Existing character selection is not authentication. Set server-only `RAVENLAND_PLAYER_GRANTS`, connect the opaque token in Campaign Settings → Player access for action preparation, and mark the intended saved weapon Equipped in the character sheet. Requests without a matching campaign/character grant fail closed. Ordinary rules-reference questions remain available. This scoped prototype adapter does not replace all legacy local-development APIs with multiplayer accounts.
-
-See [architecture, authorization/setup, actual source evidence, example proposals and limitations](docs/character-aware-preparation.md). Run `npm run test:character-preparation` after a production build and the required real-PDF retrieval gate. Preparation cards are transient; saved character values and equipped flags persist through the existing campaign database.
+See [architecture, story privacy, changed files, testing and limitations](docs/read-only-character-awareness.md). Hosted player configuration remains documented in [player access setup](docs/player-access-setup.md). Run `npm run test:character-preparation` after a production build, `npm run test:character-awareness` for the local browser flow, and the required real-PDF retrieval gate.

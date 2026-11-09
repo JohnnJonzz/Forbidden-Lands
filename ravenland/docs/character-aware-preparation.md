@@ -1,5 +1,7 @@
 # Character-aware mechanical preparation
 
+> Updated workflow: [Read-only character awareness and trusted local play](read-only-character-awareness.md) supersedes local token and strict Equipped requirements below. The token instructions remain applicable to hosted development/production. Normal chat now narrates actions; direct preparation remains read-only.
+
 Implemented November 9, 2026. This phase prepares ordinary ranged attacks and validates their base pool. It does not execute attacks or roll dice.
 
 ## Existing architecture and reuse

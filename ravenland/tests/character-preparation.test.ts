@@ -33,17 +33,18 @@ test('one canonical official registry excludes professions and invented skills; 
 test('prepare the saved current Agility + Marksmanship + equipped Longbow bonus without any write',async()=>{
  const f=fixture();try{const before=f.repo.get(f.id),changes=f.repo.db.prepare('SELECT total_changes() AS n').get()!.n,p=prepareAction(f.repo,f.input,f.principal);
  assert.equal(p.status,'ready',JSON.stringify(p.missing));assert.deepEqual(p.basePool,{base:3,skill:2,gear:2,total:7});assert.equal(p.ruleInputs.skill,'marksmanship');assert.equal(p.ruleInputs.attribute,'agility');assert.ok(p.sources.length);assert.equal(p.stateChangesPermitted,false);assert.ok(!JSON.stringify(p).includes('PRIVATE_CHARACTER_SECRET'));assert.ok(!JSON.stringify(p).includes('OTHER_PLAYER_SECRET'));
- const provider={async generate(){throw Error('No AI call')},async test(){throw Error('No AI call')}};const reply=await new AIService(f.repo,provider,f.principal).run({campaignId:f.id,characterId:f.actor,kind:'chat',requestId:randomUUID(),action:declaration});assert.equal(reply.preparation?.basePool?.total,7);assert.deepEqual(reply.actions,[]);assert.equal(f.repo.db.prepare('SELECT total_changes() AS n').get()!.n,changes);assert.deepEqual(f.repo.get(f.id),before);
+ assert.equal(f.repo.db.prepare('SELECT total_changes() AS n').get()!.n,changes);assert.deepEqual(f.repo.get(f.id),before);
  }finally{f.repo.close()}
 });
 test('different authorized characters use their own saved values, never another actor or browser defaults',()=>{
  const f=fixture();try{const principal:CharacterPrincipal={playerId:'player-two',grants:[{campaignId:f.id,characterIds:[f.other]}]};const p=prepareAction(f.repo,{...f.input,characterId:f.other},principal);assert.deepEqual(p.basePool,{base:2,skill:4,gear:2,total:8});assert.equal(p.character.id,f.other)}finally{f.repo.close()}
 });
-test('missing weapon, unknown equip state and ambiguous equipped rows are unresolved',()=>{
- for(const change of [(s:CharacterSheet)=>{s.weapons=[]},(s:CharacterSheet)=>{delete s.weapons![0].equipped},(s:CharacterSheet)=>{s.weapons!.push({...s.weapons![0]})}]){
+test('missing weapon and ambiguous rows are unresolved; readiness flags remain advisory',()=>{
+ for(const change of [(s:CharacterSheet)=>{s.weapons=[]},(s:CharacterSheet)=>{s.weapons!.push({...s.weapons![0]})}]){
   const f=fixture();try{f.change(s=>change(s.characters[0].sheet!));const p=prepareAction(f.repo,f.input,f.principal);assert.equal(p.status,'needs_review');assert.equal(p.characterInputs.weapon,null);assert.equal(p.basePool,null)}finally{f.repo.close()}
  }
 });
+test('a recorded Longbow needs no Equipped flag for a verified read-only base pool',()=>{for(const equipped of [undefined,false]){const f=fixture();try{f.change(s=>{s.characters[0].sheet!.weapons![0].equipped=equipped});const p=prepareAction(f.repo,f.input,f.principal);assert.equal(p.status,'ready');assert.deepEqual(p.basePool,{base:3,skill:2,gear:2,total:7})}finally{f.repo.close()}}});
 test('incomplete attributes and skills remain unknown rather than receiving sheet defaults',()=>{
  const f=fixture();try{f.change(s=>{s.characters[0].sheet={'attr-agility':'','skill-marksmanship':''}});const p=prepareAction(f.repo,f.input,f.principal);assert.equal(p.characterInputs.attribute,null);assert.equal(p.characterInputs.skill,null);assert.equal(p.basePool,null);assert.equal(p.status,'needs_review');f.change(s=>{delete s.characters[0].sheet});assert.equal(prepareAction(f.repo,f.input,f.principal).basePool,null)}finally{f.repo.close()}
 });

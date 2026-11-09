@@ -144,11 +144,21 @@ test('REAL fifth-printing sourcebooks: extraction, persisted FTS and complete re
     check(p.basePool?.base===3&&p.basePool.skill===2&&p.basePool.gear===2&&p.basePool.total===7,'Real character pool is incorrect');
     check(p.ruleInputs.skill==='marksmanship'&&p.ruleInputs.attribute==='agility'&&p.ruleInputs.poolRuleVerified,'Real skill/attribute/pool evidence is missing');
     check(!JSON.stringify(p).includes('NEVER_EXPOSE'),'Character secret entered proposal');
-    const reply=await new AIService(db,{async generate(){throw Error('No AI call during preparation')},async test(){throw Error('No AI call')}},principal).run({campaignId:id,characterId:actor.id,requestId:randomUUID(),kind:'chat',action:'I shoot the bandit with my longbow.'});
-    check(reply.preparation?.basePool?.total===7&&!reply.actions.length,'Preparation did not reach final GM reply');
     check(db.db.prepare('SELECT total_changes() AS n').get()!.n===changes,'Preparation wrote database state');
     report.checks.push({name:'Authorized character Longbow preparation',status:'PASS',basePool:p.basePool,ruleInputs:p.ruleInputs,sourcePages:p.sources.map(s=>s.startPage),evidence:p.evidence.map(e=>({kind:e.kind,chunkId:e.chunkId,physicalPage:e.physicalPage})),databaseWrites:0});
+
    }finally{db.db.exec('ROLLBACK TO character_preparation; RELEASE character_preparation')}
+  });
+  await t.test('A real-PDF Longbow declaration reaches narration without an Equipped flag or mechanical state changes',async()=>{
+   const original=db.get(id)!.session.characters;
+   const r=db.get(id)!,actor=r.session.characters[0];actor.sheet={'attr-agility':'3','attr-agility-regular':'4','skill-marksmanship':'2','cond-hungry':false,'cond-thirsty':false,'cond-sleepy':false,'cond-cold':false,talents:[],weapons:[{name:'Longbow',bonus:'2',skill:'marksmanship',artifact:'None'}],'dark-secret':'NEVER_EXPOSE_CHARACTER_SECRET'};db.update(id,r.revision,r.session);
+   const principal={playerId:'real-fixture-owner',grants:[{campaignId:id,characterIds:[actor.id]}]};
+   try{
+    const mechanicalBefore=JSON.stringify({...db.get(id)!.session,messages:[]});let received=false;
+    const reply=await new AIService(db,{async generate(input){const ctx=(input as any).context;check(ctx.actionPreparation.basePool.total===7,'Real pool did not reach narrative provider');check(ctx.retrievalContext.actor.attributes.agility.current===3,'Actual current Agility was lost');check(!JSON.stringify(ctx).includes('NEVER_EXPOSE'),'Irrelevant private field leaked into attack narration');received=true;return {provider:'openai' as const,model:'read-only-context-capture',inputTokens:0,outputTokens:0,output:{narration:'The target shifts beyond the bowstring. Choose your next move.',actions:[],memoryProposals:[],selectedImageId:null}}},async test(){throw Error('No paid API call')}},principal).run({campaignId:id,characterId:actor.id,requestId:randomUUID(),kind:'chat',action:'I shoot the bandit with my longbow.'});
+    check(received&&!!reply.narration,'Normal attack narration did not run');check(JSON.stringify({...db.get(id)!.session,messages:[]})===mechanicalBefore,'Narration modified mechanical campaign state');
+    report.checks.push({name:'Real Longbow narrative awareness without Equipped',status:'PASS',basePool:7,mechanicalStateUnchanged:true});
+   }finally{const current=db.get(id)!;current.session.characters=original;db.update(id,current.revision,current.session)}
   });
   await t.test('Printed-page evidence is observed from the original file, never a hardcoded offset',async()=>{await extractPDF(join(fixtureDir,files[0]),()=>{},(page,_text,evidence)=>{if([29,46,101,102,107].includes(page))report.pagination.push({physicalPage:page,pdfPageLabel:evidence?.pageLabel??null,observedFooterLabels:evidence?.footerLabels??[]})});for(const [physical,printed] of [[29,'25'],[46,'42'],[107,'103']] as const)check(report.pagination.some(value=>{const p=value as {physicalPage:number;pdfPageLabel:string|null;observedFooterLabels:string[]};return p.physicalPage===physical&&(p.pdfPageLabel===printed||p.observedFooterLabels.includes(printed))}),'Printed footer not verified on real physical page '+physical);});
   check(digest({campaign:db.get(id)!.session.campaign,characters:db.get(id)!.session.characters,journal:db.get(id)!.session.journal,dayTracker:db.get(id)!.session.dayTracker})===before,'Live/mechanical campaign state changed');check(digest(db.db.prepare('SELECT id,visibility FROM source_documents ORDER BY id').all())===permissionBefore,'Source visibility changed during real tests');

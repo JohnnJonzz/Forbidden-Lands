@@ -1,5 +1,7 @@
 # Player access setup investigation and repair
 
+> Updated workflow: [Read-only character awareness and trusted local play](read-only-character-awareness.md) supersedes local token and strict Equipped requirements below. The token instructions remain applicable to hosted development/production. Normal chat now narrates actions; direct preparation remains read-only.
+
 November 9, 2026 (America/Chicago).
 
 ## Finding
