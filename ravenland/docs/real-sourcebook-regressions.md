@@ -65,6 +65,8 @@ Test-created campaign mechanics, characters, Journal/Day Tracker and source visi
 
 ## Limits and future regression gate
 
+Follow-up: the [missing mechanical evidence repair](missing-mechanical-evidence.md) now resolves the ordinary ranged hit threshold using real source evidence and extends the suite with strict numerical and bounded-retry regressions. The paragraph below records the limitation observed at the time of this initial investigation.
+
 **The Longbow numerical reference answer remains unverified.** The real table and extra-success procedure now reach final context, but the existing mechanical guard still lacks verified hit-threshold evidence in this packet. It therefore withholds the three-success total rather than assuming that input. The regression asserts that missing evidence stays unverified. Further mechanical validation is deliberately deferred by this task; passing this retrieval suite does not claim the calculation feature is complete.
 
 No paid OpenAI call, live-model answer-quality evaluation, or live campaign database verification was performed. Real source indexing and retrieval are tested; current production-library classification/index health is a separate read-only audit using `npm run sourcebooks:diagnose`. A fresh isolated import cannot establish that an existing live index is healthy.

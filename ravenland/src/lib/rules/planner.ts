@@ -39,7 +39,7 @@ export function planRetrieval(action:string,kind='chat'):RetrievalPlan {
  const topics=requestedSubjects(action);
  if(facts){
   for(const weapon of facts.weapons)requirements.push({...req('weapon:'+weapon,weapon+' equipment facts',weapon+' ranged weapons gear bonus damage range',[weapon],[],'governing'),fact:{kind:'weapon',weapon,fields:facts.fields}});
-  if(facts.extraSuccessRule){requirements.push({...req('extra-damage','Extra-success damage rule','extra additional success increase damage ranged attack',[],[],'governing'),fact:{kind:'extra_damage'}});requirements.push({...req('first-hit','Successes needed to hit','first success hit ranged attack',[],[],'supporting'),fact:{kind:'first_hit'}})}
+  if(facts.extraSuccessRule){requirements.push({...req('extra-damage','Extra-success damage rule','extra additional success increase damage ranged attack',[],[],'governing'),fact:{kind:'extra_damage'}});requirements.push({...req('first-hit','Successes needed to hit','sixes succeed success action',[],[],'supporting'),fact:{kind:'first_hit'}})}
  }else if(entry)requirements.push(req('entry',`${entry.name} ${entry.category}`,`${entry.name} ${entry.category} ${entry.category==='skill'?'roll test':'skills key attribute'}`,[entry.name],entry.category==='skill'?[[entry.name],['skill','roll','test','check','attribute','success','failure']]:[[entry.category,'skills','skill'],['skills','skill']],'governing'));
  else if(profile==='journeying'){
   const activities=topics.filter(t=>['forage','hunt','fish','journey','quarter','navigation','camp','recovery'].includes(t));
