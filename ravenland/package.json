@@ -45,7 +45,8 @@
     "test:rules-windows": "node tests/rules-windows-browser.cjs",
     "test:character-preparation": "node tests/character-preparation-browser.cjs",
     "player-access:inspect": "tsx scripts/inspect-player-access.ts",
-    "test:character-awareness": "node tests/local-character-awareness-browser.cjs"
+    "test:character-awareness": "node tests/local-character-awareness-browser.cjs",
+    "test:roll-gm": "node tests/roll-gm-browser.cjs"
   },
   "dependencies": {
     "exceljs": "^4.4.0",

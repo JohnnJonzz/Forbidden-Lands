@@ -737,3 +737,11 @@ The GM uses saved character values for narration and reminders. Current/maximum 
 Normal declarations reach narration. Equipped is advisory, and missing weapon data leaves calculations unverified without blocking the scene. The separate read-only preparation endpoint and official-PDF numerical validation remain available. The canonical four-attribute/sixteen-skill registry, existing character persistence and manual dice/push controls are preserved. No dice UI or automated resource/stat changes were added.
 
 See [architecture, story privacy, changed files, testing and limitations](docs/read-only-character-awareness.md). Hosted player configuration remains documented in [player access setup](docs/player-access-setup.md). Run `npm run test:character-preparation` after a production build, `npm run test:character-awareness` for the local browser flow, and the required real-PDF retrieval gate.
+
+## Submit saved dice to the GM
+
+Open **Recent Dice Rolls**, expand a result, push first if desired, and choose **Submit to GM**. Submission finalizes that version; the saved rolling character, faces, exact successes and recorded consequences go through the existing GM pipeline. Submitted results remain in the panel with persistent status and safe retry. **Finalize without GM** keeps the independent local-only archival operation available.
+
+Full dice cards and push controls live in Recent Dice Rolls, while chat shows a compact reference and narration. One compatible prior action is linked; ambiguous actions prompt clarification. Extra successes are not automatically allocated, push consequences are not repeated, and no inventory, attribute, injury, condition, time or journey changes are executed. Existing local/hosted access and official PDF retrieval remain in place.
+
+See [infrastructure, matching, duplicate prevention, tests, changed files and limitations](docs/dice-gm-submission.md). Run `npm run test:roll-gm` for the default local browser flow, plus the required real-PDF gate and existing dice/character/AI regressions.
