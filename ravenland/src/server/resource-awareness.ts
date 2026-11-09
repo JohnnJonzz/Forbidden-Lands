@@ -1,0 +1,15 @@
+import type {Character} from '../lib/types';
+
+export const resourceNames=['food','water','arrows','torches'] as const;
+type Resource=typeof resourceNames[number];
+const aliases:Record<Resource,string[]>={food:['food','rations','ration'],water:['water'],arrows:['arrows','arrow'],torches:['torches','torch']};
+function parse(raw:unknown){const recorded=typeof raw==='string'?raw.trim():null,numeric=recorded&&/^\d+$/.test(recorded)?Number(recorded):null,quantity=numeric!==null&&Number.isSafeInteger(numeric)?numeric:null,resourceDie=/^d(?:6|8|10|12)$/i.test(recorded??'')?recorded!.toUpperCase():null;return {recorded,quantity,resourceDie,state:quantity===0||/^none$/i.test(recorded??'')?'empty' as const:quantity!==null&&quantity>0?'available' as const:resourceDie==='D6'?'low_resource_die' as const:resourceDie?'available' as const:'unknown' as const,recordStatus:raw===undefined?'unrecorded':recorded===''?'blank':recorded===null?'invalid':'recorded'}}
+export function characterResources(character:Character){return Object.fromEntries(resourceNames.map(resource=>{const direct=parse(character.sheet?.[('res-'+resource) as keyof typeof character.sheet]),gear=(character.sheet?.gear??[]).map((g,index)=>({index,item:g.item??'',...parse(g.quantity)})).filter(g=>aliases[resource].includes(g.item.trim().toLowerCase()));const fallback=direct.state==='unknown'&&gear.length===1&&gear[0].quantity!==null?gear[0]:null;return [resource,{...(fallback??direct),source:fallback?'gear.quantity':'sheet.resource',gearEvidence:gear.map(g=>({index:g.index,item:g.item,quantity:g.quantity,recorded:g.recorded})),note:'Resource dice are not item counts; gear quantities retain their recorded units.'}]})) as Record<Resource,ReturnType<typeof parse>&{source:string;gearEvidence:{index:number;item:string;quantity:number|null;recorded:string|null}[];note:string}>}
+export function resourceAttention(character:Character,action:string,phase:'declaration'|'completed_roll'|'conversation'){
+ const resources=characterResources(character),required:Resource[]=[];
+ if(/\b(?:shoot|fire|loose|nock)\b/i.test(action)&&/\b(?:longbow|shortbow|bow|arrows?)\b/i.test(action))required.push('arrows');
+ if(/\b(?:light|ignite|relight|use)\b/i.test(action)&&/\btorch(?:es)?\b/i.test(action))required.push('torches');
+ if(/\b(?:eat|consume|have|take)\b/i.test(action)&&/\b(?:food|rations?|meal)\b/i.test(action))required.push('food');
+ if(/\b(?:drink|consume|sip)\b/i.test(action)&&/\b(?:water|waterskin)\b/i.test(action))required.push('water');
+ return {phase,required:(phase==='conversation'?[]:required).map(resource=>({resource,...resources[resource],response:phase==='completed_roll'?'interpret_saved_roll_without_retroactive_resource_gate':resources[resource].state==='empty'?'mention_shortage_and_ask_how_to_proceed':resources[resource].state==='unknown'?'clarify_only_if_needed':'proceed_without_reminder'})),stateChangesPermitted:false,policy:'Advisory context, not an equipment gate. Never deduct supplies. Do not repeatedly interrupt for available resources or turn a resource die into a quantity.'};
+}

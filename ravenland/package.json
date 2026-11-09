@@ -46,7 +46,8 @@
     "test:character-preparation": "node tests/character-preparation-browser.cjs",
     "player-access:inspect": "tsx scripts/inspect-player-access.ts",
     "test:character-awareness": "node tests/local-character-awareness-browser.cjs",
-    "test:roll-gm": "node tests/roll-gm-browser.cjs"
+    "test:roll-gm": "node tests/roll-gm-browser.cjs",
+    "test:gm-situation": "node tests/gm-situation-browser.cjs"
   },
   "dependencies": {
     "exceljs": "^4.4.0",

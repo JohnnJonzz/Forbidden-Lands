@@ -2,6 +2,8 @@
 
 November 9, 2026 (America/Chicago).
 
+**Phase 5 supersession:** The later explicit campaign policy makes Pride, Dark Secret and Relationships nonconfidential between players. The relevance/privacy gate described below was removed. See [GM situational awareness](gm-situational-awareness.md) for the current recorded/empty-field behavior, contextual resources and scene continuity. Local/hosted ownership and GM-only boundaries remain in force.
+
 ## Run the simplified workflow
 
 From `ravenland/`, run:

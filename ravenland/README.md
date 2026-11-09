@@ -730,13 +730,13 @@ The [player-input preservation repair](docs/player-mechanical-inputs.md) keeps r
 
 ## Character awareness and advisory action preparation
 
-The GM uses saved character values for narration and reminders. Current/maximum attributes, Broken, conditions, injury notes, talents, equipment and resource dice are read-only context. Relevant Pride, Dark Secret and Relationships are limited to the authorized acting character and the current narrative; unrelated fields and other characters’ secrets are omitted. Public diagnostics are redacted.
+The GM uses saved character values for narration and reminders. Current/maximum attributes, Broken, conditions, injury notes, talents, equipment and resource dice are read-only context. Pride, Dark Secret and Relationships are party-known background in this campaign, with explicit recorded/empty/unrecorded status; they do not automatically establish NPC knowledge. Active-character mechanics remain ownership-scoped and public diagnostics redact them.
 
 **Trusted local play needs no player token:** run `npm run dev`, open loopback, and choose ACTING AS. The local launcher validates real loopback connections and stamps an internal proof; production and `dev:hosted` retain player-grant ownership checks. GM review and sourcebook permissions remain separate.
 
 Normal declarations reach narration. Equipped is advisory, and missing weapon data leaves calculations unverified without blocking the scene. The separate read-only preparation endpoint and official-PDF numerical validation remain available. The canonical four-attribute/sixteen-skill registry, existing character persistence and manual dice/push controls are preserved. No dice UI or automated resource/stat changes were added.
 
-See [architecture, story privacy, changed files, testing and limitations](docs/read-only-character-awareness.md). Hosted player configuration remains documented in [player access setup](docs/player-access-setup.md). Run `npm run test:character-preparation` after a production build, `npm run test:character-awareness` for the local browser flow, and the required real-PDF retrieval gate.
+See [local-play architecture and earlier implementation](docs/read-only-character-awareness.md) and [current background/resource/scene policy](docs/gm-situational-awareness.md). Hosted player configuration remains documented in [player access setup](docs/player-access-setup.md). Run `npm run test:character-preparation` after a production build, `npm run test:character-awareness` for the local browser flow, and the required real-PDF retrieval gate.
 
 ## Submit saved dice to the GM
 
@@ -745,3 +745,14 @@ Open **Recent Dice Rolls**, expand a result, push first if desired, and choose *
 Full dice cards and push controls live in Recent Dice Rolls, while chat shows a compact reference and narration. One compatible prior action is linked; ambiguous actions prompt clarification. Extra successes are not automatically allocated, push consequences are not repeated, and no inventory, attribute, injury, condition, time or journey changes are executed. Existing local/hosted access and official PDF retrieval remain in place.
 
 See [infrastructure, matching, duplicate prevention, tests, changed files and limitations](docs/dice-gm-submission.md). Run `npm run test:roll-gm` for the default local browser flow, plus the required real-PDF gate and existing dice/character/AI regressions.
+
+
+## GM situational awareness
+
+Saved Pride, Dark Secret and Relationships can be reported directly without a model guess; empty fields are identified as empty. These three fields are not confidential between players. Other private memories, GM-only sources and character mechanics retain their existing access controls.
+
+The GM receives bounded current-scene context from existing campaign/chat/request records, relevant approved NPC/quest memories and Journal entries. A submitted roll uses its matched original declaration and scene; compatible recorded GM roll requests take precedence over earlier clarification-only declarations. Genuine ambiguity asks a question. Explicit zero supplies trigger an advisory shortage question, positive quantities permit proceeding, and unknown quantities stay unknown. D8 food/water remain resource dice. No automatic deductions, Pride invocation, combat resolution or canon changes were added.
+
+From `ravenland/`, preview with `npm run dev`, choose ACTING AS, and try “What are my Pride, Dark Secret and Relationships?” Use the existing character sheet to record a resource as `0`, a positive quantity or `D8`, then declare a relevant action. Roll/push normally and use Recent Dice Rolls → Submit to GM. Mock mode remains available; model narration requires the existing optional AI configuration.
+
+Run `npm run test:gm-situation` for the local browser regression, plus `npm run test:character-awareness`, `npm run test:roll-gm` and the required real-PDF retrieval gate. See [root causes, context example, changed files, verification and limitations](docs/gm-situational-awareness.md). Tests use disposable records and controlled providers, without paid requests or live campaign changes.
