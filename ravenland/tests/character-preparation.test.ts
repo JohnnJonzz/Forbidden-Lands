@@ -8,7 +8,7 @@ import {standardSkills,standardAttributes,standardSkill,validateScopedSkill} fro
 import {prepareAction} from '../src/server/action-preparation';
 import {AIService} from '../src/server/ai/service';
 import {assembleContext} from '../src/server/ai/context';
-import {principalForToken,requestPrincipal,type CharacterPrincipal} from '../src/server/character-access';
+import {principalForToken,requestPrincipal,playerAccessConfigured,requireCharacterAccess,type CharacterPrincipal} from '../src/server/character-access';
 import {SqliteCampaignRepository} from '../src/server/sqlite';
 import {CompendiumStore} from '../src/server/compendium/store';
 import {retrieveRules} from '../src/server/sourcebooks/retrieval';
@@ -82,4 +82,13 @@ test('owning a character cannot authorize GM-only rule passages or replace missi
 });
 test('conditional house bonuses cannot be activated by merely storing the larger number',()=>{
  const f=fixture();try{new CompendiumStore(f.repo).save(f.id,{title:'Conditional Longbow Gear Bonus',body:'Longbow: Gear Bonus 3 when you spend Willpower.',topic:'Combat',documentType:'House Rule',visibility:'Player Visible',sourceReference:'Original synthetic conditional rule',overrideScope:'Longbow Gear Bonus'});f.change(s=>{s.characters[0].sheet!.weapons![0].bonus='3'});const p=prepareAction(f.repo,f.input,f.principal);assert.equal(p.status,'needs_review');assert.equal(p.ruleInputs.weaponGearBonus,null);assert.equal(p.basePool,null)}finally{f.repo.close()}
+});
+
+test('access setup distinguishes empty, configured and invalid configuration without treating GM review as ownership',()=>{
+ const f=fixture(),before=process.env.RAVENLAND_PLAYER_GRANTS,reviewBefore=process.env.RAVENLAND_GM_REVIEW_TOKEN,review='LOCAL_ADMIN_REVIEW_TEST_CREDENTIAL_AT_LEAST_32';
+ try{process.env.RAVENLAND_GM_REVIEW_TOKEN=review;
+  for(const empty of ['', '  ', '[]']){process.env.RAVENLAND_PLAYER_GRANTS=empty;assert.equal(playerAccessConfigured(),false);assert.equal(principalForToken(review),null);assert.throws(()=>requireCharacterAccess(null,f.id,f.actor),/No character grants are configured/)}
+  process.env.RAVENLAND_PLAYER_GRANTS=JSON.stringify([{...f.principal,tokenHash:createHash('sha256').update('TEST_SCOPED_PLAYER_CREDENTIAL_AT_LEAST_32').digest('hex')}]);assert.equal(playerAccessConfigured(),true);assert.equal(requestPrincipal(new Request('http://localhost',{headers:{'x-ravenland-gm-token':review}})),null);assert.equal(principalForToken(review),null);assert.throws(()=>requireCharacterAccess(null,f.id,f.actor),/Campaign Settings/);
+  process.env.RAVENLAND_PLAYER_GRANTS='not valid JSON';assert.throws(()=>playerAccessConfigured(),/configuration requires administrator review/);
+ }finally{if(before===undefined)delete process.env.RAVENLAND_PLAYER_GRANTS;else process.env.RAVENLAND_PLAYER_GRANTS=before;if(reviewBefore===undefined)delete process.env.RAVENLAND_GM_REVIEW_TOKEN;else process.env.RAVENLAND_GM_REVIEW_TOKEN=reviewBefore;f.repo.close()}
 });

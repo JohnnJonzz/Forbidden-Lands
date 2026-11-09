@@ -32,6 +32,8 @@ AI actor context now requires that grant. Other party members contribute public 
 
 ## Server configuration and preview
 
+For the access error, architecture findings, current-campaign ID inspection and four-player setup, see [Player access setup](player-access-setup.md). No authenticated campaign-owner session exists to inherit automatically.
+
 Supply each player a fresh random access token privately, and keep its hash/grants in server configuration. For example, generate a token locally:
 
 ```bash

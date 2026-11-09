@@ -732,6 +732,8 @@ Ranged declarations now produce an application-validated, read-only preparation 
 
 The root `character-rules.json` is the canonical source for the four attributes and sixteen standard skills, shared with the sheet generator and AI rules context. Professions and activities cannot become standard skills. Optional/house definitions remain separately labeled and require reviewed integration.
 
+**Fixing “Connect player access before preparing an action”:** follow [the investigation and four-player setup guide](docs/player-access-setup.md). Campaign Settings → Player access for action preparation → Setup for this campaign shows the loaded campaign’s real IDs. `npm run player-access:inspect` reads existing server IDs without creating or changing a campaign. There is no existing authenticated owner login or automatic GM-token ownership to inherit.
+
 **Configure player access before using character-aware preparation.** Existing character selection is not authentication. Set server-only `RAVENLAND_PLAYER_GRANTS`, connect the opaque token in Campaign Settings → Player access for action preparation, and mark the intended saved weapon Equipped in the character sheet. Requests without a matching campaign/character grant fail closed. Ordinary rules-reference questions remain available. This scoped prototype adapter does not replace all legacy local-development APIs with multiplayer accounts.
 
 See [architecture, authorization/setup, actual source evidence, example proposals and limitations](docs/character-aware-preparation.md). Run `npm run test:character-preparation` after a production build and the required real-PDF retrieval gate. Preparation cards are transient; saved character values and equipped flags persist through the existing campaign database.

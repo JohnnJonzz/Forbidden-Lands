@@ -41,7 +41,8 @@
     "test:retrieval-planner": "node tests/retrieval-planner-browser.cjs",
     "test:procedure-retrieval": "node tests/procedure-retrieval-browser.cjs",
     "test:rules-windows": "node tests/rules-windows-browser.cjs",
-    "test:character-preparation": "node tests/character-preparation-browser.cjs"
+    "test:character-preparation": "node tests/character-preparation-browser.cjs",
+    "player-access:inspect": "tsx scripts/inspect-player-access.ts"
   },
   "dependencies": {
     "exceljs": "^4.4.0",
