@@ -756,3 +756,11 @@ The GM receives bounded current-scene context from existing campaign/chat/reques
 From `ravenland/`, preview with `npm run dev`, choose ACTING AS, and try “What are my Pride, Dark Secret and Relationships?” Use the existing character sheet to record a resource as `0`, a positive quantity or `D8`, then declare a relevant action. Roll/push normally and use Recent Dice Rolls → Submit to GM. Mock mode remains available; model narration requires the existing optional AI configuration.
 
 Run `npm run test:gm-situation` for the local browser regression, plus `npm run test:character-awareness`, `npm run test:roll-gm` and the required real-PDF retrieval gate. See [root causes, context example, changed files, verification and limitations](docs/gm-situational-awareness.md). Tests use disposable records and controlled providers, without paid requests or live campaign changes.
+
+## Action declarations and compact composer (Phase 5.1)
+
+Recognized skill declarations—including a named character who “raises his Longbow and fires … What happens?”—now stop at an application-controlled requirement/roll stage. Depleted supplies prompt a shortage question; blank/unrecorded supplies remain unknown. Available ammunition leads to a character-sheet Marksmanship roll, optional push and **Recent Dice Rolls → Submit to GM**. The GM cannot stream an unrolled hit through this guarded path. Zero-success submissions cannot be narrated as successful hits. Ordinary no-roll conversation remains available, with no new Equipped gate or local player login.
+
+The composer removes the visible keyboard hints, keeps Enter/Shift+Enter behavior, starts around 80–100 pixels including controls, and expands long drafts within a viewport-aware limit. ACTING AS, Send and the existing styling remain.
+
+Run `npm run test:action-safeguards` for the browser acceptance checks. Continue running the existing dice/character/AI browser regressions and `RAVENLAND_REAL_SOURCEBOOK_DIR=/tmp/ravenland-private-sourcebooks npm run test:retrieval-check`. See [causes, implementation, changed files, verification and limits](docs/action-declaration-safeguards.md). Preview with `npm run dev`; no paid requests are needed for the automated checks.

@@ -28,15 +28,16 @@ function verify(card:PendingDice){
 export function pendingActionReferences(repo:SqliteCampaignRepository,record:CampaignRecord,characterId:string,before=new Date().toISOString()){
  const used=new Set(repo.db.prepare("SELECT context_json FROM ai_requests WHERE campaign_id=? AND kind='roll' AND context_json IS NOT NULL").all(record.id).flatMap(row=>{const p=JSON.parse(row.context_json as string).rollSubmission;return p?.match?.status==='matched'?[p.match.action.id]:[]}));
  return repo.db.prepare("SELECT id,payload,context_json,response_json,started_at FROM ai_requests WHERE campaign_id=? AND kind='chat' AND status='completed' AND started_at<=? ORDER BY started_at DESC,id DESC LIMIT 30").all(record.id,before).flatMap(row=>{
-  const c=JSON.parse(row.payload as string);if(c.characterId!==characterId||used.has(row.id)||planRetrieval(c.action).intent!=='gameplay_adjudication')return [];
-  const reply=row.response_json?JSON.parse(row.response_json as string).reply?.narration??'':'',rollRequested=/\b(?:roll|push)\b/i.test(reply)&&!/\b(?:do not|don't|no need to|without)\s+(?:make\s+(?:a\s+)?)?roll\b/i.test(reply);
+  const c=JSON.parse(row.payload as string);if(c.characterId!==characterId||used.has(row.id)||planRetrieval(c.action,'chat',record.session.characters.find(ch=>ch.id===characterId)?.name).intent!=='gameplay_adjudication')return [];
+  const ctx=row.context_json?JSON.parse(row.context_json as string):null;
+  const reply=row.response_json?JSON.parse(row.response_json as string).reply?.narration??'':'',rollRequested=ctx?.actionSafeguard?ctx.actionSafeguard.phase==='awaiting_roll':/\b(?:roll|push)\b/i.test(reply)&&!/\b(?:do not|don't|no need to|without)\s+(?:make\s+(?:a\s+)?)?roll\b/i.test(reply);
   const requested=rollRequested?standardSkills.filter(s=>new RegExp('(?:roll\\s+(?:(?:for|with|using)\\s+)?'+s.name+'|'+s.name+'\\s+(?:skill\\s+)?roll)','i').test(reply)):[];
-  return [{id:row.id as string,declaration:c.action as string,characterId:c.characterId as string,skill:row.context_json?JSON.parse(row.context_json as string).actionPreparation?.ruleInputs?.skill??null:null,rollRequested,requestedSkill:requested.length===1?requested[0].id:null,requestEvidence:rollRequested?reply.slice(0,600):null}];
+  return [{id:row.id as string,declaration:c.action as string,characterId:c.characterId as string,skill:ctx?.actionPreparation?.ruleInputs?.skill??ctx?.actionSafeguard?.skill?.id??null,rollRequested,requestedSkill:ctx?.actionSafeguard?.skill?.id??(requested.length===1?requested[0].id:null),requestEvidence:rollRequested?reply.slice(0,600):null}];
  });
 }
 function matchingActions(repo:SqliteCampaignRepository,record:CampaignRecord,card:PendingDice){
  const skill=standardSkill(card.result.skill),weapon=card.result.skill.match(/^Attack:\s*(.+)$/i)?.[1];
- const compatible=card.metadata.utility?[]:pendingActionReferences(repo,record,card.characterId,card.createdAt).filter(c=>!c.requestedSkill||!skill||c.requestedSkill===skill.id).filter(c=>weapon?/\b(?:shoot|fire|attack)\b/i.test(c.declaration)&&c.declaration.toLowerCase().includes(weapon.toLowerCase()):skill?.id==='marksmanship'?/\b(?:shoot|fire)\b/i.test(c.declaration):skill?new RegExp('\\b'+skill.name+'\\b','i').test(c.declaration)||c.skill===skill.id:false);
+ const compatible=card.metadata.utility?[]:pendingActionReferences(repo,record,card.characterId,card.createdAt).filter(c=>!c.requestedSkill||!skill||c.requestedSkill===skill.id).filter(c=>weapon?/\b(?:shoots?|fires?|attacks?|looses?)\b/i.test(c.declaration)&&c.declaration.toLowerCase().includes(weapon.toLowerCase()):skill?.id==='marksmanship'?/\b(?:shoots?|fires?|looses?|attacks?)\b/i.test(c.declaration):skill?new RegExp('\\b'+skill.name+'\\b','i').test(c.declaration)||c.skill===skill.id:false);
  const asked=compatible.filter(c=>c.rollRequested&&(!c.requestedSkill||!skill||c.requestedSkill===skill.id)),candidates=asked.length?asked:compatible;
  return candidates.length===1?{status:'matched' as const,action:candidates[0],candidates:[]}:{status:candidates.length?'ambiguous' as const:'unmatched' as const,action:null,candidates:candidates.slice(0,5)};
 }

@@ -1,3 +1,4 @@
+import {declaredAction} from './action-declaration';
 import {standardSkill,standardSkills} from './character-registry';
 import {weaponRequest,type WeaponFactRequest,type WeaponField} from './weapon-request';
 import {sourceRequest} from './source-request';
@@ -23,9 +24,9 @@ const referenceCommand=/(?:^|[,.;:])\s*(?:please\s+)?(?:find|identify|locate|lis
 const site=/\b(?:enter|explore|examine|investigate|inspect|room|altar|doorway|laboratory|site|dungeon|ruins|what do (?:I|we) see)\b/i;
 const noAction=/\b(?:do not|don't|without)\s+(?:perform|do|roll|advance|resolve|take|execute)\b/i;
 function req(id:string,label:string,query:string,anchors:string[],contentGroups:string[][]=[],role:SourceRequirement['role']='supporting',topic?:MechanicalTopic):SourceRequirement{return {id,label,query,anchors,contentGroups,role,...(topic?{topic}:{})}}
-export function planRetrieval(action:string,kind='chat'):RetrievalPlan {
+export function planRetrieval(action:string,kind='chat',actorName?:string):RetrievalPlan {
  const candidate=weaponRequest(action);
- const declared=declaration.test(action)&&!noAction.test(action),reference=!declared&&((mechanical.test(action)||requestedSubjects(action).length>0)&&(explanation.test(action)||referenceCommand.test(action)||/\?/.test(action))||candidate?.attackSuccesses!=null||!!candidate?.inputIssues.length);
+ const declared=(declaration.test(action)||!!declaredAction(action,actorName))&&!noAction.test(action),reference=!declared&&((mechanical.test(action)||requestedSubjects(action).length>0)&&(explanation.test(action)||referenceCommand.test(action)||/\?/.test(action))||candidate?.attackSuccesses!=null||!!candidate?.inputIssues.length);
  const narration=site.test(action)&&!reference,modes:RequestIntent[]=kind!=='chat'?['general_conversation']:declared?['gameplay_adjudication',...(narration?['adventure_narration' as const]:[])]:reference?['rules_reference']:narration?['adventure_narration']:['general_conversation'];
  if(declared&&explanation.test(action))modes.push('rules_reference');
  const intent=modes[0],readonly=intent==='rules_reference'||noAction.test(action);

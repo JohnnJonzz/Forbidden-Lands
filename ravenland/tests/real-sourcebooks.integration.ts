@@ -151,15 +151,17 @@ test('REAL fifth-printing sourcebooks: extraction, persisted FTS and complete re
 
    }finally{db.db.exec('ROLLBACK TO character_preparation; RELEASE character_preparation')}
   });
-  await t.test('A real-PDF Longbow declaration reaches narration without an Equipped flag or mechanical state changes',async()=>{
+  await t.test('A real-PDF Longbow declaration requests its verified roll without an Equipped flag or mechanical state changes',async()=>{
    const original=db.get(id)!.session.characters;
-   const r=db.get(id)!,actor=r.session.characters[0];actor.sheet={'attr-agility':'3','attr-agility-regular':'4','skill-marksmanship':'2','cond-hungry':false,'cond-thirsty':false,'cond-sleepy':false,'cond-cold':false,talents:[],weapons:[{name:'Longbow',bonus:'2',skill:'marksmanship',artifact:'None'}],'dark-secret':'NEVER_EXPOSE_CHARACTER_SECRET'};db.update(id,r.revision,r.session);
+   const r=db.get(id)!,actor=r.session.characters[0];actor.sheet={'attr-agility':'3','attr-agility-regular':'4','skill-marksmanship':'2','cond-hungry':false,'cond-thirsty':false,'cond-sleepy':false,'cond-cold':false,talents:[],weapons:[{name:'Longbow',bonus:'2',skill:'marksmanship',artifact:'None'}],'dark-secret':'NEVER_EXPOSE_CHARACTER_SECRET','res-arrows':'12'};db.update(id,r.revision,r.session);
    const principal={playerId:'real-fixture-owner',grants:[{campaignId:id,characterIds:[actor.id]}]};
    try{
-    const mechanicalBefore=JSON.stringify({...db.get(id)!.session,messages:[]});let received=false;
-    const reply=await new AIService(db,{async generate(input){const ctx=(input as any).context;check(ctx.actionPreparation.basePool.total===7,'Real pool did not reach narrative provider');check(ctx.retrievalContext.actor.attributes.agility.current===3,'Actual current Agility was lost');check(ctx.retrievalContext.actor.story.darkSecret==='NEVER_EXPOSE_CHARACTER_SECRET','Party-known character background was omitted');received=true;return {provider:'openai' as const,model:'read-only-context-capture',inputTokens:0,outputTokens:0,output:{narration:'The target shifts beyond the bowstring. Choose your next move.',actions:[],memoryProposals:[],selectedImageId:null}}},async test(){throw Error('No paid API call')}},principal).run({campaignId:id,characterId:actor.id,requestId:randomUUID(),kind:'chat',action:'I shoot the bandit with my longbow.'});
-    check(received&&!!reply.narration,'Normal attack narration did not run');check(JSON.stringify({...db.get(id)!.session,messages:[]})===mechanicalBefore,'Narration modified mechanical campaign state');
-    report.checks.push({name:'Real Longbow narrative awareness without Equipped',status:'PASS',basePool:7,mechanicalStateUnchanged:true});
+    const mechanicalBefore=JSON.stringify({...db.get(id)!.session,messages:[]}),requestId=randomUUID();
+    const reply=await new AIService(db,{async generate(){throw Error('A declaration must await its submitted roll, not call the narrator')},async test(){throw Error('No paid API call')}},principal).run({campaignId:id,characterId:actor.id,requestId,kind:'chat',action:'I shoot the bandit with my longbow.'});
+    const ctx=JSON.parse(db.db.prepare('SELECT context_json FROM ai_requests WHERE campaign_id=? AND id=?').get(id,requestId)!.context_json as string);
+    check(ctx.actionPreparation.basePool.total===7,'Real pool did not reach the saved declaration');check(ctx.retrievalContext.actor.attributes.agility.current===3,'Actual current Agility was lost');check(ctx.retrievalContext.actor.story.darkSecret==='NEVER_EXPOSE_CHARACTER_SECRET','Party-known character background was omitted');
+    check(reply.provider==='application'&&reply.narration.includes('Roll Marksmanship')&&reply.narration.includes('Submit to GM')&&reply.narration.includes('= 7 dice'),'Verified preparation did not request the existing roll workflow');check(JSON.stringify({...db.get(id)!.session,messages:[]})===mechanicalBefore,'Declaration modified mechanical campaign state');
+    report.checks.push({name:'Real Longbow declaration safeguard without Equipped',status:'PASS',basePool:7,mechanicalStateUnchanged:true});
    }finally{const current=db.get(id)!;current.session.characters=original;db.update(id,current.revision,current.session)}
   });
   await t.test('A verified submitted roll reaches the provider with actual successes and official ranged PDF evidence, without resolving mechanics',async()=>{

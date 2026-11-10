@@ -2,6 +2,8 @@
 
 November 9, 2026 (America/Chicago).
 
+**Phase 5.1 follow-up:** [Action declaration safeguards](action-declaration-safeguards.md) adds an application-controlled requirement/roll stage, conjugated named-character declarations and zero-success safeguards, while preserving the context/background work described here.
+
 ## Findings and resulting behavior
 
 These were application context defects, established by tracing the saved sheet through `characterAwareness`, `assembleContext` and `AIService`; they were not missing character records:

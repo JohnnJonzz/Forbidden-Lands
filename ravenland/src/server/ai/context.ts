@@ -1,3 +1,4 @@
+import {declaredAction} from '../../lib/rules/action-declaration';
 import {backgroundRequest,backgroundSubjects} from '../character-background';
 import {resourceAttention} from '../resource-awareness';
 import {sceneFrame,sceneDetails} from './situation';
@@ -21,7 +22,7 @@ export function assembleContext(repo:SqliteCampaignRepository,campaignId:string,
  const sourceCache=new Map<string,ReturnType<typeof evidenceSource>>();const lookup=(type:Parameters<typeof evidenceSource>[2],id:string)=>{const key=type+':'+id;if(!sourceCache.has(key))sourceCache.set(key,evidenceSource(repo,campaignId,type,id,scope));return sourceCache.get(key)??null};
  const savedRecapEntries=new Set(repo.db.prepare('SELECT journal_entry_id AS id FROM ai_recaps WHERE campaign_id=? AND journal_entry_id IS NOT NULL').all(campaignId).map(r=>r.id));
  const allowed=(m:typeof s.messages[number])=>!s.dice?.some(d=>d.id===m.id)&&!rejectedSources.has(m.id)&&!lookup('chat',m.id)?.historicalGuess&&!m.quarterDayFormId&&m.id!==options.excludeMessageId;
- const plan=planRetrieval(action,options.kind??'chat'),backgroundQuery=backgroundRequest(action);
+ const plan=planRetrieval(action,options.kind??'chat',s.characters.find(ch=>ch.id===options.characterId)?.name),backgroundQuery=backgroundRequest(action);
  const messages=s.messages.slice(-100).filter(allowed),frame=sceneFrame(repo,record,allowed,options.linkedActionId),historical=recallIntent(action).mode==='historical_recall';
  const history=messages.slice(historical?-14:-8).map(m=>({id:m.id,role:m.role,author:m.author,text:short(m.text,historical?1100:900),origin:lookup('chat',m.id)?.origin??'AI-generated',authority:m.role==='player'?'supporting statement':'unconfirmed narration'}));
  const focus=historical?action:action+' '+frame.focusText;
@@ -41,7 +42,7 @@ export function assembleContext(repo:SqliteCampaignRepository,campaignId:string,
  const mechanical=character?characterAwareness(character,action):null;
  const backgrounds=backgroundSubjects(s.characters,action,options.characterId);
  const scene=sceneDetails(repo,record,frame,selectedMemories,action,character?.id);
- const resourceDeclaration=!plan.explanationOnly&&(plan.intent==='gameplay_adjudication'||/^\s*(?:(?:I|we)\s+(?:(?:will|want to|try to|attempt to)\s+)?)?(?:shoot|fire|loose|nock|light|ignite|relight|use|eat|consume|have|take|drink|sip)\b/i.test(action));
+ const resourceDeclaration=!!declaredAction(action,character?.name)||!plan.explanationOnly&&(plan.intent==='gameplay_adjudication'||/^\s*(?:(?:I|we)\s+(?:(?:will|want to|try to|attempt to)\s+)?)?(?:shoot|fire|loose|nock|light|ignite|relight|use|eat|consume|have|take|drink|sip)\b/i.test(action));
  const attention=character?resourceAttention(character,action,options.kind==='roll'?'completed_roll':resourceDeclaration?'declaration':'conversation'):null;
  const actor=mechanical?{...mechanical,story:plan.intent!=='rules_reference'||backgroundQuery.requested?mechanical.story:undefined,background:plan.intent!=='rules_reference'||backgroundQuery.requested?mechanical.background:undefined,equipment:{...mechanical.equipment,gear:mechanical.equipment.gear.filter(g=>g.item&&focus.toLowerCase().includes(g.item.toLowerCase())||g.item&&/arrow|torch|food|water|ration/i.test(g.item)).slice(0,6)},weapons:mechanical.weapons.slice(0,8),talents:mechanical.talents.slice(0,8),omitted:{weapons:Math.max(0,mechanical.weapons.length-8),talents:Math.max(0,mechanical.talents.length-8)}}:null;
  const siteContext=plan.profile==='adventure_sites'||plan.modes.includes('adventure_narration')?{location:c.location,hex:c.hex,knownLocations:discoveries,establishedModifications:memories,partyJournal:journal,authority:'Current application state and approved/corrected party-known memories override published starting conditions. Defeated creatures do not return based on baseline text. Rumors remain unconfirmed. Private room details and triggers are not supplied.'}:null;
