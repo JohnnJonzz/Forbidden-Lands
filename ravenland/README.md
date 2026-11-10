@@ -764,3 +764,11 @@ Recognized skill declarations—including a named character who “raises his Lo
 The composer removes the visible keyboard hints, keeps Enter/Shift+Enter behavior, starts around 80–100 pixels including controls, and expands long drafts within a viewport-aware limit. ACTING AS, Send and the existing styling remain.
 
 Run `npm run test:action-safeguards` for the browser acceptance checks. Continue running the existing dice/character/AI browser regressions and `RAVENLAND_REAL_SOURCEBOOK_DIR=/tmp/ravenland-private-sourcebooks npm run test:retrieval-check`. See [causes, implementation, changed files, verification and limits](docs/action-declaration-safeguards.md). Preview with `npm run dev`; no paid requests are needed for the automated checks.
+
+## Submitted ranged attacks (Phase 5.2)
+
+A submitted **Attack: Longbow** now explicitly reports a successful attack roll when the saved successes meet the source-backed threshold, and uses recorded plus official weapon damage. Extra successes remain unspent until selected. Attack success, an applicable legal defense, armor, and final damage are separate stages; enemy statistics/results are never fabricated.
+
+Until autonomous NPC combat exists, answer a target-fact question through ordinary chat using explicit manual statements—for example, `No defense attempted. Target is unarmored.` or `Armor rating: 3. Armor roll: one success.` with the **actual** values. A defense must have been declared before the attack and have an available action. The application reuses the saved attack, makes no extra roll, and changes no sheets. See [supported defense/allocation statements, evidence, files, tests and limitations](docs/submitted-attack-resolution.md).
+
+Run `npm run test:submitted-attacks` for the browser regression and the required real-sourcebook retrieval gate for official evidence. Preview normally with `npm run dev`, roll/push on the character sheet, and use Recent Dice Rolls → Submit to GM. The existing composer and dice interface are preserved.

@@ -4,7 +4,7 @@ export interface MechanicalCharacter {
  id:string;name:string;attributes:Record<AttributeId,{regular:number|null;current:number|null}>;
  skills:Record<string,number|null>;conditions:Record<string,boolean|null>;
  talents:{name:string;rank:number|null}[];
- weapons:{index:number;name:string;bonus:number|null;skill:string;artifact:string;equipped:boolean|null}[];
+ weapons:{index:number;name:string;bonus:number|null;damage:number|null;range:string;skill:string;artifact:string;equipped:boolean|null}[];
 }
 export interface PreparedAction {
  version:1;status:'ready'|'needs_review'|'unsupported';campaignId:string;characterId:string;campaignRevision:number;
