@@ -14,7 +14,7 @@ import {retrieveRules} from '../sourcebooks/retrieval';
 import type {CharacterPrincipal} from '../character-access';
 import type {SqliteCampaignRepository} from '../sqlite';
 import type {VerifiedRollSubmission} from './gm-submission';
-import {emptyAdjudication,type AttackAdjudication} from './attack-adjudication';
+import {emptyAdjudication,mergeAdjudication,type AttackAdjudication} from './attack-adjudication';
 
 const normalize=(s:string)=>s.toLowerCase().replace(/[^a-z]/g,'');
 export function savedAttackWeapon(character:Character,card:PendingDice,declaration:string){
@@ -42,6 +42,7 @@ export function retrieveAttackRules(repo:SqliteCampaignRepository,campaignId:str
 function rule(passages:RulePassage[],header:string,pattern:RegExp,value:number|string):FactEvidence|undefined {for(const p of passages){if('sourceType'in p)continue;const text=p.text.replace(/\s+/g,' '),m=text.match(pattern);if(m)return {value,documentId:p.documentId,chunkId:p.chunkId,physicalPage:p.startPage,quote:m[0].slice(0,700),header,source:'pdf'}}}
 export function interpretAttack(packet:VerifiedRollSubmission,rules:RuleRetrieval,manual=emptyAdjudication()){
  if(!isRangedAttack(packet)||packet.successes===null)return null;
+ const submitted=manual;manual=mergeAdjudication(packet.predeclaredDefense?.manual,manual);
  const name=packet.weapon?.recorded?.name??packet.label.replace(/^Attack:\s*/i,''),facts=mechanicalFactCoverage(rules.passages,{weapons:[name],fields:['damage','gearBonus','range'],calculate:true,extraSuccessRule:true,attackSuccesses:packet.successes,damageSuccesses:null,inputIssues:[],modifiersRequested:false}),missing:string[]=[...manual.issues];
  const official=facts.weapons[0]?.fields,recorded=packet.weapon?.recorded,base=recorded?.damage!==null&&recorded?.damage!==undefined&&official?.damage.status==='verified'&&recorded.damage===Number(official.damage.value)?recorded.damage:null;
  const evidence={threshold:facts.firstHit,weapon:official,extraDamage:facts.extraDamage,
@@ -50,17 +51,19 @@ export function interpretAttack(packet:VerifiedRollSubmission,rules:RuleRetrieva
   timing:rule(rules.passages,'Defense must be declared before the attack',/your opponent must declare if he intends to DODGE or PARRY before you roll to attack\.|Reactions must be declared before the attack roll\./i,'before attack'),
   cover:rule(rules.passages,'Cover uses armor protection',/Cover has an Armor Rating and works like armor|Cover works like armor against ranged attacks\./i,'armor protection'),
   armor:rule(rules.passages,'Armor successes reduce damage',/When you suffer damage from a physical attack, you roll a number of Gear Dice equal to the Armor Rating\. Every x x you roll decreases the damage by one\.|Armor: roll Gear Dice equal to its Armor Rating\. Each armor success reduces damage by one\./i,1)};
- const result={version:1,rollId:packet.rollId,characterId:packet.character.id,weaponName:name,attackSuccesses:packet.successes,requiredSuccesses:facts.firstHit.status==='verified'?Number(facts.firstHit.value):null,attackResult:'unverified' as 'unverified'|'miss'|'successful',phase:'evidence_required' as string,remainingSuccesses:null as number|null,additionalSuccesses:null as number|null,baseDamage:base,maximumDamageOption:null as number|null,allocatedDamageSuccesses:manual.damageSuccesses??null,damageBeforeArmor:null as number|null,damageAfterArmor:null as number|null,defense:'unknown',hitConfirmed:false,missing,evidence,manual,stateChangesPermitted:false,scope:'Ordinary ranged attack; manual target facts are player-reported adjudication, not invented NPC state. No optional successes, NPC rolls, sheet changes or canon updates are automatic.'};
+ const result={version:2,damagePolicy:'automatic_shoot',rollId:packet.rollId,characterId:packet.character.id,weaponName:name,attackSuccesses:packet.successes,requiredSuccesses:facts.firstHit.status==='verified'?Number(facts.firstHit.value):null,attackResult:'unverified' as 'unverified'|'miss'|'successful',phase:'evidence_required' as string,remainingSuccesses:null as number|null,additionalSuccesses:null as number|null,baseDamage:base,damageBeforeArmor:null as number|null,damageAfterArmor:null as number|null,defense:'unknown',hitConfirmed:false,missing,evidence,manual,stateChangesPermitted:false,scope:'Ordinary ranged attack; manual target facts are player-reported adjudication, not invented NPC state. SHOOT bonus damage is automatic after legal cancellations. No NPC rolls, sheet changes or canon updates are automatic.'};
  if(result.requiredSuccesses===null){missing.push('The authorized rules do not establish the attack hit threshold.');return result}
  if(packet.successes<result.requiredSuccesses){result.attackResult='miss';result.phase='miss';result.damageBeforeArmor=0;result.damageAfterArmor=0;return result}
- result.attackResult='successful';result.phase='defense_unknown';result.additionalSuccesses=packet.successes-result.requiredSuccesses;
+ result.attackResult='successful';result.phase='protection_pending';result.additionalSuccesses=packet.successes-result.requiredSuccesses;
  if(base===null)missing.push(recorded?.damage===null||!recorded?'Recorded weapon damage is missing.':official?.damage.status!=='verified'?'Official weapon damage is unverified.':'Recorded and official weapon damage differ; review the modification.');
- const extra=facts.extraDamage.status==='verified'?Number(facts.extraDamage.value):null;if(base!==null&&extra!==null)result.maximumDamageOption=base+result.additionalSuccesses*extra;
+ const extra=facts.extraDamage.status==='verified'?Number(facts.extraDamage.value):null;
  const override=rules.selection?.omittedPotentialOverride||rules.passages.some(p=>'sourceType'in p&&p.sourceType==='house-rule'&&p.overrideApplicable&&/dodge|parry|defen[cs]e|armor|cover|hit|success/i.test(p.overrideScope));if(override)missing.push('Applicable defense/armor house rule requires manual review.');
  if(manual.issues.length){result.phase='manual_review';return result}
  if(packet.match.status==='ambiguous'){result.phase='action_ambiguous';missing.push('Which pending action does this saved attack resolve? Clarify the original declaration; no additional attack roll is needed.');return result}
- const d=manual.defense;let defenseSuccesses=0;
- if(d.attempt==='none'||d.actionAvailable===false){result.defense=d.actionAvailable===false?'unavailable':'not attempted'}
+ const declared=packet.predeclaredDefense?.manual.defense;
+ const d:AttackAdjudication['defense']=declared?{...manual.defense,attempt:declared.attempt,declaredBeforeAttack:true}:{};let defenseSuccesses=0;
+ if(declared&&submitted.defense.attempt&&submitted.defense.attempt!==declared.attempt){delete d.successes;missing.push('A different reaction cannot replace the defense declared before the attack. Report only the already-declared defense result.');}
+ if(!declared||d.attempt==='none'||d.actionAvailable===false){result.defense=!declared?'none recorded before the attack; no cancellation applied':d.actionAvailable===false?'unavailable':'not attempted';if(!declared&&(submitted.defense.attempt==='dodge'||submitted.defense.attempt==='parry'))missing.push('The late defensive reaction was ignored; a defense cannot be declared after the attack roll.');}
  else if(d.attempt){
   if(d.declaredBeforeAttack===false){result.defense='not declared before attack';if(!evidence.timing){missing.push('Defense timing evidence is missing.');return result}}
   else if(d.actionAvailable!==true||d.declaredBeforeAttack!==true){result.phase='defense_legality';missing.push('Confirm the defensive action was available and declared before the attack roll.');return result}
@@ -75,15 +78,13 @@ export function interpretAttack(packet:VerifiedRollSubmission,rules:RuleRetrieva
     result.defense='resolved '+d.attempt;defenseSuccesses=d.successes;
    }
   }
- }else{missing.push('Was a legal defense available and declared before the attack, or was no defense attempted?');return result}
+ }
  if(override){result.phase='house_rule_review';return result}
  result.remainingSuccesses=Math.max(0,packet.successes-defenseSuccesses);if(result.remainingSuccesses<result.requiredSuccesses){result.phase='defended';result.damageBeforeArmor=0;result.damageAfterArmor=0;return result}
- result.hitConfirmed=true;result.additionalSuccesses=result.remainingSuccesses-result.requiredSuccesses;if(base!==null&&extra!==null)result.maximumDamageOption=base+result.additionalSuccesses*extra;
- const allocated=manual.damageSuccesses==='all'?result.additionalSuccesses:manual.damageSuccesses??(result.additionalSuccesses===0?0:null);
- if(base===null){result.phase='weapon_review';return result}if(allocated===null){result.phase='damage_options';missing.push('Choose how many additional successes to spend on damage.');return result}
- if(allocated>result.additionalSuccesses||allocated<0){result.phase='damage_options';missing.push('Damage allocation exceeds the remaining additional successes.');return result}
- if(allocated>0&&extra===null){result.phase='evidence_required';missing.push('Extra-success damage evidence is missing.');return result}
- result.allocatedDamageSuccesses=allocated;const damage=base+allocated*(extra??0);result.damageBeforeArmor=damage;
+ result.hitConfirmed=true;result.additionalSuccesses=result.remainingSuccesses-result.requiredSuccesses;
+ if(base===null){result.phase='weapon_review';return result}
+ if(result.additionalSuccesses>0&&extra===null){result.phase='evidence_required';missing.push('Automatic extra-success damage evidence is missing.');return result}
+ const damage=base+result.additionalSuccesses*(extra??0);result.damageBeforeArmor=damage;
  for(const [kind,p] of [['cover',manual.cover],['armor',manual.armor]] as const){
   if(kind==='cover'&&p.rating===undefined&&p.successes===undefined)continue;
   if(p.rating===undefined){result.phase='armor_unknown';missing.push('Provide the actual '+kind+' rating or confirm the target is unarmored.');return result}
@@ -100,14 +101,13 @@ export function attackReply(a:AttackInterpretation){
  if(a.attackResult==='unverified')return null;
  const lines=[a.weaponName+' attack: '+a.attackSuccesses+' recorded successes. '+(a.attackResult==='miss'?'The attack misses; 0 damage.':'Successful attack roll: the evidenced hit requirement is '+a.requiredSuccesses+' success.')];
  if(a.attackResult==='successful'){
-  if(a.baseDamage!==null)lines.push('Base weapon damage: '+a.baseDamage+'.'+(a.maximumDamageOption!==null&&a.maximumDamageOption!==a.baseDamage?' Spending additional successes on damage can increase it to '+a.maximumDamageOption+' before defense/armor; those successes have not been spent.':''));
+  if(a.baseDamage!==null)lines.push('Base weapon damage: '+a.baseDamage+'. Ordinary SHOOT adds damage automatically for each uncanceled additional success.');
   if(a.phase==='defended')lines.push('The reported legal defense cancels enough successes: no hit, 0 damage.');
   else if(a.phase==='resolved')lines.push('The attack hits for '+a.damageBeforeArmor+' damage before protection and '+a.damageAfterArmor+' damage after the reported armor/cover results.');
   else if(a.hitConfirmed)lines.push('The attack hits. '+(a.damageBeforeArmor!==null?'Damage before armor: '+a.damageBeforeArmor+'. ':'')+'Final damage is awaiting the specific information below.');
-  else lines.push('A successful attack roll is established. Final hit resolution awaits only applicable defense facts, not another attack roll.');
+  else lines.push('A successful attack roll is established. Only an already-declared legal defense or missing evidence can hold final hit resolution; no new reaction is offered.');
  }
  if(a.defense!=='unknown')lines.push('Defense: '+a.defense+'.');
  if(a.missing.length)lines.push(a.missing.join(' '));
- if(a.phase==='defense_unknown')lines.push('For example: “No defense attempted. Target is unarmored.” Or report the already-declared defense, available action, and actual defensive roll.');
- lines.push('Manual target facts/results remain player-reported. No NPC dice were generated, optional effects applied, or character sheets changed.');return lines.join('\n\n');
+ lines.push('Manual target facts/results remain player-reported. No NPC dice were generated or character sheets changed. Target Strength and injuries have not been inferred.');return lines.join('\n\n');
 }

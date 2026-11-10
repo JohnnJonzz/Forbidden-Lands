@@ -726,7 +726,7 @@ The optional real-file command explicitly skips if books are unavailable; it nev
 
 The [missing hit-threshold evidence repair](docs/missing-mechanical-evidence.md) combines the official general success rule with the ranged skill-roll instruction, reuses available evidence, and makes at most one bounded targeted retry if needed. The real-book regressions verify Longbow damage for three, one and zero successes, recovery of a missing initial threshold candidate, and a safe unverified answer when the rule cannot be retrieved. All numerical inputs remain cited; no attack or campaign state change is executed.
 
-The [player-input preservation repair](docs/player-mechanical-inputs.md) keeps rolled successes separate from source hit requirements and additional successes spent on damage. It recognizes word/digit/sixes reports and explicit partial or zero damage allocation. Missing/ambiguous counts and overspending request clarification. Real-file tests now check the original request, saved context, streamed answer and final reply for 0–4 successes, the reported full question and Heavy Crossbow; existing evidence/security tests remain required. Historical saved replies stay unchanged, so send a new question to calculate with the corrected parser.
+The [player-input preservation repair](docs/player-mechanical-inputs.md) keeps rolled successes separate from source hit requirements. It recognizes word/digit/sixes reports and preserves the original input. Phase 5.3 supersedes its old allocation policy: ordinary SHOOT damage automatically includes every uncanceled additional success, even if a legacy question mentions partial allocation. Missing or ambiguous attack counts still require clarification. Real-file tests now check the original request, saved context, streamed answer and final reply for 0–4 successes, the reported full question and Heavy Crossbow; existing evidence/security tests remain required. Historical saved replies stay unchanged, so send a new question to calculate with the corrected parser.
 
 ## Character awareness and advisory action preparation
 
@@ -742,7 +742,7 @@ See [local-play architecture and earlier implementation](docs/read-only-characte
 
 Open **Recent Dice Rolls**, expand a result, push first if desired, and choose **Submit to GM**. Submission finalizes that version; the saved rolling character, faces, exact successes and recorded consequences go through the existing GM pipeline. Submitted results remain in the panel with persistent status and safe retry. **Finalize without GM** keeps the independent local-only archival operation available.
 
-Full dice cards and push controls live in Recent Dice Rolls, while chat shows a compact reference and narration. One compatible prior action is linked; ambiguous actions prompt clarification. Extra successes are not automatically allocated, push consequences are not repeated, and no inventory, attribute, injury, condition, time or journey changes are executed. Existing local/hosted access and official PDF retrieval remain in place.
+Full dice cards and push controls live in Recent Dice Rolls, while chat shows a compact reference and narration. One compatible prior action is linked; ambiguous actions prompt clarification. Ordinary SHOOT extra damage is automatic; other optional effects retain their own verified rules. Push consequences are not repeated, and no inventory, attribute, injury, condition, time or journey changes are executed. Existing local/hosted access and official PDF retrieval remain in place.
 
 See [infrastructure, matching, duplicate prevention, tests, changed files and limitations](docs/dice-gm-submission.md). Run `npm run test:roll-gm` for the default local browser flow, plus the required real-PDF gate and existing dice/character/AI regressions.
 
@@ -767,8 +767,17 @@ Run `npm run test:action-safeguards` for the browser acceptance checks. Continue
 
 ## Submitted ranged attacks (Phase 5.2)
 
-A submitted **Attack: Longbow** now explicitly reports a successful attack roll when the saved successes meet the source-backed threshold, and uses recorded plus official weapon damage. Extra successes remain unspent until selected. Attack success, an applicable legal defense, armor, and final damage are separate stages; enemy statistics/results are never fabricated.
+A submitted **Attack: Longbow** now explicitly reports a successful attack roll when the saved successes meet the source-backed threshold, and uses recorded plus official weapon damage. Each additional uncanceled SHOOT success increases damage automatically; no allocation or confirmation is required. Attack success, an applicable legal defense, armor, and final damage are separate stages; enemy statistics/results are never fabricated.
 
-Until autonomous NPC combat exists, answer a target-fact question through ordinary chat using explicit manual statements—for example, `No defense attempted. Target is unarmored.` or `Armor rating: 3. Armor roll: one success.` with the **actual** values. A defense must have been declared before the attack and have an available action. The application reuses the saved attack, makes no extra roll, and changes no sheets. See [supported defense/allocation statements, evidence, files, tests and limitations](docs/submitted-attack-resolution.md).
+Until autonomous NPC combat exists, answer a target-fact question through ordinary chat using explicit manual statements—for example, `No defense attempted. Target is unarmored.` or `Armor rating: 3. Armor roll: one success.` with the **actual** values. A defense must have been declared before the attack and have an available action. The application reuses the saved attack, makes no extra roll, and changes no sheets. See [attack-resolution history](docs/submitted-attack-resolution.md) and [current automatic SHOOT policy and pre-roll defense workflow](docs/automatic-shoot-damage.md).
 
 Run `npm run test:submitted-attacks` for the browser regression and the required real-sourcebook retrieval gate for official evidence. Preview normally with `npm run dev`, roll/push on the character sheet, and use Recent Dice Rolls → Submit to GM. The existing composer and dice interface are preserved.
+
+
+## Automatic SHOOT damage correction (Phase 5.3)
+
+Ordinary ranged damage is `Weapon Damage + max(0, remaining attack successes - 1)`, after applying an actual legal predeclared defense. Edrus's Longbow therefore deals 1/2/3 damage before armor for 1/2/3 uncanceled successes. The application never asks how many additional successes to spend.
+
+If an NPC will Dodge or Parry, first declare the player attack, then record the reaction through chat **before the player rolls**, for example `Target attempts to dodge. A defensive action is available.` Wait for its acknowledgment. The existing character-sheet roll/push and Recent Dice Rolls → Submit to GM workflow stays the same. Report the actual already-declared defensive result when available. A late declaration is not accepted, including one made after rolling but before submission. With no pre-roll declaration, no cancellation is applied and resolution proceeds directly to armor.
+
+Unknown armor and target Strength remain unknown; no NPC rolls or sheet changes are automatic. MELEE uses its separately reviewed procedures. See [exact changed paths, source evidence, regression results and limitations](docs/automatic-shoot-damage.md). Archived allocation-based chat is retained; a new follow-up can recalculate an older saved roll without creating another one.

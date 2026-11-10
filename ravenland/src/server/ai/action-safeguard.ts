@@ -15,7 +15,7 @@ export function declarationReply(character:Character,guard:NonNullable<ReturnTyp
  const attempt=guard.kind==='ranged_attack'?`${character.name} lines up the attempted shot.`:guard.kind==='melee_attack'?`${character.name} prepares the attempted attack.`:`${character.name}'s declared attempt is pending.`;
  if(guard.phase==='clarify_resources')return attempt+' '+guard.resources.map(r=>r.state==='empty'?`Your recorded ${r.resource} are exhausted.`:`Availability of ${r.resource} is unknown (${r.recordStatus}).`).join(' ')+' How would you like to proceed, or what supplies are available? The attempt has not been resolved.';
  const skill=guard.skill!,pool=preparation?.status==='ready'&&preparation.basePool?` Verified base pool: ${preparation.basePool.base} attribute + ${preparation.basePool.skill} skill + ${preparation.basePool.gear} gear = ${preparation.basePool.total} dice.`:'';
- return attempt+` Roll ${skill.name} (${skill.attribute[0].toUpperCase()+skill.attribute.slice(1)}) on your character sheet, push if desired, then choose Submit to GM in Recent Dice Rolls.${pool} The outcome is awaiting that submitted result.`;
+ return attempt+` Roll ${skill.name} (${skill.attribute[0].toUpperCase()+skill.attribute.slice(1)}) on your character sheet, push if desired, then choose Submit to GM in Recent Dice Rolls.${pool} Any defensive reaction must be declared before the attack roll. The outcome is awaiting that submitted result.`;
 }
 // Zero recorded successes cannot be turned into a successful attack by prose.
 // No hit threshold, damage, optional allocation or opposed result is fabricated.

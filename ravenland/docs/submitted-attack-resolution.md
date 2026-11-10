@@ -2,6 +2,9 @@
 
 November 10, 2026 (America/Chicago).
 
+**Phase 5.3 correction:** The allocation-based ordinary SHOOT behavior described below is superseded. Additional uncanceled successes increase damage automatically, and defensive intent must be recorded before the attack roll. See [the current correction and workflow](automatic-shoot-damage.md).
+
+
 ## Finding
 
 The saved dice verification was preserving the player's successes. The missing link was between that verified result and combat interpretation:

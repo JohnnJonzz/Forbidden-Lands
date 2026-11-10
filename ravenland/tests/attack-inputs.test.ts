@@ -6,8 +6,8 @@ import {planRetrieval} from '../src/lib/rules/planner';
 import {playerInputCases,playerInputReproduction} from './fixtures/attack-input-cases';
 test('reported successes stay distinct from thresholds and allocated extra successes',()=>{
  for(const c of playerInputCases){const inputs=weaponRequest(c.question)!;assert.equal(inputs.attackSuccesses,c.attack,c.name);assert.deepEqual(inputs.inputIssues,[],c.name);assert.equal(planRetrieval(c.question).weaponFacts?.attackSuccesses,c.attack,c.name)}
- assert.equal(attackInputs(playerInputCases.find(c=>c.name==='partial allocation')!.question).damageSuccesses,1);
- assert.equal(attackInputs(playerInputCases.find(c=>c.name==='zero allocation')!.question).damageSuccesses,0);
+ assert.equal(attackInputs(playerInputCases.find(c=>c.name==='legacy partial allocation does not change SHOOT')!.question).damageSuccesses,1);
+ assert.equal(attackInputs(playerInputCases.find(c=>c.name==='legacy zero allocation does not change SHOOT')!.question).damageSuccesses,0);
  assert.equal(weaponRequest(playerInputReproduction)?.modifiersRequested,false);
  assert.equal(weaponRequest('Longbow damage with three successes and talent modifiers?')?.modifiersRequested,true);
 });

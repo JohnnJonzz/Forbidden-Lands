@@ -2,6 +2,9 @@
 
 Verified November 9, 2026 (America/Chicago), starting from `0a33b21`.
 
+**Phase 5.3 correction:** The allocation-based ordinary SHOOT behavior described below is superseded. Additional uncanceled successes increase damage automatically, and defensive intent must be recorded before the attack roll. See [the current correction and workflow](automatic-shoot-damage.md).
+
+
 ## Traced cause
 
 The chat client sends its trimmed action text, the GM route validates it, and `AIService` passes that action directly to `retrieveRules`. The request schema does not substitute counts. The old `weaponRequest` extractor used the first numbered `success` phrase anywhere in the action. It did not identify whether that number described a rolled result, a rule threshold or an allocation. The planner, validator and formatter then faithfully reused that incorrectly selected input.

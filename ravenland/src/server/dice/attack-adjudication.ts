@@ -1,7 +1,8 @@
+import type {SqliteCampaignRepository} from '../sqlite';
 import {attackInputs,successCountPattern,successNumber} from '../../lib/rules/attack-inputs';
 export interface AttackAdjudication {
  defense:{attempt?:'none'|'dodge'|'parry';actionAvailable?:boolean;declaredBeforeAttack?:boolean;shield?:boolean;parryingWeapon?:boolean;weaponTalentRank?:number;successes?:number};
- armor:{rating?:number;successes?:number};cover:{rating?:number;successes?:number};damageSuccesses?:number|'all';issues:string[];sources:string[];
+ armor:{rating?:number;successes?:number};cover:{rating?:number;successes?:number};issues:string[];sources:string[];
 }
 export const emptyAdjudication=():AttackAdjudication=>({defense:{},armor:{},cover:{},issues:[],sources:[]});
 // Explicit manual statements in ordinary chat only. Questions, NPC dialogue and
@@ -24,10 +25,20 @@ export function parseAttackAdjudication(text:string,source:string):AttackAdjudic
   const rating=sentence.match(/^(armor|armour|cover) rating:\s*(\d{1,3})$/i);if(rating)put(rating[1].toLowerCase()==='cover'?result.cover:result.armor,'rating',Number(rating[2]));
   const roll=sentence.match(new RegExp('^(defen[cs]e|armor|armour|cover) roll:\\s*('+successCountPattern+')\\s+success(?:es)?$','i'));if(roll)put(/^defen[cs]e$/i.test(roll[1])?result.defense:/^cover$/i.test(roll[1])?result.cover:result.armor,'successes',successNumber(roll[2]));
  }
- const inputs=attackInputs(text);if(!text.includes('?')&&inputs.damageSuccesses!==null&&(found||inputs.attackSuccesses===null)){result.damageSuccesses=inputs.damageSuccesses;found=true}if(!text.includes('?')&&(found||inputs.attackSuccesses===null)&&/\bI (?:spend|allocate) all (?:extra|additional) successes (?:on|to) damage\b/i.test(text)){result.damageSuccesses='all';found=true}
- result.issues.push(...inputs.inputIssues.filter(s=>/allocation|damage/i.test(s)));if(found)result.sources.push(source);return found?result:null;
+ // Old allocation-only replies are recognized for compatibility, but never
+ // alter ordinary SHOOT damage or block it behind a choice.
+ const inputs=attackInputs(text);
+ if(!text.includes('?')&&inputs.attackSuccesses===null&&(inputs.damageSuccesses!==null||/\bI (?:spend|allocate) all (?:extra|additional) successes (?:on|to) damage\b/i.test(text)))found=true;
+ if(found)result.sources.push(source);return found?result:null;
 }
 export function mergeAdjudication(old:AttackAdjudication|undefined,current:AttackAdjudication){
  const defense={...old?.defense,...current.defense};if(current.defense.attempt&&current.defense.attempt!==old?.defense.attempt&&current.defense.successes===undefined)delete defense.successes;
- return {...emptyAdjudication(),...old,...current,defense,armor:{...old?.armor,...current.armor},cover:{...old?.cover,...current.cover},damageSuccesses:current.damageSuccesses??old?.damageSuccesses,issues:current.issues,sources:[...new Set([...(old?.sources??[]),...current.sources])].slice(-6)};
+ return {...emptyAdjudication(),defense,armor:{...old?.armor,...current.armor},cover:{...old?.cover,...current.cover},issues:current.issues,sources:[...new Set([...(old?.sources??[]),...current.sources])].slice(-6)};
+}
+
+export interface AttackDefenseDeclaration {actionId:string;characterId:string;recordedAt:string;manual:AttackAdjudication}
+export function preRollDefense(repo:SqliteCampaignRepository,campaignId:string,characterId:string,actionId:string|undefined,createdAt:string):AttackDefenseDeclaration|null{
+ if(!actionId)return null;
+ const row=repo.db.prepare("SELECT context_json FROM ai_requests WHERE campaign_id=? AND kind='chat' AND status='completed' AND updated_at<=? AND json_extract(payload,'$.characterId')=? AND json_extract(context_json,'$.attackDefenseDeclaration.actionId')=? ORDER BY updated_at DESC,id DESC LIMIT 1").get(campaignId,createdAt,characterId,actionId);
+ return row?JSON.parse(row.context_json as string).attackDefenseDeclaration:null;
 }
