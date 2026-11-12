@@ -1,3 +1,5 @@
+import {z} from 'zod';
+import type {CombatChooser} from '../combat/service';
 import type {ProviderDiagnostics} from './diagnostics';
 import OpenAI from 'openai';
 import {zodTextFormat} from 'openai/helpers/zod';
@@ -7,12 +9,18 @@ import {AIError,serverAIConfig,publicAIError} from './config';
 import {gmInstructions,instructionVersion} from './instructions-v1';
 import {defaultGMInstructions} from './default-instructions';
 export interface ProviderResult {output:GMOutput;inputTokens:number|null;outputTokens:number|null;model:string;provider:'openai'|'mock'|'application'}
-export interface GMProvider {generate(input:unknown,settings:{style:string;autonomy:string;instructions?:string;onDiagnostics?:(patch:ProviderDiagnostics)=>void},onText:(text:string)=>void):Promise<ProviderResult>;test():Promise<{inputTokens:number|null;outputTokens:number|null;model:string}>}
+export interface GMProvider {chooseCombat?:CombatChooser;generate(input:unknown,settings:{style:string;autonomy:string;instructions?:string;onDiagnostics?:(patch:ProviderDiagnostics)=>void},onText:(text:string)=>void):Promise<ProviderResult>;test():Promise<{inputTokens:number|null;outputTokens:number|null;model:string}>}
 // Tests inject an SDK client/fetch transport; production uses only OPENAI_API_KEY
 // and the official API endpoint. There is no browser-controlled base URL.
 export class OpenAIProvider implements GMProvider {
  constructor(private readonly suppliedClient?:OpenAI){}
  private client(){if(this.suppliedClient)return this.suppliedClient;if(!process.env.OPENAI_API_KEY)throw new AIError('missing_key','OPENAI_API_KEY is missing. Add it to the server .env.local and restart.',503);return new OpenAI({apiKey:process.env.OPENAI_API_KEY,maxRetries:0,timeout:serverAIConfig().timeoutMs,logLevel:'off'})}
+ async chooseCombat(input:Parameters<CombatChooser>[0]){
+  const config=serverAIConfig(),schema=z.object({choiceId:z.string()}).strict();
+  const response=await this.client().responses.create({model:config.model,instructions:'You control only the active Forbidden Lands enemy. Choose exactly one choiceId from the application-provided legal choices. Never invent an action, statistic, roll, target, damage or outcome. Monster attack tables are rolled by the server. Return only the structured choice.',input:JSON.stringify(input),text:{format:zodTextFormat(schema,'combat_decision')},max_output_tokens:256,store:false},{signal:AbortSignal.timeout(config.timeoutMs)});
+  if(response.status!=='completed')throw new AIError('combat_decision','The GM combat decision did not complete. Retry the same request; no dice were rolled.',502);
+  let decision:z.infer<typeof schema>;try{decision=schema.parse(JSON.parse(response.output_text??response.output.flatMap(item=>item.type==='message'?item.content.flatMap(part=>part.type==='output_text'?[part.text]:[]):[]).join('')))}catch{const error=new AIError('invalid_output','AI combat decision processing failed. No enemy dice or state changes were applied.',502);error.stage='processing';error.usage={inputTokens:response.usage?.input_tokens??null,outputTokens:response.usage?.output_tokens??null,model:response.model};throw error}return {...decision,inputTokens:response.usage?.input_tokens??null,outputTokens:response.usage?.output_tokens??null,model:response.model};
+ }
  async generate(input:unknown,settings:{style:string;autonomy:string;instructions?:string;onDiagnostics?:(patch:ProviderDiagnostics)=>void},onText:(text:string)=>void):Promise<ProviderResult>{
   const config=serverAIConfig(),report=settings.onDiagnostics??(()=>{}),signal=AbortSignal.timeout(config.timeoutMs);let text='',lastNarration='',final:OpenAI.Responses.Response|undefined,phase:'prompt'|'api'|'processing'='prompt';
   try {

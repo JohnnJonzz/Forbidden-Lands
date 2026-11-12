@@ -781,3 +781,22 @@ Ordinary ranged damage is `Weapon Damage + max(0, remaining attack successes - 1
 If an NPC will Dodge or Parry, first declare the player attack, then record the reaction through chat **before the player rolls**, for example `Target attempts to dodge. A defensive action is available.` Wait for its acknowledgment. The existing character-sheet roll/push and Recent Dice Rolls → Submit to GM workflow stays the same. Report the actual already-declared defensive result when available. A late declaration is not accepted, including one made after rolling but before submission. With no pre-roll declaration, no cancellation is applied and resolution proceeds directly to armor.
 
 Unknown armor and target Strength remain unknown; no NPC rolls or sheet changes are automatic. MELEE uses its separately reviewed procedures. See [exact changed paths, source evidence, regression results and limitations](docs/automatic-shoot-damage.md). Archived allocation-based chat is retained; a new follow-up can recalculate an older saved roll without creating another one.
+
+### Phase 6: NPC and monster combat
+
+This tested initial implementation supports the enemies and procedures below. Full Phase 6 coverage remains incomplete; complex monster effects and advanced tactical procedures require adjudication.
+
+Open **Combat** above Recent Dice Rolls. Index both actual fifth-printing books in this campaign's Rules Library first; keep the Guide **GM Only**. Start with an established range and enemies such as `Bandit x2`, `Bandit; Thief`, `Minotaur`, or `generated Sentry`. The initial supported library contains Bandit, Soldier, Rider, Thief, Gray Bear, Minotaur, Nightwarg and Drakewyrm. Missing statistics or unsupported special procedures require adjudication.
+
+The GM controls validated enemy decisions and engine-generated dice. Players declare defenses before enemy attack dice, roll on their sheets, and use the existing **Submit to GM** button. Player attacks target the exact encounter name; declare Slash or Stab explicitly for melee. Enemy wounds, armor, actions and initiative persist in SQLite. Player sheets, resources and campaign time remain player-managed. **GM Dice Audit** exposes actual enemy dice without revealing private sourcebook tables. **End encounter** retains history and isolates the next encounter. Public campaign JSON backups do not include private combat tables; back up the SQLite file for those records.
+
+Mock mode exercises the same validated combat workflow without OpenAI. With OpenAI configured, the existing model chooses only from server-provided legal decisions; the server generates all dice and validates mechanics. See [the Phase 6 report](docs/npc-monster-combat.md) for source pages, exact paths, permissions and supported/unsupported mechanics.
+
+```bash
+RAVENLAND_REAL_SOURCEBOOK_DIR=/absolute/private/book-directory npm run test:retrieval-check
+RAVENLAND_REAL_SOURCEBOOK_DIR=/absolute/private/book-directory npm run test:combat
+npm run typecheck
+npm run build
+```
+
+The real-sourcebook gate and combat browser test require both actual PDFs described in `tests/fixtures/private-sourcebooks/README.md`. The browser test uploads/indexes them into a disposable private store, tests turns and real Submit to GM, and removes its temporary database/files. Never commit licensed books, extracted pages, private fixtures, or credentials.

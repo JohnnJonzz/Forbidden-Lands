@@ -75,3 +75,12 @@ function finalize(input:Session,rollId:string,requestId:string|null,c:{campaignI
  s.messages=s.messages.filter(m=>!m.id.startsWith(c.actionId+':'));
  return s;
 }
+
+// Shared initial pool generation for server-controlled combat. Player sheets keep
+// their existing controls; both paths use the same StructuredRoll and counting.
+export function generatePool(identity:{id:string;characterId:string;skill:string},pool:{base:number;skill:number;gear:number},die:(sides:number)=>number):StructuredRoll{
+ for(const n of [pool.base,Math.abs(pool.skill),pool.gear])if(!Number.isInteger(n)||n<0||n>100)throw Error('Invalid dice pool');
+ const faces=(n:number)=>Array.from({length:n},()=>{const v=die(6);if(!Number.isInteger(v)||v<1||v>6)throw Error('Invalid die result');return v});
+ const result:StructuredRoll={...identity,attribute:faces(pool.base),skillDice:faces(Math.abs(pool.skill)),negativeSkill:pool.skill<0,gear:faces(pool.gear),artifacts:[],successes:0,pushed:false,attributeDamage:0,gearDamage:0,willpower:0,quarterDayId:null,requestId:null};
+ result.successes=countSuccesses(result);return result;
+}
