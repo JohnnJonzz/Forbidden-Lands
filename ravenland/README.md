@@ -829,3 +829,17 @@ RAVENLAND_REAL_SOURCEBOOK_DIR=/absolute/private/book-directory npm run test:retr
 ```
 
 The browser regression indexes both actual fifth-printing PDFs in temporary private storage and uses controlled SDK responses and dice; it makes no paid calls. See [the Phase 6.2 report](docs/narrative-combat.md).
+
+### Phase 6.2.1: faithful encounter setup
+
+Natural setup counts enemies once per type: “one bandit,” “a lone bandit,” “a single bandit,” and repeated references to “the bandit” all describe one enemy. Exact multiple counts remain supported. Conflicting, vague or unsupported quantities ask for clarification before initiative. Fresh declarations do not inherit counts, participants or range from older setup drafts; an active encounter must be ended explicitly before another is created.
+
+Explicit participant selections/exclusions take priority over roster membership or older scene narration. If a requested forest road differs from the saved campaign location, the GM asks whether it is a local scene within that location. Answer **Yes, same location.** to confirm that relationship, or edit the campaign location normally first. Setup never invents movement, elapsed time or a new hex. The confirmed encounter location/description and explicit absences persist across refresh.
+
+Verified narration events now include the actual attack weapon and roll references, post-defense/post-armor damage, and an audit of applied enemy Strength loss. Push facts identify the rolling character and attribute separately from damage dealt to the target. A generic Melee/Marksmanship roll without a declared combat step cannot become an invented attack.
+
+```bash
+RAVENLAND_REAL_SOURCEBOOK_DIR=/absolute/private/book-directory npm run test:encounter-fidelity
+```
+
+See [the Phase 6.2.1 investigation and test report](docs/encounter-setup-fidelity.md) for the reproduced defect, verification limits for the live playtest and changed files.

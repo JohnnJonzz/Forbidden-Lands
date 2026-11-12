@@ -1,3 +1,4 @@
+import {pushNarrativeEvent} from './narrative';
 import {verifiedCombatWeapon} from './equipment';
 import {combatWorkflow,checkCombatRoll} from './workflow';
 import {encounterRequest,parseEncounterSetup,previousSetup,setupQuestion,type EncounterSetup} from './setup';
@@ -27,6 +28,7 @@ export async function combatTurn(repo:SqliteCampaignRepository,c:GMTurn,roll:Ver
  const fingerprint=createHash('sha256').update(JSON.stringify({kind:c.kind,action:c.action,characterId:c.characterId,rollId:roll?.rollId})).digest('hex'),prior=repo.db.prepare('SELECT fingerprint,result_json FROM combat_commands WHERE campaign_id=? AND request_id=?').get(c.campaignId,c.requestId);
  if(prior){requireCharacterAccess(principal,c.campaignId,c.characterId);if(prior.fingerprint!==fingerprint)throw new AIError('combat_duplicate','Combat request reused with different parameters.',409);return {...JSON.parse(prior.result_json as string),replayed:true}}
  const session=repo.get(c.campaignId)!.session;
+ if(e&&c.kind==='chat'&&!command&&encounterRequest(c.action)){requireCharacterAccess(principal,c.campaignId,c.characterId);return {narration:'An encounter is already active at '+e.sceneLocation+' with '+e.combatants.map(a=>a.name).join(', ')+'. End that encounter before setting up a new scene; no combatants or location have been replaced.',encounter:publicCombat(e,session.characters),setup:null,usage:null,replayed:false}}
  const priorSetup=!e&&c.kind==='chat'?previousSetup(repo,c.campaignId,c.characterId):null;
  const setup=!e&&c.kind==='chat'&&!command?(parseEncounterSetup(c.action,session,c.characterId,priorSetup)??(priorSetup&&/initiative/i.test(c.action)?priorSetup:null)):null;
  if(setup){requireCharacterAccess(principal,c.campaignId,c.characterId);const question=setupQuestion(setup,session);if(question)return {narration:question,encounter:null,setup,usage:null,replayed:false};command='start '+setup.enemies+' at '+setup.range+' for '+setup.participants.join(',')}
@@ -42,7 +44,7 @@ export async function combatTurn(repo:SqliteCampaignRepository,c:GMTurn,roll:Ver
  if(e&&c.kind==='chat'&&!command&&/^(?:I\s+)?stand(?: up)?[.!]?$/i.test(c.action.trim()))command='stand';
  if(e&&c.kind==='chat'&&!command&&!declaration&&/^(?:I\s+)?(?:stand up and draw|draw)\b/i.test(c.action.trim()))command=/stand up and draw/i.test(c.action)?'stand and draw':'draw';
  if(!command&&!manual&&!(e&&roll)&&!(e&&['ranged_attack','melee_attack'].includes(declaration?.kind??'')))return null;
- if(roll&&e&&!e.pending&&roll.rollType!=='Attack')return null;
+ if(roll&&e&&!e.pending&&roll.rollType!=='Attack'){if(/^(?:Melee|Marksmanship|Shield Parry:)/i.test(roll.label)){requireCharacterAccess(principal,c.campaignId,c.characterId);return {narration:'The saved '+roll.label+' roll is not linked to a declared combat attack or defense. It has not applied combat damage. Declare the action first, then submit the matching sheet roll. '+(pushNarrativeEvent(roll)?.fallback??''),encounter:publicCombat(e,session.characters),setup:null,usage:null,replayed:false}}return null}
  requireCharacterAccess(principal,c.campaignId,c.characterId);
  const rules=/^end$/i.test(command??'')?{handbook:[],sources:[]}:loadCombatRules(repo,c.campaignId),beforeRevision=e?.revision??null,campaignRevision=repo.get(c.campaignId)!.revision;let selected:string|undefined,usage:{choiceId:string;inputTokens:number|null;outputTokens:number|null;model:string}|undefined;
  if(e&&/^(?:next|end turn)$/i.test(command??'')){
@@ -57,7 +59,7 @@ export async function combatTurn(repo:SqliteCampaignRepository,c:GMTurn,roll:Ver
    if(e)throw new AIError('combat_active','End the existing encounter before starting another.',409);
    const m=command.match(/^start\s+(.+?)\s+at\s+(Arm|Near|Short|Long)(?:\s+for\s+(.+))?$/i);if(!m)throw new AIError('combat_setup','Use /combat start Bandit x2 at Arm (or Near, Short, Long). The range must be established.',400);
    const enemies:EnemyTemplate[]=[];for(const part of m[1].split(';')){const match=part.trim().match(/^(generated\s+)?(.+?)(?:\s+x([1-6]))?$/i);if(!match)throw new AIError('combat_setup','Enter an enemy name in each semicolon-separated entry.',400);const template=lookupEnemy(repo,c.campaignId,match[2],!!match[1]);for(let i=0;i<Number(match[3]??1);i++)enemies.push(template)}
-   e=createEncounter(c.campaignId,record.session,enemies,(m[2][0].toUpperCase()+m[2].slice(1).toLowerCase()) as CombatRange,die,m[3]?m[3].split(',').map(id=>id.trim()):[c.characterId]);e.sources=rules.sources;
+   e=createEncounter(c.campaignId,record.session,enemies,(m[2][0].toUpperCase()+m[2].slice(1).toLowerCase()) as CombatRange,die,m[3]?m[3].split(',').map(id=>id.trim()):[c.characterId]);e.sources=rules.sources;if(setup?.scene?.confirmed)e.sceneDescription=setup.scene.description;if(setup?.absentCharacters?.length)e.sceneAbsentCharacters=setup.absentCharacters.map(id=>record.session.characters.find(ch=>ch.id===id)!.name);
    narration='Combat begins. Initiative: '+e.combatants.map(a=>a.initiative+' '+a.name).join(' → ')+'. Round 1. '+e.combatants[0].name+' acts first. '+(enemies.some(a=>a.origin==='generated')?'Generated NPCs are labeled separately from published statistics. ':'')+'Player turns and sheet rolls remain player-controlled.';
   }else if(!e)throw new AIError('combat_missing','No active encounter. Start one with the Combat controls.',409);
   else if(e.combatants.some(a=>a.side==='enemy'&&a.critical?.status==='required')&&command!=='end'&&command!=='recheck critical')throw new AIError('combat_adjudication','A required critical injury remains unresolved. Restore its official source evidence, then recheck the critical before continuing.',409);
