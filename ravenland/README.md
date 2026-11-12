@@ -812,3 +812,20 @@ RAVENLAND_REAL_SOURCEBOOK_DIR=/absolute/private/book-directory npm run test:comb
 ```
 
 This browser regression uploads and indexes both actual books into a disposable store, uses controlled SDK responses/dice, and exercises participant selection, pre-roll defenses, invalid-roll recovery and refresh. See [the Phase 6.1 report](docs/combat-workflow-repair.md) for root causes, changed files, executed checks and remaining Phase 6 limitations.
+
+### Phase 6.2: narrative combat
+
+Declare supported actions in chat, such as “I slash at Bandit 1 with my Falchion,” “I dodge his attack,” or “I end my turn.” The existing engine validates actions and resolves enemy defense, armor, Strength, Broken and supported critical procedures before the GM narrates their results. Enemy turns advance automatically until the next player choice or sheet roll. Player turns, defenses, pushes and end-turn choices remain explicit. Unsupported maneuvers (including SHOVE and retreat) pause for adjudication; they are never silently replaced by attacks.
+
+Open the requested sheet from Combat, roll and optionally push, then click **Submit this roll** in the Combat panel. The panel lists only saved rolls passing the existing ownership, fingerprint and pending-step verifier. Recent Dice Rolls remains available. **Combat History** is collapsed by default and groups the canonical audit by round, including older rounds; legacy records without a saved round are labeled honestly.
+
+Completed attacks and automatic subcommands have persistent, stable receipts. Retrying a failed narration reuses their verified events without rolling again or reapplying push consequences. Each request allows one initial command plus at most 24 follow-up commands, two model decisions (15 seconds each), and one buffered narration (up to 90 seconds). Any further supported choices use the existing first-legal-action policy. The configured model is preserved. Mock mode uses application narration and the same mechanics with no API calls.
+
+Player sheets remain player-managed after combat damage. Normal saved push effects are handled once by the existing dice system. Enemy death is never inferred solely from Broken status. Unknown armor, scoped house rules and unsupported special procedures stop safely. Existing initiative and historical encounters remain unchanged.
+
+```bash
+RAVENLAND_REAL_SOURCEBOOK_DIR=/absolute/private/book-directory npm run test:combat-narrative
+RAVENLAND_REAL_SOURCEBOOK_DIR=/absolute/private/book-directory npm run test:retrieval-check
+```
+
+The browser regression indexes both actual fifth-printing PDFs in temporary private storage and uses controlled SDK responses and dice; it makes no paid calls. See [the Phase 6.2 report](docs/narrative-combat.md).

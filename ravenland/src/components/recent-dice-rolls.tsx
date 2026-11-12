@@ -2,7 +2,7 @@
 import {useEffect,useRef,useState} from 'react';
 import {DiceCard,type DiceAction} from './dice-card';
 import {canPush} from '@/lib/dice/engine';
-import {rollGMRequestId,rollSubmissionFingerprint,type RollGMStatus} from '@/lib/dice/gm-submission';
+import {rollGMTurn,type RollGMStatus} from '@/lib/dice/gm-submission';
 import type {GMTurn} from '@/lib/ai/schema';
 import type {Session} from '@/lib/types';
 import type {StructuredRoll} from '@/lib/journey/quarter-schema';
@@ -16,7 +16,7 @@ export function RecentDiceRolls({session,campaignId,actorId,onCommand,onSubmit,b
  const [statuses,setStatuses]=useState<RollGMStatus[]>([]),[error,setError]=useState(''),[sending,setSending]=useState<string|null>(null),sendingRef=useRef(false);
  async function refresh(){const response=await fetch('/api/gm/rolls?campaignId='+campaignId,{cache:'no-store'});const value=await response.json();if(!response.ok)throw Error(value.error);setStatuses(value.submissions)}
  useEffect(()=>{let alive=true;fetch('/api/gm/rolls?campaignId='+campaignId,{cache:'no-store'}).then(r=>{if(!r.ok)throw Error('Could not load GM submission status.');return r.json()}).then(v=>{if(alive)setStatuses(v.submissions)}).catch(e=>{if(alive)setError(e.message)});return()=>{alive=false}},[campaignId,session]);
- async function submit(card:NonNullable<Session['dice']>[number]){if(sendingRef.current||busy)return;if(canPush(card)&&!confirm('Submit this as the final roll? You can push it first, but cannot push after submitting to the GM.'))return;sendingRef.current=true;setSending(card.id);setError('');try{await onSubmit({campaignId,requestId:await rollGMRequestId(campaignId,card.id),kind:'roll',action:'',characterId:card.characterId,rollId:card.id,rollFingerprint:await rollSubmissionFingerprint(card)});await refresh()}catch(e){setError((e as Error).message)}finally{sendingRef.current=false;setSending(null)}}
+ async function submit(card:NonNullable<Session['dice']>[number]){if(sendingRef.current||busy)return;if(canPush(card)&&!confirm('Submit this as the final roll? You can push it first, but cannot push after submitting to the GM.'))return;sendingRef.current=true;setSending(card.id);setError('');try{await onSubmit(await rollGMTurn(campaignId,card));await refresh()}catch(e){setError((e as Error).message)}finally{sendingRef.current=false;setSending(null)}}
 
  return <details className="recent-dice"><summary>Recent Dice Rolls</summary><div>{[...(session.dice??[])].reverse().slice(0,12).map(card=>{
   const r=card.result,utility=card.metadata.utility,status=statuses.find(s=>s.rollId===card.id);

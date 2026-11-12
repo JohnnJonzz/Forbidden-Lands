@@ -8,7 +8,7 @@ export function declaredAction(text:string,actorName?:string){
  let clause=text.trim().slice(match[0].length).replace(/^(?:will|want to|try to|tries to|attempt to|attempts to|am going to|is going to)\s+/i,'');
  if(/^(?:do not|don't|does not|doesn't|never)\b/i.test(clause))return null;
  clause=clause.replace(/^(?:raises?|readies|ready|draws?|aims?|lifts?|nocks?|takes? aim)\b[^.!?]{0,160}?\b(?:and|then)\s+/i,'');
- const verb=clause.match(/^(shoots?|fires?|looses?|attacks?|slashes?|stabs?|manipulates?|persuades?|convinces?|coerces?|threatens?|lights?|ignites?|relights?|uses?|eats?|consumes?|drinks?|sips?|rolls?)\b/i)?.[1].toLowerCase();if(!verb)return null;
+ const verb=clause.match(/^(shoots?|fires?|looses?|attacks?|slash(?:es)?|stabs?|manipulates?|persuades?|convinces?|coerces?|threatens?|lights?|ignites?|relights?|uses?|eats?|consumes?|drinks?|sips?|rolls?)\b/i)?.[1].toLowerCase();if(!verb)return null;
  let skill:SkillId|null=null,kind:'ranged_attack'|'melee_attack'|'skill'|'consumable'='consumable';
  if(/^(?:shoot|fire|loose)/.test(verb)&&(/^(?:shoot)/.test(verb)||/\b(?:long\s?bow|short\s?bow|bow|crossbow|arrows?|bolts?)\b/i.test(clause))){skill='marksmanship';kind='ranged_attack'}
  else if(/^(?:attack|slash|stab)/.test(verb)){skill=/\b(?:long\s?bow|short\s?bow|bow|crossbow|arrows?|bolts?)\b/i.test(clause)?'marksmanship':'melee';kind=skill==='marksmanship'?'ranged_attack':'melee_attack'}

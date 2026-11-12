@@ -1582,7 +1582,7 @@ const app = new ForbiddenLandsApp();
 window.addEventListener('DOMContentLoaded', () => {
     app.init();
     document.addEventListener('input', event => {
-        if (event.target.matches('input:not([type=file]):not([id$="-regular"]), textarea')) app.saveState();
+        if (!event.target.closest('#dice-panel') && event.target.matches('input:not([type=file]):not([id$="-regular"]), textarea')) app.saveState();
     });
     document.querySelectorAll('input[id], select[id], textarea[id]').forEach(el => el.setAttribute('aria-label', el.id.replaceAll('-', ' ')));
 });

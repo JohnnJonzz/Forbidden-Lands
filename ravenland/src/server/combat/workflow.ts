@@ -12,6 +12,8 @@ export function defenseOptions(e:CombatEncounter,targetId:string,character?:Char
 }
 export function combatWorkflow(e:CombatEncounter,characters:Character[]=[]):CombatWorkflow{
  const active=e.combatants[e.turn],p=e.pending,names=(ids:string[])=>ids.map(id=>e.combatants.find(c=>c.id===id)?.name??id),responses:CombatResponse[]=[];
+ const critical=e.combatants.filter(a=>a.side==='enemy'&&a.critical?.status==='required');
+ if(e.status==='active'&&critical.length){const blocker='The required critical injury for '+critical.map(a=>a.name).join(', ')+' is not established by the available source table. Restore the evidence and recheck the critical before continuing.';return {blocker,headline:'Critical injury requires adjudication',action:null,targetNames:critical.map(a=>a.name),responses:[],summary:blocker,initiative:'The existing initiative order is preserved.'}}
  if(p){const attacker=e.combatants.find(c=>c.id===p.actorId)!,weapon=p.playerWeapon??(p.weaponIndex===null?null:attacker.enemy?.weapons[p.weaponIndex]),monster=attacker.enemy?.attacks.find(a=>a.key===p.monsterKey),action=monster?.name??weapon?.name??p.kind;
   for(const id of p.targets){const target=e.combatants.find(t=>t.id===id)!;if(target.side!=='player')continue;
    let step:CombatResponse['step']|null=null,skill:string|null=null,instruction='';
