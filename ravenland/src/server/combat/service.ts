@@ -1,8 +1,10 @@
+import {combatWorkflow,checkCombatRoll} from './workflow';
+import {encounterRequest,parseEncounterSetup,previousSetup,setupQuestion,type EncounterSetup} from './setup';
 import {parseAttackAdjudication} from '../dice/attack-adjudication';
 import {resolveEnemyCritical} from './critical';
 import {createHash} from 'node:crypto';
 import type {GMTurn} from '../../lib/ai/schema';
-import type {CombatEncounter,CombatRange,Defense,EnemyTemplate} from '../../lib/combat/types';
+import type {CombatEncounter,CombatRange,Defense,EnemyTemplate,PublicCombat} from '../../lib/combat/types';
 import type {SqliteCampaignRepository} from '../sqlite';
 import {requireCharacterAccess,type CharacterPrincipal} from '../character-access';
 import type {VerifiedRollSubmission} from '../dice/gm-submission';
@@ -15,12 +17,26 @@ import {activeCombat,publicCombat,saveCombat,legalDefenses} from './store';
 import {createEncounter,nextTurn,beginEnemyAttack,beginPlayerAttack,declareDefense,rollEnemyAttack,resolveAttack,bindPlayerRoll,enemyChoices,secureDie,spend,type Die} from './engine';
 export type CombatChoice=ReturnType<typeof enemyChoices>[number];
 export type CombatChooser=(input:{round:number;actor:{name:string;current:Record<string,number>;kind:string};choices:CombatChoice[]})=>Promise<{choiceId:string;inputTokens:number|null;outputTokens:number|null;model:string}>;
-export async function combatTurn(repo:SqliteCampaignRepository,c:GMTurn,roll:VerifiedRollSubmission|null|undefined,principal:CharacterPrincipal|null,choose?:CombatChooser,die:Die=secureDie){
+export interface CombatTurnResult {narration:string;encounter:PublicCombat|null;setup:EncounterSetup|null;usage:{choiceId:string;inputTokens:number|null;outputTokens:number|null;model:string}|null;replayed:boolean}
+export function combatRouting(repo:SqliteCampaignRepository,c:GMTurn){return !!activeCombat(repo,c.campaignId)||c.kind==='chat'&&(/^\/combat\b/i.test(c.action)||encounterRequest(c.action)||!!previousSetup(repo,c.campaignId,c.characterId))}
+export async function combatTurn(repo:SqliteCampaignRepository,c:GMTurn,roll:VerifiedRollSubmission|null|undefined,principal:CharacterPrincipal|null,choose?:CombatChooser,die:Die=secureDie):Promise<CombatTurnResult|null>{
  if(!['chat','roll'].includes(c.kind))return null;
- let e=activeCombat(repo,c.campaignId);const manual=e&&c.kind==='chat'?parseAttackAdjudication(c.action,c.requestId):null;const command=c.kind==='chat'?c.action.match(/^\/combat\s+(.*)$/i)?.[1].trim():null;
+ let e=activeCombat(repo,c.campaignId);const manual=e&&c.kind==='chat'?parseAttackAdjudication(c.action,c.requestId):null;let command=c.kind==='chat'?c.action.match(/^\/combat\s+(.*)$/i)?.[1].trim():null;
  const character=repo.get(c.campaignId)?.session.characters.find(ch=>ch.id===c.characterId),declaration=c.kind==='chat'&&character?declaredAction(c.action,character.name):null;
  const fingerprint=createHash('sha256').update(JSON.stringify({kind:c.kind,action:c.action,characterId:c.characterId,rollId:roll?.rollId})).digest('hex'),prior=repo.db.prepare('SELECT fingerprint,result_json FROM combat_commands WHERE campaign_id=? AND request_id=?').get(c.campaignId,c.requestId);
  if(prior){requireCharacterAccess(principal,c.campaignId,c.characterId);if(prior.fingerprint!==fingerprint)throw new AIError('combat_duplicate','Combat request reused with different parameters.',409);return {...JSON.parse(prior.result_json as string),replayed:true}}
+ const session=repo.get(c.campaignId)!.session;
+ const priorSetup=!e&&c.kind==='chat'?previousSetup(repo,c.campaignId,c.characterId):null;
+ const setup=!e&&c.kind==='chat'&&!command?(parseEncounterSetup(c.action,session,c.characterId,priorSetup)??(priorSetup&&/initiative/i.test(c.action)?priorSetup:null)):null;
+ if(setup){requireCharacterAccess(principal,c.campaignId,c.characterId);const question=setupQuestion(setup,session);if(question)return {narration:question,encounter:null,setup,usage:null,replayed:false};command='start '+setup.enemies+' at '+setup.range+' for '+setup.participants.join(',')}
+ if(e&&c.kind==='chat'&&!command){
+  if(e.pending&&/^(?:(?:I|we)\s+)?(?:(?:choose|declare|will|attempt to)\s+)?(?:dodge|parry|no defen[cs]e|do not defend)[.!]?$/i.test(c.action.trim())){command='defense '+(/dodge/i.test(c.action)?'dodge':/parry/i.test(c.action)?'parry':'none')}
+  else if(/^(?:I\s+)?(?:end my turn|finish my turn)[.!]?$/i.test(c.action.trim()))command='end turn';
+  else if(/^(?:continue(?: combat| the fight| the GM turn)?|next(?: turn)?|what happens(?: next)?)[?.!]*$/i.test(c.action.trim())&&!e.pending&&e.combatants[e.turn].side==='enemy')command='next';
+  else if(!declaration&&/initiative|turn order|whose turn|who acts|what.*(?:next|happens|roll|defen[cs]e)|which.*(?:roll|defen[cs]e)|waiting for|continue(?: combat| the fight)?|bandit.*attacks/i.test(c.action)){
+   requireCharacterAccess(principal,c.campaignId,c.characterId);const w=combatWorkflow(e,session.characters);return {narration:(/initiative|turn order|who acts/i.test(c.action)?'Initiative uses numbered cards 1–10, lowest first. Order: '+e.combatants.map(a=>a.initiative+' '+a.name).join(' → ')+'. ':'')+w.summary,encounter:publicCombat(e,session.characters),setup:null,usage:null,replayed:false};
+  }
+ }
  if(!command&&!manual&&!(e&&roll)&&!(e&&['ranged_attack','melee_attack'].includes(declaration?.kind??'')))return null;
  if(roll&&e&&!e.pending&&roll.rollType!=='Attack')return null;
  requireCharacterAccess(principal,c.campaignId,c.characterId);
@@ -34,9 +50,9 @@ export async function combatTurn(repo:SqliteCampaignRepository,c:GMTurn,roll:Ver
   const record=repo.get(c.campaignId)!;if(record.revision!==campaignRevision)throw new AIError('combat_conflict','Campaign data changed during the GM decision. Retry before rolling.',409);if(e&&command!=='end'&&(e.sceneHex!==record.session.campaign.hex||e.sceneLocation!==record.session.campaign.location))throw new AIError('combat_scene','This encounter belongs to a different location. End it before starting combat in the current scene.',409);if(e)for(const a of e.combatants.filter(a=>a.side==='player')){const ch=record.session.characters.find(ch=>ch.id===a.characterId);if(!ch){a.withdrawn=true;continue}const attributes=mechanicalCharacter(ch).attributes;a.current=Object.fromEntries(Object.entries(attributes).flatMap(([k,v])=>v.current===null?[]:[[k,v.current]]));a.maximum=Object.fromEntries(Object.entries(attributes).flatMap(([k,v])=>v.regular===null?[]:[[k,v.regular]]));a.broken=Object.values(a.current).some(v=>v===0)}let narration='';
   if(command?.match(/^start\s+/i)){
    if(e)throw new AIError('combat_active','End the existing encounter before starting another.',409);
-   const m=command.match(/^start\s+(.+?)\s+at\s+(Arm|Near|Short|Long)$/i);if(!m)throw new AIError('combat_setup','Use /combat start Bandit x2 at Arm (or Near, Short, Long). The range must be established.',400);
+   const m=command.match(/^start\s+(.+?)\s+at\s+(Arm|Near|Short|Long)(?:\s+for\s+(.+))?$/i);if(!m)throw new AIError('combat_setup','Use /combat start Bandit x2 at Arm (or Near, Short, Long). The range must be established.',400);
    const enemies:EnemyTemplate[]=[];for(const part of m[1].split(';')){const match=part.trim().match(/^(generated\s+)?(.+?)(?:\s+x([1-6]))?$/i);if(!match)throw new AIError('combat_setup','Enter an enemy name in each semicolon-separated entry.',400);const template=lookupEnemy(repo,c.campaignId,match[2],!!match[1]);for(let i=0;i<Number(match[3]??1);i++)enemies.push(template)}
-   e=createEncounter(c.campaignId,record.session,enemies,(m[2][0].toUpperCase()+m[2].slice(1).toLowerCase()) as CombatRange,die);e.sources=rules.sources;
+   e=createEncounter(c.campaignId,record.session,enemies,(m[2][0].toUpperCase()+m[2].slice(1).toLowerCase()) as CombatRange,die,m[3]?m[3].split(',').map(id=>id.trim()):[c.characterId]);e.sources=rules.sources;
    narration='Combat begins. Initiative: '+e.combatants.map(a=>a.initiative+' '+a.name).join(' → ')+'. Round 1. '+e.combatants[0].name+' acts first. '+(enemies.some(a=>a.origin==='generated')?'Generated NPCs are labeled separately from published statistics. ':'')+'Player turns and sheet rolls remain player-controlled.';
   }else if(!e)throw new AIError('combat_missing','No active encounter. Start one with the Combat controls.',409);
   else if(manual&&!command){narration='Active combat uses the saved enemy statistics and engine-generated dice. For a pending player roll, use the character sheet and Submit to GM; typed success totals do not replace the combat record.'}
@@ -46,8 +62,9 @@ export async function combatTurn(repo:SqliteCampaignRepository,c:GMTurn,roll:Ver
   else if(command&&/^end$/i.test(command)){e.status='ended';e.endedAt=new Date().toISOString();narration='Encounter ended. Its audit history is retained; the next encounter starts with new combatants and initiative.'}
   else if(command&&/^defen[cs]e\s+(none|dodge|parry)$/i.test(command)){
    const defense=command.split(/\s+/)[1].toLowerCase() as Defense;
-   if(!e.pending||!legalDefenses(e,c.characterId).includes(defense))throw new AIError('combat_defense','That defensive response is unavailable or not permitted for this attack.',409);
-   declareDefense(e,character!,defense);narration=character!.name+' declares '+defense+' before the enemy attack roll. ';rollEnemyAttack(e,die);narration+=resolveAttack(e,record.session,die)||'Waiting for all targeted players to choose a defense.';
+   if(e.pending?.defenses[c.characterId]===defense&&e.pending.phase!=='declaration'){narration=combatWorkflow(e,record.session.characters).summary}
+   else {if(!e.pending||!legalDefenses(e,c.characterId,character).includes(defense))throw new AIError('combat_defense','That defensive response is unavailable or not permitted for this attack.',409);
+   declareDefense(e,character!,defense);narration=character!.name+' declares '+defense+' before the enemy attack roll. ';rollEnemyAttack(e,die);narration+=resolveAttack(e,record.session,die)||'Waiting for all targeted players to choose a defense.';}
   }else if(command&&/^(next|end turn)$/i.test(command)){
    if(e.pending)throw new AIError('combat_pending','Resolve the pending attack first. Do not roll a new attack.',409);
    if(/^end turn$/i.test(command)){if(e.combatants[e.turn].characterId!==c.characterId)throw new AIError('combat_turn','Only the active player can end this turn.',403);nextTurn(e)}
@@ -55,7 +72,7 @@ export async function combatTurn(repo:SqliteCampaignRepository,c:GMTurn,roll:Ver
     const a=e.combatants[e.turn];if(a.broken||a.withdrawn){nextTurn(e);continue}
     const choices=enemyChoices(e);if(!choices.length){narration+='No supported attack is in range. Clarify movement/position before continuing. ';break}
     narration+=beginEnemyAttack(e,selected??choices[0].id,die)+' ';selected=undefined;
-    const pending=(e as CombatEncounter).pending;if(pending){for(const target of pending.targets){if(legalDefenses(e,target).length===1)pending.defenses[target]='none'}rollEnemyAttack(e,die);narration+=resolveAttack(e,record.session,die);break}
+    const pending=(e as CombatEncounter).pending;if(pending){for(const target of pending.targets){if(legalDefenses(e,target,record.session.characters.find(c=>c.id===target)).length===1)pending.defenses[target]='none'}rollEnemyAttack(e,die);narration+=resolveAttack(e,record.session,die);break}
     if(a===e.combatants[e.turn]&&!a.slow)nextTurn(e);
    }
    narration+=' Round '+e.round+' · '+e.combatants[e.turn].name+' is active.';
@@ -66,6 +83,6 @@ export async function combatTurn(repo:SqliteCampaignRepository,c:GMTurn,roll:Ver
    const w=weapons[0],official=officialWeapon(rules.handbook,w.name);if(official.damage!==w.damage||official.bonus!==w.bonus)throw new AIError('combat_weapon','Recorded weapon values differ from the official entry. Resolve modifiers before combat calculation.',409);
    const kind=declaration.kind==='ranged_attack'?'shoot':/\bstab(?:s|bing)?\b/i.test(c.action)?'stab':/\bslash(?:es|ing)?\b/i.test(c.action)?'slash':null;if(!kind)throw new AIError('combat_melee','Declare Slash or Stab explicitly; their weapon features and defense modifiers differ.',409);narration=beginPlayerAttack(e,c.characterId,target.id,w.index,character!,official,kind);
   }else throw new AIError('combat_command','Use Combat controls to continue, end your turn, or declare a defense. Unsupported mechanics require adjudication.',400);
-  const pendingCriticals=new Set(e.combatants.filter(a=>a.critical?.status==='required').map(a=>a.id));resolveEnemyCritical(e,rules.handbook,die);const criticalNotes=e.combatants.filter(a=>pendingCriticals.has(a.id)&&a.critical?.status==='resolved'&&a.critical.roll!==null&&e!.history.at(-1)?.results.some(r=>r.targetId===a.id)).map(a=>a.name+': '+a.critical!.note);if(criticalNotes.length)narration=narration.replace(/critical injury pending, not assumed dead/g,'critical injury resolved below')+' '+criticalNotes.join(' ');saveCombat(repo,e);const result={narration,encounter:publicCombat(e),usage:usage??null,replayed:false};db.prepare('INSERT INTO combat_commands VALUES (?,?,?,?,?,?)').run(c.campaignId,c.requestId,fingerprint,e.id,JSON.stringify(result),new Date().toISOString());db.exec('COMMIT');return result;
+  const pendingCriticals=new Set(e.combatants.filter(a=>a.critical?.status==='required').map(a=>a.id));resolveEnemyCritical(e,rules.handbook,die);const criticalNotes=e.combatants.filter(a=>pendingCriticals.has(a.id)&&a.critical?.status==='resolved'&&a.critical.roll!==null&&e!.history.at(-1)?.results.some(r=>r.targetId===a.id)).map(a=>a.name+': '+a.critical!.note);if(criticalNotes.length)narration=narration.replace(/critical injury pending, not assumed dead/g,'critical injury resolved below')+' '+criticalNotes.join(' ');if(e.status==='active'){const w=combatWorkflow(e,record.session.characters);narration=e.pending?w.summary:narration+'\n\n'+w.summary;}saveCombat(repo,e);const result={narration,encounter:publicCombat(e,record.session.characters),setup:null,usage:usage??null,replayed:false};db.prepare('INSERT INTO combat_commands VALUES (?,?,?,?,?,?)').run(c.campaignId,c.requestId,fingerprint,e.id,JSON.stringify(result),new Date().toISOString());db.exec('COMMIT');return result;
  }catch(error){db.exec('ROLLBACK');if(error instanceof AIError&&usage)error.usage??=usage;throw error}
 }

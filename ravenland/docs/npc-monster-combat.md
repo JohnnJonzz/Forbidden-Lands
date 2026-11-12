@@ -4,6 +4,8 @@ Updated November 12, 2026 (America/Chicago).
 
 **Status:** the supported encounter workflows are implemented and tested, but the full original Phase 6 specification is **not yet complete**. Enemy coverage and complex monster procedures remain limited as described below. Unsupported mechanics pause rather than producing invented results.
 
+**Workflow update:** [Phase 6.1](combat-workflow-repair.md) replaces the original all-roster setup with explicit participants, adds natural encounter routing and repairs pending-step guidance/roll recovery. The remaining Phase 6 mechanics limitations below still apply.
+
 ## Audit and reuse
 
 There was no initiative manager, NPC stat-block model, monster attack executor, or persistent encounter record. The existing combat feature interpreted submitted ranged attacks against manually reported target facts. It did not control enemies.
@@ -19,7 +21,7 @@ This implementation reuses:
 ## Starting and playing
 
 1. Index both actual fifth-printing books in this campaign's Rules Library. Keep the Gamemaster's Guide **GM Only**. Exactly one indexed edition of each book must be identifiable; missing or ambiguous evidence blocks mechanics.
-2. Open **Combat** above Recent Dice Rolls. Enter enemies, for example `Bandit x2`, `Minotaur`, or `Bandit; Thief`. Select the established starting range, then **Begin encounter**. All current party characters participate. This is ordinary, aware combat; surprise, terrain, initiative talents and advanced tactical adjustments need separate adjudication.
+2. Open **Combat** above Recent Dice Rolls. Enter enemies, for example `Bandit x2`, `Minotaur`, or `Bandit; Thief`. Select the established starting range, then **Begin encounter**. Select the actual participating characters; Phase 6.1 no longer automatically includes the full roster. This is ordinary, aware combat; surprise, terrain, initiative talents and advanced tactical adjustments need separate adjudication.
 3. The application draws the initiative deck without replacement and preserves the order between rounds. Select the appropriate ACTING AS character for a player turn. Players declare their own attacks and use their sheets. **End my turn** yields to the GM; **Continue GM turn** requests the enemy's next legitimate decision rather than asking the player to choose enemy statistics/actions.
 4. An enemy declares its attack before attack dice are generated. A targeted player selects **Declare Dodge**, **Declare Parry**, or **No defense** where legal. Once all required choices are recorded, the server rolls the enemy attack. No later defensive choice is offered.
 5. For a declared player defense or required armor roll, roll on the existing character sheet, optionally push an eligible defense, and use **Submit to GM**. Armor cannot be pushed. The existing shield button's `Shield Parry:` label is supported. Actual success totals come from the saved dice, not text typed into chat.

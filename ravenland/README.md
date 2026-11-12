@@ -800,3 +800,15 @@ npm run build
 ```
 
 The real-sourcebook gate and combat browser test require both actual PDFs described in `tests/fixtures/private-sourcebooks/README.md`. The browser test uploads/indexes them into a disposable private store, tests turns and real Submit to GM, and removes its temporary database/files. Never commit licensed books, extracted pages, private fixtures, or credentials.
+
+### Phase 6.1: combat workflow repair
+
+Combat setup now selects participants explicitly, defaulting to ACTING AS rather than the entire campaign roster. You can also declare an encounter naturally in chat, for example “Start a one-on-one encounter between [saved character name] and a bandit at Near range.” Missing participants or range receive one clarification before numbered-card initiative. Full-party participation requires established presence or explicit confirmation.
+
+The compact Combat panel names the current action, target and exact person who must choose or roll. Use its sheet button, then the existing Recent Dice Rolls → Submit to GM. Wrong-character/type/skill submissions remain unconsumed and explain the expected roll so you can recover in the same encounter. Quarter-day proposals pause during combat, and the campaign clock remains unchanged.
+
+```bash
+RAVENLAND_REAL_SOURCEBOOK_DIR=/absolute/private/book-directory npm run test:combat-workflow
+```
+
+This browser regression uploads and indexes both actual books into a disposable store, uses controlled SDK responses/dice, and exercises participant selection, pre-roll defenses, invalid-roll recovery and refresh. See [the Phase 6.1 report](docs/combat-workflow-repair.md) for root causes, changed files, executed checks and remaining Phase 6 limitations.

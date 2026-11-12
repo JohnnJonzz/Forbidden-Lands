@@ -50,7 +50,8 @@
     "test:gm-situation": "node tests/gm-situation-browser.cjs",
     "test:action-safeguards": "node tests/action-safeguards-browser.cjs",
     "test:submitted-attacks": "node tests/submitted-attacks-browser.cjs",
-    "test:combat": "node tests/combat-browser.cjs"
+    "test:combat": "node tests/combat-browser.cjs",
+    "test:combat-workflow": "node --import tsx tests/combat-workflow-browser.cjs"
   },
   "dependencies": {
     "exceljs": "^4.4.0",
