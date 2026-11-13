@@ -4,8 +4,9 @@ import {standardSkill,type SkillId} from './character-registry';
 // the selected actor only; they never grant access to another character's sheet.
 export function declaredAction(text:string,actorName?:string){
  const escape=(s:string)=>s.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'),names=actorName?[actorName,actorName.trim().split(/\s+/)[0]].filter(Boolean).map(escape):[];
- const subject=new RegExp('^(?:I|we'+(names.length?'|'+names.join('|'):'')+')\\s+','iu'),match=text.trim().match(subject);if(!match)return null;
- let clause=text.trim().slice(match[0].length).replace(/^(?:will|want to|try to|tries to|attempt to|attempts to|am going to|is going to)\s+/i,'');
+ const subject=new RegExp('^(?:I|we'+(names.length?'|'+names.join('|'):'')+')\\s+','iu'),match=text.trim().match(subject);
+ if(!match&&!/^(?:attack|slash|stab|shoot|fire|loose)\b/i.test(text.trim()))return null;
+ let clause=text.trim().slice(match?.[0].length??0).replace(/^(?:will|want to|try to|tries to|attempt to|attempts to|am going to|is going to)\s+/i,'');
  if(/^(?:do not|don't|does not|doesn't|never)\b/i.test(clause))return null;
  clause=clause.replace(/^(?:raises?|readies|ready|draws?|aims?|lifts?|nocks?|takes? aim)\b[^.!?]{0,160}?\b(?:and|then)\s+/i,'');
  const verb=clause.match(/^(shoots?|fires?|looses?|attacks?|slash(?:es)?|stabs?|manipulates?|persuades?|convinces?|coerces?|threatens?|lights?|ignites?|relights?|uses?|eats?|consumes?|drinks?|sips?|rolls?)\b/i)?.[1].toLowerCase();if(!verb)return null;

@@ -41,7 +41,9 @@ export function combatNarrative(e:CombatEncounter,before:CombatTurnResult['check
   else if(p.phase==='adjudication')nextPrompt=p.notes.join(' ')+' The action remains pending.';
   else {const target=p.targets.find(id=>p.phase==='armor_roll'?!p.armorRolls[id]&&p.results.some(r=>r.targetId===id&&r.afterArmor===null):p.defenses[id]&&p.defenses[id]!=='none'&&!p.defenseRolls[id]);nextPrompt=`${name(target??p.targets[0])}, roll ${p.phase==='armor_roll'?'your recorded armor':p.defenses[target??p.targets[0]]==='dodge'?'Move for your declared Dodge':'Melee for your declared Parry'} on your character sheet${p.phase==='armor_roll'?'':'; you may push'}. Then click Submit this roll in Combat.`}
  }else if(view?.side==='enemy'&&e.status==='active'){nextPrompt=limit?'Automatic combat progression reached its safety limit. The encounter is preserved for review.':/No supported attack/.test(technical)?'No supported enemy action is in range. Confirm positioning before continuing.':'The GM action needs review in Combat; no player turn has been skipped.'}
+ if(workflow?.positionRequired)nextPrompt=workflow.summary;
  if(workflow?.blocker)nextPrompt=workflow.blocker;
+ if(workflow?.declarationOptions)nextPrompt=workflow.summary;
  return {encounterId:e.id,round:e.round,location:e.sceneLocation,sceneDescription:e.sceneDescription,absentCharacters:e.sceneAbsentCharacters??[],combatants:e.combatants.map(a=>({id:a.id,name:a.name,side:a.side})),events:events.slice(-12),nextPrompt,blocked:!!workflow?.blocker||limit||p?.phase==='adjudication'||!!view&&view.side==='enemy'&&!p};
 }
 
@@ -60,7 +62,8 @@ export function verifiedCombatProse(packet:CombatNarrative,raw:unknown):string{
   const t=beat.text;if(e.kind==='push'){texts.push(e.fallback);continue}
   const escape=(s:string)=>s.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
   if(packet.absentCharacters?.some(name=>new RegExp('\\b'+escape(name)+'\\b|\\b'+escape(name.split(/\s+/)[0])+'\\b','i').test(t)))return fallbackCombatNarration(packet);
-  if(/\b(?:Willpower|attribute damage|gear damage)\b/i.test(t))return fallbackCombatNarration(packet);
+  if(/\b(?:Willpower|attribute damage|gear damage|roll|reroll|submit|push your|make a .*check)\b/i.test(t))return fallbackCombatNarration(packet);
+  if(/\b(?:prone|stand(?:s)? up|fall(?:s)? to|draw(?:s)? (?:his|her|their|the|a|my))\b/i.test(t)&&!new RegExp('prone|stand|Draw','i').test(e.facts))return fallbackCombatNarration(packet);
   if(e.attack?.weapon){const actual=e.attack.weapon.toLowerCase();const terms=t.match(/\b(?:dagger|knife|falchion|broadsword|longsword|shortsword|longbow|shortbow|crossbow|sling|spear|axe|hammer|mace|staff)\b/gi)??[];if(terms.some(term=>!actual.includes(term.toLowerCase())&&!(term.toLowerCase()==='knife'&&actual.includes('dagger'))))return fallbackCombatNarration(packet)}
   const names=[...new Set([...packet.events.flatMap(v=>[v.actor,v.target??'']),...(packet.combatants?.map(a=>a.name)??[])].filter(Boolean))].sort((a,b)=>b.length-a.length);
   const withoutNames=names.reduce((text,name)=>text.replace(new RegExp(escape(name),'g'),''),t);

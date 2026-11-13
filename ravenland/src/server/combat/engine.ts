@@ -1,3 +1,5 @@
+import {enemyChoices} from './enemy-choices';
+export {enemyChoices} from './enemy-choices';
 import {checkCombatRoll} from './workflow';
 import {randomInt,randomUUID} from 'node:crypto';
 import {generatePool,countSuccesses} from '../../lib/dice/engine';
@@ -22,15 +24,10 @@ export function createEncounter(campaignId:string,session:Session,enemies:EnemyT
  for(const [i,template] of enemies.entries())e.combatants.push({id:randomUUID(),characterId:null,name:template.name+' '+(i+1),side:'enemy',enemy:structuredClone(template),initiative:0,fast:true,slow:true,turnDone:false,prone:false,current:{...template.attributes},maximum:{...template.attributes},armor:template.armor,helmet:template.helmet,broken:false,withdrawn:false,critical:null});
  const deck=Array.from({length:10},(_,i)=>i+1);for(const a of e.combatants){const index=tableRoll(e,a,id,'initiative',deck.length,die)-1;a.initiative=deck.splice(index,1)[0];e.rolls.at(-1)!.table!.value=a.initiative}e.combatants.sort((a,b)=>a.initiative-b.initiative);return e;
 }
-export function nextTurn(e:CombatEncounter){if(e.pending)fail('Resolve the pending attack before ending a turn.');current(e).turnDone=true;for(let i=0;i<e.combatants.length;i++){e.turn++;if(e.turn===e.combatants.length){e.turn=0;e.round++;for(const a of e.combatants){a.fast=true;a.slow=true;a.turnDone=false}}
+export function nextTurn(e:CombatEncounter){if(e.pending)fail('Resolve the pending attack before ending a turn.');delete e.actionDraft;current(e).turnDone=true;for(let i=0;i<e.combatants.length;i++){e.turn++;if(e.turn===e.combatants.length){e.turn=0;e.round++;for(const a of e.combatants){a.fast=true;a.slow=true;a.turnDone=false}}
  const a=current(e);if(!a.broken&&!a.withdrawn)return}fail('No active combatants remain.');}
 function attackData(e:CombatEncounter,p:CombatAttack){const a=e.combatants.find(a=>a.id===p.actorId)!;return {actor:a,weapon:p.weaponIndex===null?null:a.enemy?.weapons[p.weaponIndex]??null,monster:a.enemy?.attacks.find(t=>t.key===p.monsterKey)??null}}
-export function enemyChoices(e:CombatEncounter){const a=current(e);if(a.side!=='enemy'||a.broken||a.withdrawn)return [];const target=e.combatants.filter(t=>t.side==='player'&&!t.broken&&!t.withdrawn).sort((x,y)=>(x.current.strength??Infinity)-(y.current.strength??Infinity))[0];if(!target)return [];
- if(a.prone)return a.fast||a.slow?[{id:'stand',label:'Stand up',targetId:target.id,weaponIndex:null as number|null}]:[];
- if(!a.slow)return [{id:'end',label:'End turn; preserve unused fast action for a reaction',targetId:target.id,weaponIndex:null as number|null}];
- if(a.enemy!.kind==='monster')return [{id:'monster',label:'Roll the published monster attack table',targetId:target.id,weaponIndex:null as number|null}];
- return a.enemy!.weapons.flatMap((w,i)=>{if(w.skill==='melee'&&e.range!=='Arm')return [];if(w.skill==='marksmanship'&&e.range==='Long'&&w.range!=='Long')return [];return [{id:'weapon:'+i,label:(w.skill==='melee'?(/Edged|Blunt/.test(w.features)?'Slash':'Stab'):'Shoot')+' with '+w.name,targetId:target.id,weaponIndex:i}]});
-}
+
 export function beginEnemyAttack(e:CombatEncounter,choiceId:string,die:Die){if(e.pending)fail('An attack is already pending.');const a=current(e),choices=enemyChoices(e),choice=choices.find(c=>c.id===choiceId);if(!choice)fail('The GM selected an unavailable action.');if(choice.id==='end'){nextTurn(e);return 'The enemy ends its turn.'}if(choice.id==='stand'){spend(a,'fast');a.prone=false;return a.name+' stands up.'}
  const id=randomUUID();let monster:MonsterAttack|null=null,weaponIndex=choice.weaponIndex;
  if(choice.id==='monster'){const face=tableRoll(e,a,id,'table',6,die);monster=a.enemy!.attacks.find(t=>t.key===String(face))??null;if(!monster)fail('The published table does not contain that rolled attack.');}

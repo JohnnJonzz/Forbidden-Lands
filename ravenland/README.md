@@ -858,3 +858,22 @@ RAVENLAND_REAL_SOURCEBOOK_DIR=/absolute/private/book-directory npm run test:retr
 ```
 
 The new browser regression ends an actually wounded previous encounter through Combat, sends the exact reported request/confirmation, refreshes during clarification, and verifies the new encounter, retries, revisions, cancellation and narration boundaries. It indexes both actual private fifth-printing PDFs in isolated storage and uses controlled SDK responses/dice without paid calls. See [the Phase 6.2.2 investigation and test report](docs/pending-encounter-continuity.md).
+
+### Phase 6.2.3: natural roll timing and synchronized combat
+
+You can say “Attack with my shortsword.” If the verified weapon supports both Slash and Stab, choose once in chat or Combat; the weapon and target stay saved across refresh. An explicit Draw and Attack keeps its fast-action cost across that choice. The engine records the attack and required defense before asking for dice. Roll on the character sheet, optionally push, then use **Submit this roll** in Combat or the existing **Submit to GM** control. Repeating the declaration while its roll is pending preserves that action. Cancel an uncommitted Slash/Stab choice with **Cancel declaration**; ending the turn also clears that choice.
+
+Combat shows the action, target, expected skill, saved-roll time and eligible result. **Other saved rolls** explains why a result cannot be used. An earlier roll can be reused when the same action and all required pre-roll decisions were already established before it was saved, even if the latest chat declaration came later. A roll made before those decisions cannot bypass them. A bound generic Melee/Marksmanship pool must include the verified weapon Gear Bonus; otherwise use the weapon's sheet attack control.
+
+**Selection policy:** each pending step uses the first compatible roll in server save order, irrespective of successes. Later known outcomes cannot replace it. Push that first roll before submitting if desired. Invalid rolls do not consume the action or result. A failed request before binding can retry its original saved result through Combat, including a result already marked Submitted by that failed request. Once resolved, retries reuse the existing receipt and cannot apply damage again. Completed submissions for another purpose are not offered.
+
+Explicit supported single-enemy equipment descriptions constrain its verified loadout: “a bandit armed with a sword” uses the published Broadsword and does not silently select Sling. Unsupported equipment or multi-enemy loadout assignments require clarification/adjudication. A sword-only enemy at NEAR has no supported attack in range; the engine requests positioning rather than inventing movement or a ranged weapon. Player-reported damage never substitutes for a verified result. Dodge posture, Stand costs, enemy damage and saved push consequences remain separate.
+
+The new fields are optional additions to existing saved JSON; no database migration or data reset is needed. Reload the updated app/server. Legacy saved rolls retain their fingerprints and are accepted only where their recorded timing establishes the required steps.
+
+```bash
+RAVENLAND_REAL_SOURCEBOOK_DIR=/absolute/private/book-directory npm run test:roll-timing
+RAVENLAND_REAL_SOURCEBOOK_DIR=/absolute/private/book-directory npm run test:retrieval-check
+```
+
+See [the Phase 6.2.3 investigation and regression report](docs/natural-roll-timing.md) for the root causes, exact recovery policy, source evidence, changed files and limits.
