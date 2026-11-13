@@ -1,6 +1,7 @@
 import type {SqliteCampaignRepository} from '../sqlite';
 import {AIError} from '../ai/config';
-import {weaponRow,hitThresholdRule} from '../sourcebooks/mechanical-facts';
+import {hitThresholdRule} from '../sourcebooks/mechanical-facts';
+import {verifiedCatalogRow,verifiedCatalogWeapon} from './catalog';
 import type {SourcePassage} from '../../lib/sourcebooks/schema';
 import type {CombatSource,CombatWeapon,EnemyTemplate,MonsterAttack,CombatRange} from '../../lib/combat/types';
 const normalize=(s:string)=>s.toLowerCase().replace(/[^a-z0-9]/g,'');
@@ -24,17 +25,13 @@ export function loadCombatRules(repo:SqliteCampaignRepository,campaignId:string)
  return {handbook,guide,sources:[initiative,actions,timing,melee,shoot,armor,broken,monster,monsterDefense,hit].map(citation)};
 }
 export function officialWeapon(pages:SourcePassage[],name:string):CombatWeapon{
- const aliases:Record<string,string>={'long bow':'Longbow','short bow':'Short Bow','two-handed axe':'Two- Handed Axe'};name=aliases[name.toLowerCase()]??name;
- for(const p of pages){const row=weaponRow(p,name);if(!row.damage||!row.gearBonus||!row.range)continue;
- const start=p.text.toLowerCase().indexOf(name.toLowerCase()),line=p.text.slice(start,start+180),features=['Edged','Blunt','Pointed','Parrying'].filter(f=>new RegExp('\\b'+f+'\\b','i').test(line.split(/\n(?=[A-Z][a-z])/)[0]??''));
- return {name,skill:/RANGED WEAPONS/.test(p.text)?'marksmanship':'melee',bonus:Number(row.gearBonus.value),damage:Number(row.damage.value),range:String(row.range.value),features:features.join(', '),source:citation(p),ready:true,loaded:false};
- }
- throw new AIError('combat_equipment','Official equipment statistics could not be verified for '+name+'.',409);
+ const {entry,page,row}=verifiedCatalogWeapon(pages,name);
+ return {name:entry.name,canonicalName:entry.name,catalogId:entry.id,grip:entry.grip,costSilver:row.costSilver,skill:entry.category==='ranged'?'marksmanship':'melee',bonus:row.bonus??0,damage:row.damage!,range:row.range!,features:row.features,source:citation(page),ready:true,loaded:false};
 }
-function shieldBonus(pages:SourcePassage[]){for(const p of pages){if(!/SHIELDS/.test(p.text))continue;const m=p.text.match(/Large Shield\s*\+?(\d+)/i);if(m)return {value:Number(m[1]),source:citation(p)}}throw new AIError('combat_equipment','The official Large Shield bonus is not established.',409)}
+function shieldBonus(pages:SourcePassage[]){const {page,row}=verifiedCatalogRow(pages,'shield','Large Shield');return {value:row.bonus!,source:citation(page)}}
 function attributes(text:string){const result:Record<string,number>={};for(const m of text.matchAll(/\b(STRENGTH|AGILITY|WITS|EMPATHY)\s+(\d+)/gi))result[m[1].toLowerCase()]=Number(m[2]);return result}
 function skills(text:string){const out:Record<string,number>={};for(const [name,id] of [['Melee','melee'],['Marksmanship','marksmanship'],['Move','move'],['Scouting','scouting'],['Endurance','endurance'],['Survival','survival'],['Might','might']] as const){const m=text.replace(/-\s+/g,'').match(new RegExp('\\b'+name+'\\s+(\\d+)','i'));if(m)out[id]=Number(m[1])}return out}
-function rating(pages:SourcePassage[],name:string){for(const p of pages){if(!/ARMOR & HELMETS/.test(p.text))continue;const m=p.text.match(new RegExp('(?:^|\\n)'+name+'\\s+(\\d+)\\s+\\d+\\s+(?:Body|Head)','i'));if(m)return {value:Number(m[1]),source:citation(p)}}throw new AIError('combat_equipment','Armor rating is not established for '+name+'.',409)}
+function rating(pages:SourcePassage[],name:string){const {page,row}=verifiedCatalogRow(pages,'armor',name);return {value:row.rating!,source:citation(page)}}
 export function lookupEnemy(repo:SqliteCampaignRepository,campaignId:string,query:string,generated=false):EnemyTemplate{
  const rules=loadCombatRules(repo,campaignId),name=query.trim().replace(/s$/i,''),n=normalize(query),npcName=['Bandit','Soldier','Rider','Thief'].find(x=>normalize(x)===n||normalize(x+'s')===n);
  if(generated){

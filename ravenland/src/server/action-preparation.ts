@@ -1,3 +1,4 @@
+import {catalogWeapon,equipmentNameKey} from '../lib/equipment-catalog';
 import {SourcebookLibrary} from './sourcebooks/library';
 import {sourceRequest} from '../lib/rules/source-request';
 import {z} from 'zod';
@@ -20,7 +21,7 @@ export function prepareAction(repo:SqliteCampaignRepository,raw:unknown,principa
  if(requestedSkill&&!standardSkill(requestedSkill))missing.push('The requested skill is not an official skill. Optional or house-rule skills require a reviewed scoped definition.');
  else if(requestedSkill&&standardSkill(requestedSkill)?.id!==skill.id)missing.push('The requested skill does not match the verified ranged-attack skill.');
  const weapon=c.declaration.match(/\b(?:long\s?bow|short\s?bow|(?:heavy|light)\s+crossbow|crossbow)\b/i)?.[0];
- const normalize=(s:string)=>s.toLowerCase().replace(/[^a-z]/g,''),matches=weapon?actor.weapons.filter(w=>normalize(w.name)===normalize(weapon)):[];
+ const normalize=(s:string)=>catalogWeapon(s)?.id??equipmentNameKey(s),matches=weapon?actor.weapons.filter(w=>normalize(w.name)===normalize(weapon)):[];
  const equipped=matches.filter(w=>w.equipped===true),chosen=matches.length===1?matches[0]:equipped.length===1?equipped[0]:null;
  if(!weapon)missing.push('Specify a supported ranged weapon.');else if(!matches.length)missing.push('The declared weapon is not recorded in this character’s weapon rows; inventory text alone does not establish equipped combat gear.');else if(!chosen)missing.push('Multiple matching weapons are recorded; identify the weapon for a verified pool.');
  proposal.characterInputs.weapon=chosen;

@@ -45,11 +45,15 @@
         .armor-main { display: grid; grid-template-columns: minmax(140px,2fr) minmax(110px,1.3fr) 1fr 45px 80px; gap: 8px; align-items: end; }
         .armor-main output { display: block; text-align: center; font-size: 1.5rem; padding: 5px; color: var(--gold-color); }
         .armor-details { display: grid; grid-template-columns: 65px minmax(100px,1fr) 70px 90px; gap: 8px; align-items: end; margin-top: 10px; }
+        .protection-choice { display: grid; grid-template-columns: minmax(0,1fr) 64px; gap: 6px; align-items: end; }
+        .protection-choice label { min-width: 0; }
         .armor-worn { display: flex; gap: 6px; align-items: center; min-height: 36px; }
         .armor-footer { display: flex; align-items: center; justify-content: flex-end; gap: 15px; margin-top: 15px; }
         .armor-footer output { color: var(--gold-color); font-size: 1.5rem; margin-left: 12px; }
         @media (max-width: 1100px) { .armor-main { grid-template-columns: repeat(2,minmax(0,1fr)); } .armor-details { grid-template-columns: repeat(2,minmax(0,1fr)); } }
         .w-preset, .w-skill { margin-bottom: 6px; }
+        .weapon-measures { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 6px; }
+        .weapon-measures label, .weapon-measures input { min-width: 0; }
         .weapon-help { color: #bdbdbd; font-size: .9rem; }
         @media (max-width: 1000px) {
             .sheet-layout { grid-template-columns: minmax(0, 1fr); }
@@ -635,11 +639,13 @@
             <tbody></tbody>
         </table>
         <button class="btn-add" onclick="app.addWeaponRow()">+ Add Weapon</button>
+        <button aria-label="Prepare unarmed attack" onclick="app.stageUnarmed()">Unarmed (Punch / Kick)</button><p class="save-note">Unarmed uses Melee with no weapon Gear Bonus. It is a combat option, not an inventory item.</p>
     </div>
 
     <section class="panel" id="shield-section">
         <h3>Shield</h3>
         <div class="grid-2"><button aria-label="Stage shield shove" onclick="app.stageShield('Shove')">Shove</button><button aria-label="Stage shield parry" onclick="app.stageShield('Parry')">Parry</button></div>
+        <label for="shield-catalog">Shield preset</label><select id="shield-catalog" onchange="app.applyProtectionPreset(this,'shield')"><option value="">Choose shield…</option></select><label for="shield-cost">Cost in silver</label><input type="text" id="shield-cost" onchange="app.saveState()">
         <label for="shield-name">Type</label><input id="shield-name" type="text" placeholder="Shield name" onchange="app.saveState()">
         <div class="grid-2"><div><label>Strength</label><output id="shield-attribute">2</output></div><div><label>Melee</label><output id="shield-skill">0</output></div></div>
         <div class="grid-2"><div><label for="shield-bonus">Bonus</label><input id="shield-bonus" type="number" min="0" value="0" onchange="app.saveState()"></div><div><label for="shield-max">Max</label><input id="shield-max" type="number" min="0" value="0" onchange="app.saveState()"></div><div><label for="shield-modifier">Misc / skill</label><input id="shield-modifier" type="number" value="0" onchange="app.saveState()"></div><div><label for="shield-artifact">Artifact</label><select id="shield-artifact" onchange="app.saveState()"><option>None</option><option>D8</option><option>D10</option><option>D12</option></select></div></div>
@@ -653,7 +659,7 @@
         <h3>Armor / Helmet</h3>
         <div class="armor-piece" data-piece="armor">
             <div class="armor-main">
-                <div><label for="armor-name">Armor type</label><input type="text" id="armor-name" placeholder="Armor name" onchange="app.saveState()"></div>
+                <div><label for="armor-name">Armor type</label><div class="protection-choice"><select id="armor-catalog" aria-label="Armor preset" onchange="app.applyProtectionPreset(this,'armor')"><option value="">Choose armor…</option></select><label for="armor-cost">Silver<input type="text" id="armor-cost" aria-label="Armor cost in silver" onchange="app.saveState()"></label></div><input type="text" id="armor-name" placeholder="Armor name" onchange="app.saveState()"></div>
                 <div><label for="armor-rating">AR / Max</label><div class="grid-2"><input aria-label="Armor current rating" type="number" id="armor-rating" min="0" value="0" onchange="app.saveState()"><input aria-label="Armor maximum rating" type="number" id="armor-max" min="0" value="0" onchange="app.saveState()"></div></div>
                 <div><label for="armor-modifier">Misc / skill</label><input type="number" id="armor-modifier" value="0" onchange="app.saveState()"></div>
                 <div><label>Total</label><output id="armor-total">0</output></div>
@@ -668,7 +674,7 @@
         </div>
         <div class="armor-piece" data-piece="helmet">
             <div class="armor-main">
-                <div><label for="helmet-name">Helmet type</label><input type="text" id="helmet-name" placeholder="Helmet name" onchange="app.saveState()"></div>
+                <div><label for="helmet-name">Helmet type</label><div class="protection-choice"><select id="helmet-catalog" aria-label="Helmet preset" onchange="app.applyProtectionPreset(this,'helmet')"><option value="">Choose helmet…</option></select><label for="helmet-cost">Silver<input type="text" id="helmet-cost" aria-label="Helmet cost in silver" onchange="app.saveState()"></label></div><input type="text" id="helmet-name" placeholder="Helmet name" onchange="app.saveState()"></div>
                 <div><label for="helmet-rating">AR / Max</label><div class="grid-2"><input aria-label="Helmet current rating" type="number" id="helmet-rating" min="0" value="0" onchange="app.saveState()"><input aria-label="Helmet maximum rating" type="number" id="helmet-max" min="0" value="0" onchange="app.saveState()"></div></div>
                 <div><label for="helmet-modifier">Misc / skill</label><input type="number" id="helmet-modifier" value="0" onchange="app.saveState()"></div>
                 <div><label>Total</label><output id="helmet-total">0</output></div>
@@ -702,22 +708,10 @@
  */
 class ForbiddenLandsApp {
     constructor() {
-        // Common weapons; all preset values remain editable for variants and house rules.
-        this.weaponPresets = [
-            {name: 'Dagger', bonus: 1, dmg: 1, range: 'Arm', feat: 'Light, Edged, Pointed', skill: 'melee'},
-            {name: 'Short sword', bonus: 2, dmg: 1, range: 'Arm', feat: 'Edged, Pointed', skill: 'melee'},
-            {name: 'Broadsword', bonus: 2, dmg: 2, range: 'Arm', feat: 'Edged, Pointed', skill: 'melee'},
-            {name: 'Longsword', bonus: 2, dmg: 2, range: 'Near', feat: 'Heavy, Two-handed, Edged, Pointed', skill: 'melee'},
-            {name: 'Handaxe', bonus: 2, dmg: 2, range: 'Arm', feat: 'Edged, Hook', skill: 'melee'},
-            {name: 'Battleaxe', bonus: 2, dmg: 3, range: 'Arm', feat: 'Heavy, Two-handed, Edged, Hook', skill: 'melee'},
-            {name: 'Mace', bonus: 2, dmg: 1, range: 'Arm', feat: 'Blunt', skill: 'melee'},
-            {name: 'Short spear', bonus: 1, dmg: 1, range: 'Near', feat: 'Pointed', skill: 'melee'},
-            {name: 'Long spear', bonus: 2, dmg: 1, range: 'Near', feat: 'Two-handed, Pointed', skill: 'melee'},
-            {name: 'Short bow', bonus: 2, dmg: 1, range: 'Short', feat: 'Two-handed', skill: 'marksmanship'},
-            {name: 'Longbow', bonus: 2, dmg: 1, range: 'Long', feat: 'Heavy, Two-handed', skill: 'marksmanship'},
-            {name: 'Light crossbow', bonus: 1, dmg: 2, range: 'Long', feat: 'Two-handed, Slow reload', skill: 'marksmanship'},
-            {name: 'Heavy crossbow', bonus: 1, dmg: 3, range: 'Long', feat: 'Heavy, Two-handed, Slow reload', skill: 'marksmanship'}
-        ];
+        // BEGIN GENERATED EQUIPMENT
+        this.equipmentCatalog = {"edition":"Forbidden Lands Player's Handbook, fifth printing","sources":{"melee":{"physicalPage":105,"printedPage":101,"table":"MELEE WEAPONS"},"ranged":{"physicalPage":107,"printedPage":103,"table":"RANGED WEAPONS"},"shield":{"physicalPage":110,"printedPage":106,"table":"SHIELDS"},"armor":{"physicalPage":110,"printedPage":106,"table":"ARMOR & HELMETS"}},"weapons":[{"id":"unarmed","name":"Unarmed","category":"melee","grip":null,"bonus":null,"damage":1,"range":"Arm","costSilver":null,"features":"Blunt","aliases":[],"special":true},{"id":"knife","name":"Knife","category":"melee","grip":"1H","bonus":1,"damage":1,"range":"Arm","costSilver":1,"features":"Light, Pointed","aliases":[],"special":false},{"id":"dagger","name":"Dagger","category":"melee","grip":"1H","bonus":1,"damage":1,"range":"Arm","costSilver":2,"features":"Light, Edged, Pointed","aliases":[],"special":false},{"id":"falchion","name":"Falchion","category":"melee","grip":"1H","bonus":1,"damage":2,"range":"Arm","costSilver":4,"features":"Edged, Pointed","aliases":[],"special":false},{"id":"shortsword","name":"Shortsword","category":"melee","grip":"1H","bonus":2,"damage":1,"range":"Arm","costSilver":6,"features":"Edged, Pointed, Parrying","aliases":["Short sword","Short sword."],"special":false},{"id":"broadsword","name":"Broadsword","category":"melee","grip":"1H","bonus":2,"damage":2,"range":"Arm","costSilver":10,"features":"Edged, Pointed, Parrying","aliases":["Broad sword"],"special":false},{"id":"longsword","name":"Longsword","category":"melee","grip":"1H","bonus":2,"damage":2,"range":"Arm","costSilver":18,"features":"Heavy, Edged, Pointed, Parrying","aliases":["Long sword"],"special":false},{"id":"two-handed-sword","name":"Two-Handed Sword","category":"melee","grip":"2H","bonus":2,"damage":3,"range":"Arm","costSilver":40,"features":"Heavy, Edged, Pointed, Parrying","aliases":["Two handed sword"],"special":false},{"id":"scimitar","name":"Scimitar","category":"melee","grip":"1H","bonus":1,"damage":2,"range":"Arm","costSilver":8,"features":"Edged, Pointed, Hook, Parrying","aliases":[],"special":false},{"id":"handaxe","name":"Handaxe","category":"melee","grip":"1H","bonus":2,"damage":2,"range":"Arm","costSilver":2,"features":"Edged, Hook","aliases":["Hand axe"],"special":false},{"id":"battleaxe","name":"Battleaxe","category":"melee","grip":"1H","bonus":2,"damage":2,"range":"Arm","costSilver":6,"features":"Heavy, Edged, Hook","aliases":["Battle axe"],"special":false},{"id":"two-handed-axe","name":"Two-Handed Axe","category":"melee","grip":"2H","bonus":2,"damage":3,"range":"Arm","costSilver":24,"features":"Heavy, Edged, Hook","aliases":["Two handed axe"],"special":false},{"id":"mace","name":"Mace","category":"melee","grip":"1H","bonus":2,"damage":1,"range":"Arm","costSilver":4,"features":"Blunt","aliases":[],"special":false},{"id":"morningstar","name":"Morningstar","category":"melee","grip":"1H","bonus":2,"damage":2,"range":"Arm","costSilver":8,"features":"Blunt","aliases":["Morning star"],"special":false},{"id":"warhammer","name":"Warhammer","category":"melee","grip":"1H","bonus":2,"damage":2,"range":"Arm","costSilver":12,"features":"Blunt, Hook","aliases":["War hammer"],"special":false},{"id":"flail","name":"Flail","category":"melee","grip":"1H","bonus":1,"damage":2,"range":"Near","costSilver":16,"features":"Blunt","aliases":[],"special":false},{"id":"wooden-club","name":"Wooden Club","category":"melee","grip":"1H","bonus":1,"damage":1,"range":"Arm","costSilver":1,"features":"Blunt","aliases":[],"special":false},{"id":"large-wooden-club","name":"Large Wooden Club","category":"melee","grip":"2H","bonus":1,"damage":2,"range":"Arm","costSilver":2,"features":"Heavy, Blunt","aliases":[],"special":false},{"id":"heavy-warhammer","name":"Heavy Warhammer","category":"melee","grip":"2H","bonus":2,"damage":3,"range":"Arm","costSilver":22,"features":"Heavy, Blunt, Hook","aliases":["Heavy war hammer"],"special":false},{"id":"staff","name":"Staff","category":"melee","grip":"2H","bonus":1,"damage":1,"range":"Near","costSilver":1,"features":"Blunt, Hook, Parrying","aliases":[],"special":false},{"id":"short-spear","name":"Short Spear","category":"melee","grip":"1H","bonus":1,"damage":1,"range":"Near","costSilver":2,"features":"Pointed","aliases":[],"special":false},{"id":"long-spear","name":"Long Spear","category":"melee","grip":"2H","bonus":2,"damage":1,"range":"Near","costSilver":4,"features":"Pointed","aliases":[],"special":false},{"id":"pike","name":"Pike","category":"melee","grip":"2H","bonus":2,"damage":2,"range":"Near","costSilver":12,"features":"Heavy, Pointed","aliases":[],"special":false},{"id":"halberd","name":"Halberd","category":"melee","grip":"2H","bonus":2,"damage":2,"range":"Near","costSilver":30,"features":"Heavy, Pointed, Edged, Hook","aliases":[],"special":false},{"id":"trident","name":"Trident","category":"melee","grip":"2H","bonus":1,"damage":2,"range":"Near","costSilver":6,"features":"Pointed, Hook","aliases":[],"special":false},{"id":"rock","name":"Rock","category":"ranged","grip":"1H","bonus":null,"damage":1,"range":"Near","costSilver":null,"features":"Light","aliases":[],"special":false},{"id":"throwing-knife","name":"Throwing Knife","category":"ranged","grip":"1H","bonus":1,"damage":1,"range":"Near","costSilver":1,"features":"Light","aliases":[],"special":false},{"id":"throwing-axe","name":"Throwing Axe","category":"ranged","grip":"1H","bonus":1,"damage":2,"range":"Near","costSilver":2,"features":"","aliases":[],"special":false},{"id":"throwing-spear","name":"Throwing Spear","category":"ranged","grip":"1H","bonus":2,"damage":1,"range":"Short","costSilver":2,"features":"","aliases":[],"special":false},{"id":"sling","name":"Sling","category":"ranged","grip":"1H","bonus":1,"damage":1,"range":"Short","costSilver":1,"features":"Light","aliases":[],"special":false},{"id":"short-bow","name":"Short Bow","category":"ranged","grip":"2H","bonus":2,"damage":1,"range":"Short","costSilver":6,"features":"Light","aliases":[],"special":false},{"id":"longbow","name":"Longbow","category":"ranged","grip":"2H","bonus":2,"damage":1,"range":"Long","costSilver":12,"features":"","aliases":["Long bow"],"special":false},{"id":"light-crossbow","name":"Light Crossbow","category":"ranged","grip":"2H","bonus":1,"damage":2,"range":"Long","costSilver":24,"features":"Loading is slow action.","aliases":[],"special":false},{"id":"heavy-crossbow","name":"Heavy Crossbow","category":"ranged","grip":"2H","bonus":1,"damage":3,"range":"Long","costSilver":40,"features":"Heavy, Loading is a slow action.","aliases":[],"special":false}],"shields":[{"id":"small-shield","name":"Small Shield","bonus":1,"costSilver":6,"features":"Light","aliases":[]},{"id":"large-shield","name":"Large Shield","bonus":2,"costSilver":15,"features":"","aliases":[]}],"armor":[{"id":"leather","name":"Leather","rating":2,"costSilver":4,"bodyPart":"Body","features":"Light","aliases":[]},{"id":"studded-leather","name":"Studded Leather","rating":3,"costSilver":6,"bodyPart":"Body","features":"","aliases":[]},{"id":"chainmail","name":"Chainmail","rating":6,"costSilver":24,"bodyPart":"Body","features":"Heavy item. Armor Rating 3 against arrows and Stabs.","aliases":[]},{"id":"plate-armor","name":"Plate Armor","rating":8,"costSilver":80,"bodyPart":"Body","features":"Heavy item. Modifies Move by -2","aliases":[]},{"id":"studded-leather-cap","name":"Studded Leather Cap","rating":1,"costSilver":3,"bodyPart":"Head","features":"Light","aliases":[]},{"id":"open-helmet","name":"Open Helmet","rating":2,"costSilver":8,"bodyPart":"Head","features":"Light","aliases":[]},{"id":"closed-helmet","name":"Closed Helmet","rating":3,"costSilver":18,"bodyPart":"Head","features":"","aliases":[]},{"id":"great-helm","name":"Great Helm","rating":4,"costSilver":30,"bodyPart":"Head","features":"Modifies Scout by -2","aliases":[]}]};
+        // END GENERATED EQUIPMENT
+        this.weaponPresets = this.equipmentCatalog.weapons.filter(w => !w.special).map(w => this.weaponPreset(w));
         this.skillsConfig = [
           {
                     "id": "animalhandling",
@@ -808,7 +802,7 @@ class ForbiddenLandsApp {
             'cond-hungry', 'cond-thirsty', 'cond-sleepy', 'cond-cold',
             'pride', 'dark-secret', 'relationships', 'appearance', 'critical-injuries',
             'res-food', 'res-water', 'res-arrows', 'res-torches',
-            'shield-name', 'shield-bonus', 'shield-max', 'shield-modifier', 'shield-artifact', 'shield-worn', 'shield-notes', 'shield-carried', 'shield-weight', 'coin-copper', 'coin-silver', 'coin-gold', 'capacity-bonus'
+            'armor-cost', 'helmet-cost', 'shield-cost', 'shield-name', 'shield-bonus', 'shield-max', 'shield-modifier', 'shield-artifact', 'shield-worn', 'shield-notes', 'shield-carried', 'shield-weight', 'coin-copper', 'coin-silver', 'coin-gold', 'capacity-bonus'
         ];
 
         this.artifactDice = [];
@@ -816,6 +810,7 @@ class ForbiddenLandsApp {
         this.stagedRoll = null;
         this.activeCharId = null;
         this.roster = {};
+        this.renderEquipmentCatalogs();
     }
 
     init() {
@@ -1163,7 +1158,8 @@ class ForbiddenLandsApp {
         document.querySelector('#weapons-table tbody').innerHTML = '';
         document.querySelector('#gear-table tbody').innerHTML = '';
         this.addTalentRow('Kin Talent', 1, '');
-        this.addWeaponRow('Dagger', 1, 1, 'Arm', 'Light, Pointed');
+        const dagger = this.weaponPresets.find(w => w.name === 'Dagger');
+        this.addWeaponRow(dagger.name, dagger.bonus, dagger.dmg, dagger.range, dagger.feat, dagger.skill, 'None', false, dagger.grip, dagger.cost);
     }
 
     saveState() {
@@ -1197,7 +1193,9 @@ class ForbiddenLandsApp {
             feat: tr.querySelector('.w-feat').value,
             skill: tr.querySelector('.w-skill').value,
             artifact: tr.querySelector('.w-artifact').value,
-            equipped: tr.querySelector('.w-equipped').checked
+            equipped: tr.querySelector('.w-equipped').checked,
+            ...(tr.querySelector('.w-grip').value ? {grip: tr.querySelector('.w-grip').value} : {}),
+            ...(tr.querySelector('.w-cost').value ? {cost: tr.querySelector('.w-cost').value} : {})
         }));
 
         data.gear = Array.from(document.querySelectorAll('#gear-table tbody tr')).map(tr => ({
@@ -1261,7 +1259,7 @@ class ForbiddenLandsApp {
         if (data.talents) data.talents.forEach(t => this.addTalentRow(t.name, t.rank, t.desc));
 
         document.querySelector('#weapons-table tbody').innerHTML = '';
-        if (data.weapons) data.weapons.forEach(w => this.addWeaponRow(w.name, w.bonus, w.dmg, w.range, w.feat, w.skill, w.artifact, w.equipped));
+        if (data.weapons) data.weapons.forEach(w => this.addWeaponRow(w.name, w.bonus, w.dmg, w.range, w.feat, w.skill, w.artifact, w.equipped, w.grip, w.cost));
 
         document.querySelector('#gear-table tbody').innerHTML = '';
         if (Array.isArray(data.spells)) data.spells.forEach(spell=>{if(spell && typeof spell === 'object') this.addSpell(spell);});
@@ -1285,7 +1283,34 @@ class ForbiddenLandsApp {
         ]);
     }
 
-    addWeaponRow(name = '', bonus = 0, dmg = 1, range = 'Arm', feat = '', skill = 'melee', artifact = 'None', equipped = false) {
+    weaponPreset(w) {
+        return {name:w.name, bonus:w.bonus ?? 0, dmg:w.damage, range:w.range, feat:w.features, skill:w.category === 'melee' ? 'melee' : 'marksmanship', grip:w.grip ?? '—', cost:w.costSilver === null ? '—' : String(w.costSilver)};
+    }
+
+    renderEquipmentCatalogs() {
+        for (const piece of ['armor','helmet','shield']) {
+            const select = document.getElementById(piece + '-catalog');
+            const rows = piece === 'shield' ? this.equipmentCatalog.shields : this.equipmentCatalog.armor.filter(e => e.bodyPart === (piece === 'helmet' ? 'Head' : 'Body'));
+            for (const e of rows) select.add(new Option(e.name, e.id));
+        }
+    }
+
+    applyProtectionPreset(select, piece) {
+        const rows = piece === 'shield' ? this.equipmentCatalog.shields : this.equipmentCatalog.armor;
+        const entry = rows.find(e => e.id === select.value);
+        if (!entry) return;
+        const set = (key,value) => document.getElementById(piece + '-' + key).value = value;
+        set('name',entry.name);set(piece === 'shield' ? 'bonus' : 'rating',piece === 'shield' ? entry.bonus : entry.rating);
+        set('max',piece === 'shield' ? entry.bonus : entry.rating);set('cost',entry.costSilver);set('notes',entry.features);
+        set('weight',/\bHeavy\b/.test(entry.features) ? 'Heavy' : /\bLight\b/.test(entry.features) ? 'Light' : 'Normal');
+        this.saveState();
+    }
+
+    stageUnarmed() {
+        this.stagePool('Melee', 'strength', Number(document.getElementById('attr-strength').value), Number(document.getElementById('skill-melee').value), 0);
+    }
+
+    addWeaponRow(name = '', bonus = 0, dmg = 1, range = 'Arm', feat = '', skill = 'melee', artifact = 'None', equipped = false, grip = '', cost = '') {
         const tr = document.createElement('tr');
         tr.innerHTML = `
             <td>
@@ -1295,6 +1320,7 @@ class ForbiddenLandsApp {
                     ${name && !this.weaponPresets.some(w => w.name === name) ? `<option value="${this.escapeHTML(name)}" selected>${this.escapeHTML(name)}</option>` : ''}
                     <option value="__custom__">Custom weapon / rename…</option>
                 </select>
+                <div class="weapon-measures"><label>Grip<input type="text" class="w-grip" aria-label="Weapon grip" value="${this.escapeHTML(grip)}" placeholder="1H / 2H" onchange="app.saveState()"></label><label>Silver<input type="text" class="w-cost" aria-label="Weapon cost in silver" value="${this.escapeHTML(cost)}" onchange="app.saveState()"></label></div>
                 <select class="w-skill" aria-label="Weapon attack skill" onchange="app.updateWeaponIcon(this.closest('tr')); app.saveState()">
                     <option value="melee" ${skill === 'melee' ? 'selected' : ''}>Melee (Strength)</option>
                     <option value="marksmanship" ${skill === 'marksmanship' ? 'selected' : ''}>Marksmanship (Agility)</option>
@@ -1339,7 +1365,7 @@ class ForbiddenLandsApp {
             const weapon = this.weaponPresets.find(weapon => weapon.name === select.value);
             if (weapon) {
                 const row = select.closest('tr');
-                for (const field of ['bonus', 'dmg', 'range', 'feat', 'skill']) row.querySelector('.w-' + field).value = weapon[field];
+                for (const field of ['bonus', 'dmg', 'range', 'feat', 'skill', 'grip', 'cost']) row.querySelector('.w-' + field).value = weapon[field];
             }
         }
         this.updateWeaponIcon(select.closest('tr'));

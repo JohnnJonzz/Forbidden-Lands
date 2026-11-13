@@ -1,3 +1,4 @@
+import {catalogWeapon} from '../../lib/equipment-catalog';
 import {createHash,randomInt} from 'node:crypto';
 import {diceCommandSchema} from '../../lib/dice/schema';
 import {applyDiceCommand} from '../../lib/dice/engine';
@@ -13,7 +14,7 @@ export function executeDice(raw:unknown,repo:SqliteCampaignRepository=getLocalRe
   if(previous){if(previous.fingerprint!==fingerprint)throw new Error('Action ID reused with different parameters');db.exec('COMMIT');return {record,replayed:true}}
   if(record.session.chatJourney&&['ready','submit-group','group-coordinator'].includes(c.type))throw new Error('Journey roll matching is disabled. Roll independently and enter manual outcomes in chat.');
   const session=applyDiceCommand(record.session,c,{lookup:()=>null,adjacent:()=>false,calibrated:false},new Date().toISOString(),sides=>randomInt(1,sides+1));
-  if(c.type==='create'){const e=activeCombat(repo,c.campaignId),card=session.dice!.find(r=>r.id===c.roll.id)!;if(e){const response=combatWorkflow(e,session.characters).responses.find(r=>r.characterId===card.characterId&&r.step!=='decision');card.combatContext={encounterId:e.id,actionId:e.pending?.id??null,round:e.round,turnId:e.combatants[e.turn].id,step:response?.step==='attack'||response?.step==='defense'||response?.step==='armor'?response.step:null}}}
+  if(c.type==='create'){const e=activeCombat(repo,c.campaignId),card=session.dice!.find(r=>r.id===c.roll.id)!;const weapon=card.weaponSnapshot?catalogWeapon(JSON.parse(card.weaponSnapshot).name??''):null;if(weapon)card.equipmentId=weapon.id;if(e?.pending?.kind==='punch'&&e.pending.actorId===card.characterId&&card.result.skill==='Melee'&&card.metadata.weaponIndex===null)card.equipmentId='unarmed';if(e){const response=combatWorkflow(e,session.characters).responses.find(r=>r.characterId===card.characterId&&r.step!=='decision');card.combatContext={encounterId:e.id,actionId:e.pending?.id??null,round:e.round,turnId:e.combatants[e.turn].id,step:response?.step==='attack'||response?.step==='defense'||response?.step==='armor'?response.step:null}}}
   const updated=repo.update(record.id,record.revision,session);db.prepare('INSERT INTO journey_actions VALUES (?,?,?,?)').run(record.id,c.actionId,fingerprint,new Date().toISOString());db.exec('COMMIT');return {record:updated,replayed:false};
  }catch(e){db.exec('ROLLBACK');throw e}
 }

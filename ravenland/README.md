@@ -900,3 +900,16 @@ npm run typecheck
 ```
 
 See [the Phase 6.3 implementation and source report](docs/dice-assisted-chat.md) for exact source locations, the attachment contract, tests and unsupported mechanics. Original PDFs and test uploads remain private and are never committed.
+
+### Phase 6.3.1: canonical equipment and complete table audit
+
+The equipment selector now includes all 24 inventory melee weapons, a separate **Unarmed (Punch / Kick)** control, all nine ranged weapons, and explicit presets for all eight armor/helmet entries and both shields. `equipment-catalog.json` is the single authored catalog used by the generated sheets, character defaults and application. Grip and silver cost are available alongside complete features; values remain editable. Existing inventories are preserved, and no missing equipment is automatically granted.
+
+The existing name **Short sword** resolves to the verified official **Shortsword** without renaming its saved row. Controlled aliases and PDF typography normalization also handle supported spacing/hyphen variants. Original indexed Handbook rows still verify the full record before combat preparation. Unknown equipment and missing source evidence produce distinct errors. A failed preparation keeps Roll disabled and offers Retry; practice is explicitly marked as unusable for that combat attack. New saved rolls record their canonical equipment identity without rewriting older dice.
+
+```bash
+RAVENLAND_REAL_SOURCEBOOK_DIR=/absolute/private/book-directory npm run test:equipment-catalog
+RAVENLAND_REAL_SOURCEBOOK_DIR=/absolute/private/book-directory npm run test:retrieval-check
+```
+
+See [the complete equipment audit](docs/equipment-catalog-audit.md) for all 25 melee entries, before/after corrections, source pages, tests and remaining unsupported mechanics. No database reset or migration is needed; rebuild/reload to refresh the generated sheet asset.

@@ -14,6 +14,7 @@ export function verifiedAttackRules(pages:SourcePassage[]):AttackRulesSummary{
  find(/SLASH\s*:.*Roll MELEE.*STAB\s*:/i,'Melee attack skill');
  find(/SLASH\s*:.*damage increases by one for each additional.*STAB\s*:/i,'additional-success SLASH damage');
  find(/STAB\s*:.*damage increases by one for each additional.*PUNCH/i,'additional-success STAB damage');
+ const unarmed=pages.flatMap(page=>{const m=page.text.replace(/\s+/g,' ').replace(/\s+([.,:])/g,'$1').match(/PUNCH\/KICK\/BITE: Does not require a weapon\. Roll for MELEE\..*any attempt to PARRY gets a \+(\d+) bonus\..*takes 1 point of damage.*increases by one for each additional/);return m?[{page,parryBonus:Number(m[1])}]:[]})[0];if(unarmed)sources.push(citation(unarmed.page));
  const slashDodge=Number(find(/If the attacker SLASHES\s*, you get a \+(\d+) bonus/i,'Dodge against SLASH')[1]);
  const stabWeaponParry=-Number(find(/A target who PARRIES with a weapon gets a -(\d+) penalty/i,'weapon Parry against STAB')[1]);
  const stabShieldParry=Number(find(/parrying with a shield gives a \+(\d+) bonus/i,'shield Parry against STAB')[1]);
@@ -23,5 +24,5 @@ export function verifiedAttackRules(pages:SourcePassage[]):AttackRulesSummary{
  const rangedModifiers={Arm:-Number(range[3]),Near:0,Short:-Number(range[1]),Long:-Number(range[2])};
  find(/defender must declare.*DODGE.*PARRY.*before you roll/i,'pre-roll defense timing');
  find(/Every x x you roll decreases the damage by one.*cannot be pushed/i,'armor reduction and push restriction');
- return {version:1,skill:'melee',actionCost:'slow',requiredSuccesses:1,extraSuccessDamage:1,slashFeatures:['Edged','Blunt'],stabFeature:'Pointed',bluntIsFeature:true,modifiers:{slashDodge,stabWeaponParry,stabShieldParry,nonParryingWeapon,proneTarget},rangedModifiers,defenseBeforeRoll:true,armor:{perSuccess:1,pushable:false},sources:[...new Map(sources.map(s=>[s.chunkId,s])).values()]};
+ return {...(unarmed?{unarmed:{parryBonus:unarmed.parryBonus}}:{}),version:1,skill:'melee',actionCost:'slow',requiredSuccesses:1,extraSuccessDamage:1,slashFeatures:['Edged','Blunt'],stabFeature:'Pointed',bluntIsFeature:true,modifiers:{slashDodge,stabWeaponParry,stabShieldParry,nonParryingWeapon,proneTarget},rangedModifiers,defenseBeforeRoll:true,armor:{perSuccess:1,pushable:false},sources:[...new Map(sources.map(s=>[s.chunkId,s])).values()]};
 }

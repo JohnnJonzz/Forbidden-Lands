@@ -1,12 +1,13 @@
 import type {CombatSource,CombatWeapon} from './types';
-export type WeaponAttackType='slash'|'stab'|'shoot';
+export type WeaponAttackType='slash'|'stab'|'shoot'|'punch';
 export interface AttackRulesSummary {
+ unarmed?:{parryBonus:number};
  version:1;skill:'melee';actionCost:'slow';requiredSuccesses:1;extraSuccessDamage:1;
  slashFeatures:('Edged'|'Blunt')[];stabFeature:'Pointed';bluntIsFeature:true;
  modifiers:{slashDodge:number;stabWeaponParry:number;stabShieldParry:number;nonParryingWeapon:number;proneTarget:number};
  rangedModifiers:{Arm:number;Near:number;Short:number;Long:number};defenseBeforeRoll:true;armor:{perSuccess:1;pushable:false};sources:CombatSource[];
 }
-export function weaponAttackOptions(w:CombatWeapon){return w.skill==='marksmanship'?[{type:'shoot' as const,label:'SHOOT'}]:[
+export function weaponAttackOptions(w:CombatWeapon){return w.catalogId==='unarmed'?[{type:'punch' as const,label:'PUNCH / KICK (Unarmed)'}]:w.skill==='marksmanship'?[{type:'shoot' as const,label:'SHOOT'}]:[
  ...(/Edged|Blunt/.test(w.features)?[{type:'slash' as const,label:/Blunt/.test(w.features)&&!/Edged/.test(w.features)?'SLASH (Blunt weapon)':'SLASH'}]:[]),
  ...(/Pointed/.test(w.features)?[{type:'stab' as const,label:'STAB'}]:[])
 ];}

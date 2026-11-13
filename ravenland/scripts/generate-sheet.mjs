@@ -4,6 +4,12 @@ import {fileURLToPath} from 'node:url';
 const root=fileURLToPath(new URL('../',import.meta.url));
 let html=readFileSync(root+'../index.html','utf8');
 const registry=JSON.parse(readFileSync(root+'../character-rules.json','utf8'));
+const equipment=JSON.parse(readFileSync(root+'../equipment-catalog.json','utf8'));
+for(const rows of [equipment.weapons,equipment.armor,equipment.shields]){
+ const keys=new Map();for(const item of rows)for(const name of [item.id,item.name,...item.aliases]){const key=name.normalize('NFKC').replace(/\u00ad/g,'').trim().toLowerCase().replace(/[‐‑–]/g,'-').replace(/\s*-\s*/g,'-').replace(/\s+/g,' ');if(keys.has(key)&&keys.get(key)!==item.id)throw Error('Ambiguous equipment catalog alias: '+name);keys.set(key,item.id)}
+}
+html=html.replace(/\/\/ BEGIN GENERATED EQUIPMENT[\s\S]*?\/\/ END GENERATED EQUIPMENT/,'// BEGIN GENERATED EQUIPMENT\n        this.equipmentCatalog = '+JSON.stringify(equipment)+';\n        // END GENERATED EQUIPMENT');
+writeFileSync(root+'src/lib/equipment-catalog-data.ts','// Generated from equipment-catalog.json. Edit the root JSON, not this file.\nexport const equipmentCatalog = '+JSON.stringify(equipment,null,2)+' as const;\n');
 if(registry.attributes.length!==4||registry.skills.length!==16||new Set(registry.skills.map(s=>s.id)).size!==16||registry.skills.some(s=>s.origin!=='official'||!registry.attributes.some(a=>a.id===s.attribute)))throw Error('Invalid canonical character registry');
 const skillConfig=registry.skills.map(s=>({id:s.id,name:s.name,attr:s.attribute}));
 html=html.replace(/this.skillsConfig = \[[\s\S]*?\];/, 'this.skillsConfig = '+JSON.stringify(skillConfig,null,12)+';');

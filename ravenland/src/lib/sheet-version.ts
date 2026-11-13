@@ -1,2 +1,2 @@
 // Generated with the embedded sheet to invalidate stale cached assets.
-export const sheetAssetVersion = "6481ab203de908a5";
+export const sheetAssetVersion = "a7b87db0a4309d98";
