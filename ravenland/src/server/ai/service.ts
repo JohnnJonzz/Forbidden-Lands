@@ -57,6 +57,7 @@ export class AIService {
  try{
  if(c.kind==='quarter'&&activeCombat(this.repo,c.campaignId))throw new AIError('combat_in_progress','Resolve the encounter before submitting quarter-day activities to the GM.',409);
  const manual=c.kind==='chat'?parseAttackAdjudication(c.action,playerId(c.requestId)):null;if(manual)requireCharacterAccess(this.principal,c.campaignId,c.characterId);
+ if(c.kind==='chat'&&combatRouting(this.repo,c))requireCharacterAccess(this.principal,c.campaignId,c.characterId);
  const actor=c.kind==='chat'?this.repo.get(c.campaignId)?.session.characters.find(ch=>ch.id===c.characterId):undefined,preparing=c.kind==='chat'&&!combatRouting(this.repo,c)&&(planRetrieval(c.action,'chat',actor?.name).intent==='gameplay_adjudication'||!!declaredAction(c.action,actor?.name));if(preparing)diagnostics.stage('retrieval');
  const preparation=preparing?prepareAction(this.repo,{campaignId:c.campaignId,characterId:c.characterId,declaration:c.action},this.principal):null;if(preparing)diagnostics.stage('claim');
  claim=this.claim(c);diagnostics.data.attempt=claim.attempt;if(claim.cached){diagnostics.data.outcome='replayed';emit({type:'done',reply:claim.cached});return claim.cached}

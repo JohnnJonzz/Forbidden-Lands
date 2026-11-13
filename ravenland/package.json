@@ -53,7 +53,8 @@
     "test:combat": "node tests/combat-browser.cjs",
     "test:combat-workflow": "node --import tsx tests/combat-workflow-browser.cjs",
     "test:combat-narrative": "node --import tsx tests/narrative-combat-browser.cjs",
-    "test:encounter-fidelity": "node --import tsx tests/encounter-fidelity-browser.cjs"
+    "test:encounter-fidelity": "node --import tsx tests/encounter-fidelity-browser.cjs",
+    "test:pending-encounter": "node --import tsx tests/pending-encounter-browser.cjs"
   },
   "dependencies": {
     "exceljs": "^4.4.0",

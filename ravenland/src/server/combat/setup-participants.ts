@@ -23,6 +23,6 @@ export function encounterParticipants(text:string,s:Session,actorId:string,prior
   participants=participants.filter(id=>{const c=s.characters.find(c=>c.id===id)!;return !new RegExp('\\b'+escape(c.name.split(/\s+/)[0])+'\\b[^.!?]{0,60}\\b(?:absent|stayed behind|remains at|is elsewhere|left the party)\\b','i').test(recent)});known=participants.length>0&&!scene.ambiguous;
  }else if(!participants.length&&/\b(?:I|me|my|one[- ]on[- ]one)\b/i.test(text)){participants=[actorId];known=true}
  participants=participants.filter(id=>!excluded.has(id));
- if(/\bno other party members? (?:is|are) present\b/i.test(text)||solo.length===1){for(const c of s.characters)if(!participants.includes(c.id)){excluded.add(c.id);absent.add(c.id)}}
+ if(/\b(?:no other party members?|no companions?) (?:is|are) present\b/i.test(text)||solo.length===1){for(const c of s.characters)if(!participants.includes(c.id)){excluded.add(c.id);absent.add(c.id)}}
  return {participants,participantsKnown:known&&participants.length>0&&!names.ambiguous,excludedParticipants:[...excluded],absentCharacters:[...absent],recognized:!!names.ids.length||!!exclusive.length||!!solo.length||/\b(?:party|all of us|all (?:[0-9]+|one|two|three|four|five|six))\b/i.test(text)};
 }

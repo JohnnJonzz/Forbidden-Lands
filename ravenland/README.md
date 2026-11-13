@@ -843,3 +843,18 @@ RAVENLAND_REAL_SOURCEBOOK_DIR=/absolute/private/book-directory npm run test:enco
 ```
 
 See [the Phase 6.2.1 investigation and test report](docs/encounter-setup-fidelity.md) for the reproduced defect, verification limits for the live playtest and changed files.
+
+### Phase 6.2.2: pending encounter continuity
+
+An encounter clarification now holds the full plan in the campaign database. Answer naturally, for example “Yes, the road is a local scene near The Hollow Watch. Proceed with the encounter as described.” The same proposal resumes immediately, preserving participants, absent companions, enemies, range and scene. Refreshing or restarting the server preserves the plan. “No” keeps it open for revision; “Instead use a clearing near The Hollow Watch,” “Change range to Short,” “Use the saved campaign location,” and “Cancel the encounter” are supported. Unrelated questions leave it on hold. A cancelled or consumed plan cannot be restarted by another “Yes.”
+
+Clearly local descriptions such as “in a courtyard within The Hollow Watch” proceed directly. An ambiguous “near” description still asks a concise question. Changes to the saved location, hex or latest encounter can require a new confirmation. Setup never moves the party or advances time. Completed battles remain history; a new encounter uses its own combatants and verified events, while actual player-sheet conditions remain authoritative.
+
+**Restart the application once after updating.** Migration `016_pending_combat_setup.sql` runs automatically when the database opens and adds the pending-proposal and request-receipt tables without rewriting existing campaign or combat records. No new access credential is required.
+
+```bash
+RAVENLAND_REAL_SOURCEBOOK_DIR=/absolute/private/book-directory npm run test:pending-encounter
+RAVENLAND_REAL_SOURCEBOOK_DIR=/absolute/private/book-directory npm run test:retrieval-check
+```
+
+The new browser regression ends an actually wounded previous encounter through Combat, sends the exact reported request/confirmation, refreshes during clarification, and verifies the new encounter, retries, revisions, cancellation and narration boundaries. It indexes both actual private fifth-printing PDFs in isolated storage and uses controlled SDK responses/dice without paid calls. See [the Phase 6.2.2 investigation and test report](docs/pending-encounter-continuity.md).

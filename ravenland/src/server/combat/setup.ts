@@ -1,3 +1,5 @@
+import {pendingSetup,latestSetup} from './setup-store';
+import {setupCancelled,setupContinue,setupAffirmed} from './setup-intent';
 import type {Session} from '../../lib/types';
 import type {CombatRange} from '../../lib/combat/types';
 import type {SqliteCampaignRepository} from '../sqlite';
@@ -7,19 +9,27 @@ import {encounterScene,sceneQuestion,type EncounterScene} from './setup-scene';
 export {namedParticipants} from './setup-participants';
 export interface EncounterSetup {participants:string[];participantsKnown:boolean;enemies:string;range:CombatRange|null;declaration:string;enemyQuestion?:string;sceneQuestion?:string;scene?:EncounterScene;excludedParticipants?:string[];absentCharacters?:string[]}
 export function encounterRequest(text:string){return !/^\/combat\b/i.test(text)&&!/\b(?:explain|according to|rules? for|hypothetical|example of|how (?:do|does))\b/i.test(text)&&(/\b(?:start|begin|create|set up|run|play|request|want|have)\b[^.!?]{0,100}\b(?:encounter|combat|fight|ambush)\b/i.test(text)||/\b(?:fights?|are ambushed|is ambushed)\b/i.test(text)||/\bone[- ]on[- ]one\b/i.test(text))}
-export function previousSetup(repo:SqliteCampaignRepository,campaignId:string,characterId:string){const row=repo.db.prepare("SELECT context_json FROM ai_requests WHERE campaign_id=? AND status='completed' AND kind='chat' AND json_extract(payload,'$.characterId')=? ORDER BY updated_at DESC,id DESC LIMIT 1").get(campaignId,characterId);return row?.context_json?JSON.parse(row.context_json as string).combatSetup as EncounterSetup|null: null}
-export function parseEncounterSetup(text:string,s:Session,actorId:string,prior?:EncounterSetup|null):EncounterSetup|null{
- const fresh=encounterRequest(text);if(!fresh&&!prior)return null;if(!fresh&&text.length>250)return null;
+export function legacySetup(repo:SqliteCampaignRepository,campaignId:string,characterId:string){
+ if(latestSetup(repo,campaignId,characterId))return null;
+ const ended=repo.db.prepare('SELECT updated_at FROM combat_encounters WHERE campaign_id=? ORDER BY updated_at DESC,rowid DESC LIMIT 1').get(campaignId)?.updated_at as string|undefined;
+ const rows=repo.db.prepare("SELECT id,payload,context_json,updated_at FROM ai_requests WHERE campaign_id=? AND status='completed' AND kind='chat' AND json_extract(payload,'$.characterId')=? ORDER BY updated_at DESC,rowid DESC LIMIT 30").all(campaignId,characterId);
+ for(const row of rows){if(ended&&(row.updated_at as string)<=ended)break;const action=JSON.parse(row.payload as string).action;if(setupCancelled(action))return null;const proposal=row.context_json?JSON.parse(row.context_json as string).combatSetup as EncounterSetup|null:null;if(proposal)return {proposal,requestId:row.id as string}}
+ return null;
+}
+export function previousSetup(repo:SqliteCampaignRepository,campaignId:string,characterId:string){return pendingSetup(repo,campaignId,characterId)?.proposal??legacySetup(repo,campaignId,characterId)?.proposal??null}
+
+export function parseEncounterSetup(text:string,s:Session,actorId:string,prior?:EncounterSetup|null,mode:'auto'|'revise'='auto'):EncounterSetup|null{
+ const fresh=mode!=='revise'&&encounterRequest(text)&&!(prior&&(setupContinue(text)||setupAffirmed(text)));if(!fresh&&!prior)return null;if(!fresh&&text.length>1200)return null;
  // Only actual clarification answers inherit fields. A new declaration starts
  // from its own facts, never an earlier/ended encounter's defaults.
  const base=fresh?undefined:prior??undefined,party=encounterParticipants(text,s,actorId,base),enemies=encounterEnemies(text),scene=encounterScene(text,s,fresh,base?.scene);
  const rangeText=text.match(/\b(?:start|begin|create|set up)\b[^.!?\n]{0,100}\b(?:combat|encounter|fight|ambush)\b[^.!?\n]*/i)?.[0]??text;
- const findRange=(value:string)=>value.match(/\b(NEAR|SHORT|LONG|arm(?:['’]s)?(?: length)?)\s+range\b/i)??value.match(/\bat\s+(NEAR|SHORT|LONG|arm(?:['’]s)?(?: length)?)\b/i)??value.trim().match(/^(NEAR|SHORT|LONG|arm(?:['’]s)?(?: length)?)[.!]?$/i);
+ const findRange=(value:string)=>value.match(/\b(?:range|distance)\s+(?:(?:is|to|at)\s+)?(NEAR|SHORT|LONG|Arm)\b/i)??value.match(/\b(NEAR|SHORT|LONG|arm(?:['’]s)?(?: length)?)\s+range\b/i)??value.match(/\bat\s+(NEAR|SHORT|LONG|arm(?:['’]s)?(?: length)?)\b/i)??value.trim().match(/^(NEAR|SHORT|LONG|arm(?:['’]s)?(?: length)?)[.!]?$/i);
  const match=findRange(rangeText)??findRange(text);
  const range=match?(match[1].toLowerCase().startsWith('arm')?'Arm':match[1][0].toUpperCase()+match[1].slice(1).toLowerCase()) as CombatRange:base?.range??null;
- if(!fresh&&!party.recognized&&!enemies.mentioned&&!match&&!scene.recognized)return null;
+ if(!fresh&&!party.recognized&&!enemies.mentioned&&!match&&!scene.recognized&&!setupAffirmed(text)&&!setupContinue(text))return null;
  const {recognized:_,...participants}=party;
- return {...participants,enemies:enemies.mentioned?enemies.enemies:base?.enemies??'',enemyQuestion:enemies.mentioned?enemies.question:base?.enemyQuestion,range,declaration:fresh?text:base?.declaration??text,scene:scene.scene,sceneQuestion:scene.question??(!fresh&&!scene.recognized?base?.sceneQuestion:undefined)};
+ return {...participants,enemies:enemies.mentioned&&(!base?.enemies||base.enemyQuestion||enemies.explicit||/^(?:change|make|use|instead|actually)\b/i.test(text))?enemies.enemies:base?.enemies??'',enemyQuestion:enemies.mentioned&&(!base?.enemies||base.enemyQuestion||enemies.explicit||/^(?:change|make|use|instead|actually)\b/i.test(text))?enemies.question:base?.enemyQuestion,range,declaration:fresh?text:base?.declaration??text,scene:scene.scene,sceneQuestion:scene.question??(!fresh&&!scene.recognized?base?.sceneQuestion:undefined)};
 }
 export function setupQuestion(d:EncounterSetup,s:Session){
  if(d.enemyQuestion)return d.participantsKnown?d.enemyQuestion:'Before drawing initiative, tell me which characters are taking part and the exact enemy counts.';if(d.sceneQuestion)return d.sceneQuestion;
