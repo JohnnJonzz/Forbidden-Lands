@@ -1,0 +1,9 @@
+{
+  "hexSheet": "Map Details A01-Ao50",
+  "publicColumnsReviewed": true,
+  "coordinateSystem": "excel-column-doubled-row",
+  "columns": {"coordinate":"Hex","terrain":"Terrain","region":"Region","printedFeatures":"Site/Feature"},
+  "adjacency": {"sheet":"Adjacency","coordinate":"Hex","neighbors":["N","NE","SE","S","SW","NW"],"bidirectional":false},
+  "waterwaySheet":{"sheet":"Waterways & Routes","feature":"Feature","type":"Type","hexes":"Ordered / Known Hexes"},
+  "listSeparator":";"
+}

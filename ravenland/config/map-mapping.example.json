@@ -1,0 +1,10 @@
+{
+  "hexSheet": "REPLACE_WITH_ACTUAL_SHEET",
+  "publicColumnsReviewed": false,
+  "columns": {
+    "coordinate": "REPLACE_WITH_COORDINATE_HEADER",
+    "column": "REPLACE_WITH_LOGICAL_COLUMN_HEADER",
+    "row": "REPLACE_WITH_LOGICAL_ROW_HEADER"
+  },
+  "listSeparator": ";"
+}

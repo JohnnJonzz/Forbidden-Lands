@@ -1,0 +1,9 @@
+import {combatHistory} from './history';
+import type {Character} from '../../lib/types';
+import {combatWorkflow,defenseOptions} from './workflow';
+import type {SqliteCampaignRepository} from '../sqlite';
+import type {CombatEncounter,PublicCombat,Defense} from '../../lib/combat/types';
+export function activeCombat(repo:SqliteCampaignRepository,campaignId:string):CombatEncounter|null{const row=repo.db.prepare("SELECT state_json FROM combat_encounters WHERE campaign_id=? AND status='active'").get(campaignId);return row?JSON.parse(row.state_json as string):null}
+export const legalDefenses=defenseOptions;
+export function publicCombat(e:CombatEncounter|null,characters:Character[]=[],repo?:SqliteCampaignRepository):PublicCombat|null{return e?{id:e.id,name:e.name,status:e.status,round:e.round,workflow:combatWorkflow(e,characters),history:combatHistory(e,repo),activeId:e.combatants[e.turn]?.id??'',combatants:e.combatants.map(({id,characterId,name,side,initiative,fast,slow,prone,broken,withdrawn})=>({id,characterId,name,side,initiative,fast,slow,prone,broken,withdrawn})),pending:e.pending?{id:e.pending.id,actorId:e.pending.actorId,targets:e.pending.targets,phase:e.pending.phase,defenses:e.pending.defenses,allowedDefenses:Object.fromEntries(e.pending.targets.map(id=>[id,legalDefenses(e,id,characters.find(c=>c.id===id))])),notes:e.pending.notes}:null,rolls:e.rolls.slice(-100).map(({id,combatantId,actionId,type,pool,result,table,pushed,createdAt})=>({id,combatantId,actionId,type,pool,result,table,pushed,createdAt}))}:null}
+export function saveCombat(repo:SqliteCampaignRepository,e:CombatEncounter){e.revision++;repo.db.prepare('INSERT INTO combat_encounters VALUES (?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET status=excluded.status,revision=excluded.revision,state_json=excluded.state_json,updated_at=excluded.updated_at').run(e.id,e.campaignId,e.status,e.revision,JSON.stringify(e),new Date().toISOString())}

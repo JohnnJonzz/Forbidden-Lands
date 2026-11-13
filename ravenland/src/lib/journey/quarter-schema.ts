@@ -1,0 +1,24 @@
+import {z} from 'zod';
+const id=z.string().min(1).max(100),text=z.string().max(5000);
+export const activities=['Lead the Way','Keep Watch','Hike','Make Camp','Rest','Sleep','Hunt','Fish','Forage','Explore'] as const;
+export const settingsSchema=z.object({weatherMode:z.enum(['Manual','AI Game Master']),leader:id.nullable(),watch:id.nullable(),hike:z.enum(['Manual review','Request Endurance roll','No roll (manual ruling)'])}).strict();
+export const assignmentSchema=z.object({id,characterId:id,activity:z.enum(activities),skill:z.enum(['Manual review','No roll','Survival','Scouting','Endurance','Marksmanship']),outcome:text}).strict();
+export const rollSchema=z.object({id:z.string().uuid(),characterId:id,skill:z.string().max(100),attribute:z.array(z.number().int().min(1).max(6)).max(100),skillDice:z.array(z.number().int().min(1).max(6)).max(100),negativeSkill:z.boolean(),gear:z.array(z.number().int().min(1).max(6)).max(100),artifacts:z.array(z.object({sides:z.union([z.literal(8),z.literal(10),z.literal(12)]),value:z.number().int().min(1).max(12)}).strict()).max(4),successes:z.number().int().min(0).max(200),pushed:z.boolean(),attributeDamage:z.number().int().min(0).max(100),gearDamage:z.number().int().min(0).max(100),willpower:z.number().int().min(0).max(100),quarterDayId:id.nullable(),requestId:id.nullable()}).strict();
+export const requestSchema=z.object({id,activityId:id,characterId:id,skill:z.string().max(100),status:z.enum(['pending','completed']),rollId:id.nullable(),manual:text}).strict();
+export const quarterPlanSchema=z.object({id,date:z.string().max(100),quarter:z.enum(['Morning','Day','Evening','Night']),from:z.string().max(50),traveling:z.boolean(),destination:z.string().max(50),direction:z.string().max(30),assignments:z.array(assignmentSchema).max(20),manualMode:z.boolean().optional(),notes:text.optional(),travelDecision:z.enum(['pending','arrive','stay']).optional(),status:z.enum(['DRAFT','CONFIRMED','AWAITING_ROLLS','RESOLVED','ADVANCED','CANCELLED']),requests:z.array(requestSchema).max(20),travelApproved:z.boolean(),travelRuling:text}).strict();
+export const quarterStateSchema=z.object({settings:settingsSchema,active:quarterPlanSchema.nullable(),history:z.array(quarterPlanSchema).max(5000),rolls:z.array(rollSchema).max(10000)}).strict().refine(q=>new Set(q.rolls.map(r=>r.id)).size===q.rolls.length&&new Set(q.history.map(p=>p.id)).size===q.history.length&&(!q.active||(['DRAFT','CONFIRMED','AWAITING_ROLLS','RESOLVED'].includes(q.active.status)&&!q.history.some(p=>p.id===q.active!.id)))&&[...q.history,...(q.active?[q.active]:[])].every(p=>new Set(p.assignments.map(a=>a.id)).size===p.assignments.length&&new Set(p.assignments.map(a=>a.characterId)).size===p.assignments.length&&new Set(p.requests.map(r=>r.id)).size===p.requests.length&&p.requests.every(r=>p.assignments.some(a=>a.id===r.activityId&&a.characterId===r.characterId))&&(!['RESOLVED','ADVANCED'].includes(p.status)||p.manualMode===true||p.requests.every(r=>r.status==='completed'))),'Inconsistent quarter-day state');
+const env={campaignId:z.string().uuid(),revision:z.number().int().positive(),actionId:z.string().uuid()};
+export const quarterCommandSchema=z.discriminatedUnion('type',[
+ z.object({...env,type:z.literal('quarter-submit'),expected:z.object({date:z.string().max(100),quarter:z.enum(['Morning','Day','Evening','Night']),hex:z.string().max(50)}).strict(),actorId:id,traveling:z.boolean(),destination:z.string().max(50),assignments:z.array(assignmentSchema).min(1).max(20),travelDecision:z.enum(['arrive','stay','pending']),travelNotes:text,notes:text,confirmed:z.literal(true)}).strict(),
+ z.object({...env,type:z.literal('quarter-correction'),entryId:z.string().uuid(),actorId:id,notes:text.trim().min(1),confirmed:z.literal(true)}).strict(),
+ z.object({...env,type:z.literal('quarter-settings'),settings:settingsSchema,weather:z.string().max(300)}).strict(),
+ z.object({...env,type:z.literal('quarter-draft'),manualMode:z.boolean().optional(),notes:text.optional(),travelDecision:z.enum(['pending','arrive','stay']).optional(),travelNotes:text.optional(),traveling:z.boolean(),destination:z.string().max(50),assignments:z.array(assignmentSchema).min(1).max(20)}).strict(),
+ z.object({...env,type:z.enum(['quarter-confirm','quarter-advance','quarter-cancel']),planId:id,confirmed:z.literal(true)}).strict(),
+ z.object({...env,type:z.literal('quarter-manual'),planId:id,requestId:id,notes:text.trim().min(1),confirmed:z.literal(true)}).strict(),
+ z.object({...env,type:z.literal('quarter-travel-ruling'),planId:id,approved:z.boolean(),notes:text.trim().min(1),confirmed:z.literal(true)}).strict(),
+ z.object({...env,type:z.literal('quarter-roll'),roll:rollSchema}).strict()
+]);
+export type QuarterState=z.infer<typeof quarterStateSchema>;
+export type QuarterPlan=z.infer<typeof quarterPlanSchema>;
+export type StructuredRoll=z.infer<typeof rollSchema>;
+export type QuarterCommand=z.infer<typeof quarterCommandSchema>;

@@ -1,0 +1,5 @@
+# Licensed sourcebooks are local test inputs, never repository assets.
+**/Forbidden_Lands_*.pdf
+**/Forbidden_Lands_*.PDF
+/ravenland/tests/fixtures/private-sourcebooks/*
+!/ravenland/tests/fixtures/private-sourcebooks/README.md
