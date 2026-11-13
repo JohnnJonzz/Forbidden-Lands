@@ -1,5 +1,6 @@
 (() => {
  if(window.parent===window) return;
+ let combatActive=true;
  let characterId=null, loading=false, savedRoll=null, pushInFlight=false, allowRestore=true, pendingSave=null, saveInFlight=false;
  const notify=(type,data={})=>window.parent.postMessage({type,...data},location.origin);
  const portraitFrame=document.querySelector('.portrait-frame'),placeholder=portraitFrame.innerHTML;
@@ -28,7 +29,10 @@
  const originalStage=app.stagePool.bind(app);app.stagePool=function(...args){allowRestore=false;originalStage(...args);if(!savedRoll&&!pendingSave)pushState(false,'Roll dice to check whether a push is available.');notify('ravenland:focus-roller',{characterId})};
  const originalClear=app.clearPool.bind(app);app.clearPool=function(){originalClear();allowRestore=false;savedRoll=null;pendingSave=null;saveInFlight=false;document.getElementById('btn-retry-roll').hidden=true;pushState(false,'Roll dice to check whether a push is available.')};
  const originalAttack=app.rollWeaponAttack.bind(app);
- app.rollWeaponAttack=function(btn){originalAttack(btn);this.stagedRoll.weaponIndex=[...document.querySelectorAll('#weapons-table tbody tr')].indexOf(btn.closest('tr'))};
+ function stageWeapon(index,modifier=0){const btn=document.querySelectorAll('#weapons-table tbody tr')[index]?.querySelector('button[aria-label="Stage weapon attack"]');if(!btn)return;originalAttack(btn);app.stagedRoll.weaponIndex=index;document.getElementById('pool-modifier').value=modifier;app.updatePoolPreview()}
+ app.rollWeaponAttack=function(btn){const index=[...document.querySelectorAll('#weapons-table tbody tr')].indexOf(btn.closest('tr'));if(combatActive){notify('ravenland:prepare-weapon',{characterId,weaponIndex:index});return}stageWeapon(index)};
+ window.addEventListener('message',event=>{if(event.origin!==location.origin||event.source!==window.parent)return;if(event.data?.type==='ravenland:combat-mode')combatActive=event.data.active!==false;if(event.data?.type==='ravenland:attack-prepared')stageWeapon(event.data.weaponIndex,event.data.modifier)});
+ const attachButton=document.createElement('button');attachButton.id='btn-attach-chat';attachButton.type='button';attachButton.textContent='Attach roll to chat';attachButton.hidden=true;document.getElementById('push-status').after(attachButton);attachButton.onclick=()=>{if(savedRoll?.card.status==='Pending')notify('ravenland:attach-roll',{characterId,rollId:savedRoll.card.id})};
  const originalRender=app.renderRollResults.bind(app);
  app.renderRollResults=function(){
   originalRender();const roll=this.currentRoll;if(!roll||!characterId)return;allowRestore=false;savedRoll=null;pushInFlight=false;
@@ -43,7 +47,7 @@
   const line=document.createElement('div');line.textContent=`Banes / ones: ${a+k+g} (Attribute ${a} · Skill ${k} · Gear ${g}). Skill ones do not cause push damage.`;document.getElementById('dice-summary').append(line);
  }
  function showSaved(entry){
-  const card=entry.card,r=card.result,prior=app.currentRoll; savedRoll=entry;if(pendingSave?.roll.id===card.id){pendingSave=null;saveInFlight=false;document.getElementById('btn-retry-roll').hidden=true}
+  const card=entry.card,r=card.result,prior=app.currentRoll;attachButton.hidden=card.status!=='Pending'; savedRoll=entry;if(pendingSave?.roll.id===card.id){pendingSave=null;saveInFlight=false;document.getElementById('btn-retry-roll').hidden=true}
   if(r.pushed||card.status!=='Pending')pushInFlight=false;
   app.currentRoll={label:r.skill,attribute:card.metadata.attribute,isArmor:card.metadata.isArmor,isPushed:r.pushed,ravenlandRollId:card.id,ravenlandPushId:prior?.ravenlandRollId===card.id?prior.ravenlandPushId:undefined,weaponDamage:card.metadata.weaponDamage??undefined,dice:[...r.attribute.map(value=>({type:'base',value})),...r.skillDice.map(value=>({type:r.negativeSkill?'negative-skill':'skill',value})),...r.gear.map(value=>({type:'gear',value})),...r.artifacts.map(d=>({type:'artifact',value:d.value,sides:d.sides}))]};
   originalRender();

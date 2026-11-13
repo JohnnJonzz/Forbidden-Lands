@@ -877,3 +877,26 @@ RAVENLAND_REAL_SOURCEBOOK_DIR=/absolute/private/book-directory npm run test:retr
 ```
 
 See [the Phase 6.2.3 investigation and regression report](docs/natural-roll-timing.md) for the root causes, exact recovery policy, source evidence, changed files and limits.
+
+### Phase 6.3: dice-assisted narrative chat
+
+Open a character from **The Party** and click the weapon's attack icon. During combat, choose its verified attack type and target, then **Prepare and stage attack**. This commits the existing engine's declaration and enemy reaction before dice. For a Shortsword, the choices are SLASH and STAB. A Blunt weapon uses the official SLASH action; BLUNT is a feature, not a separate action. The preparation card shows verified equipment, modifiers and source references.
+
+Roll on the sheet and optionally push, then choose **Attach roll to chat**. The main **Acting As** composer shows the saved result. Add narrative text and Send; the same authoritative combat submission resolves defense, armor and damage. No additional Submit to GM click is required. The character is locked to the rolling character while attached. **Remove attachment** keeps your text; **Cancel draft** clears the unsent message. Both preserve the saved dice. You can also attach from Recent Dice Rolls or from a separate character window in the same browser.
+
+The unsent text, acting character and roll reference are restored from this browser's local storage after refresh. Failed validation retains the draft. Push changes refresh the saved result/fingerprint; typed successes, damage or a different attack type do not replace it. Explicit changes to the recorded weapon, target or defensive response are rejected. The existing first-compatible-roll policy and pre-roll timing remain in force. A roll made too early stays in history with an eligibility explanation; it cannot gain a retrospective declaration or defense.
+
+Survival, Scouting, Manipulation and other noncombat skill results use the same attachment control and include the player's explanation without resolving a combat attack. Recent Dice Rolls remains the permanent detailed record. The Combat panel also offers **Attach roll to chat**; legacy submission controls remain available for recovery and older workflows. No roll is automatically promoted to Journal prose or campaign canon.
+
+The new sheet preparation path initially commits ordinary weapon melee attacks. Already-declared SHOOT, defensive and armor steps can use attachments too. New ranged preparation pauses for adjudication when bow readiness/crossbow loading is not recorded; establish that declaration through the existing combat flow rather than assuming it. Unarmed and other unsupported maneuvers also require adjudication. Player sheets remain player-managed except for existing dice/push/resource effects.
+
+No database migration or reset is required. Restart/reload the updated app; the generated sheet asset version prevents an old iframe from being reused with the new application bundle. Rebuild before running production browser suites:
+
+```bash
+npm run build
+RAVENLAND_REAL_SOURCEBOOK_DIR=/absolute/private/book-directory npm run test:dice-chat
+RAVENLAND_REAL_SOURCEBOOK_DIR=/absolute/private/book-directory npm run test:retrieval-check
+npm run typecheck
+```
+
+See [the Phase 6.3 implementation and source report](docs/dice-assisted-chat.md) for exact source locations, the attachment contract, tests and unsupported mechanics. Original PDFs and test uploads remain private and are never committed.

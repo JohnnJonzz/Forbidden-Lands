@@ -1,3 +1,4 @@
+import type {AttackRulesSummary} from '../../lib/combat/attack-rules';
 import {sceneMatches} from './setup-scene';
 import {countSuccesses} from '../../lib/dice/engine';
 import {z} from 'zod';
@@ -7,7 +8,7 @@ import type {CombatTurnResult} from './service';
 
 export interface VerifiedAttackNarrative {actionId:string;kind:string;weapon:string|null;actorId:string;targetId:string;attackRollId:string|null;defenseRollId:string|null;armorRollId:string|null;attackSuccesses:number;defenseSuccesses:number;uncanceledSuccesses:number;damageBeforeArmor:number;armorSuccesses:number;damageAfterArmor:number|null;damageApplication:'enemy_applied'|'player_managed'|'legacy_unverified';appliedDamage:number|null}
 export interface CombatNarrativeEvent {attack?:VerifiedAttackNarrative;push?:{rollId:string;characterId?:string;attribute:string|null;attributeDamage:number;gearDamage:number;willpowerGained:number;alreadyHandled:true};id:string;kind:'start'|'action'|'attack'|'roll'|'push'|'threat'|'conclusion';actor:string;target?:string;outcome:'pending'|'miss'|'defended'|'absorbed'|'wounded'|'broken'|'recorded';facts:string;fallback:string}
-export interface CombatNarrative {encounterId:string;round:number;location:string;sceneDescription?:string;absentCharacters?:string[];combatants?:{id:string;name:string;side:string}[];events:CombatNarrativeEvent[];nextPrompt:string;blocked:boolean}
+export interface CombatNarrative {attackRules?:AttackRulesSummary;encounterId:string;round:number;location:string;sceneDescription?:string;absentCharacters?:string[];combatants?:{id:string;name:string;side:string}[];events:CombatNarrativeEvent[];nextPrompt:string;blocked:boolean}
 export const combatProseSchema=z.object({beats:z.array(z.object({eventId:z.string(),text:z.string().min(1).max(800)}).strict()).max(12)}).strict();
 export type CombatProse=z.infer<typeof combatProseSchema>;
 
@@ -37,14 +38,14 @@ export function combatNarrative(e:CombatEncounter,before:CombatTurnResult['check
  // Keep the next prompt short; detailed modifiers stay in the companion panel.
  if(p){
   if(p.phase==='declaration'){const undecided=p.targets.filter(id=>p.defenses[id]===null);nextPrompt=undecided.map(id=>`${name(id)}, choose your response before the attack roll: ${(workflow?.responses.find(r=>r.characterId===id)?.options??['none']).map(d=>d==='none'?'no defense':d==='dodge'?'Dodge':'Parry').join(', ')}.`).join(' ')}
-  else if(p.phase==='attack_roll')nextPrompt=p.targets.map(id=>p.defenses[id]&&p.defenses[id]!=='none'?`${name(id)} has declared ${p.defenses[id]==='dodge'?'Dodge':'Parry'} before your roll. `:'').join('')+`${name(p.actorId)}, roll the declared weapon on your character sheet. You may push before clicking Submit this roll in Combat.`;
+  else if(p.phase==='attack_roll')nextPrompt=p.targets.map(id=>p.defenses[id]&&p.defenses[id]!=='none'?`${name(id)} has declared ${p.defenses[id]==='dodge'?'Dodge':'Parry'} before your roll. `:'').join('')+`${name(p.actorId)}, roll the declared weapon on your character sheet. You may push, then attach the result to chat, describe your action and Send.`;
   else if(p.phase==='adjudication')nextPrompt=p.notes.join(' ')+' The action remains pending.';
-  else {const target=p.targets.find(id=>p.phase==='armor_roll'?!p.armorRolls[id]&&p.results.some(r=>r.targetId===id&&r.afterArmor===null):p.defenses[id]&&p.defenses[id]!=='none'&&!p.defenseRolls[id]);nextPrompt=`${name(target??p.targets[0])}, roll ${p.phase==='armor_roll'?'your recorded armor':p.defenses[target??p.targets[0]]==='dodge'?'Move for your declared Dodge':'Melee for your declared Parry'} on your character sheet${p.phase==='armor_roll'?'':'; you may push'}. Then click Submit this roll in Combat.`}
+  else {const target=p.targets.find(id=>p.phase==='armor_roll'?!p.armorRolls[id]&&p.results.some(r=>r.targetId===id&&r.afterArmor===null):p.defenses[id]&&p.defenses[id]!=='none'&&!p.defenseRolls[id]);nextPrompt=`${name(target??p.targets[0])}, roll ${p.phase==='armor_roll'?'your recorded armor':p.defenses[target??p.targets[0]]==='dodge'?'Move for your declared Dodge':'Melee for your declared Parry'} on your character sheet${p.phase==='armor_roll'?'':'; you may push'}. Then attach the result to chat and Send.`}
  }else if(view?.side==='enemy'&&e.status==='active'){nextPrompt=limit?'Automatic combat progression reached its safety limit. The encounter is preserved for review.':/No supported attack/.test(technical)?'No supported enemy action is in range. Confirm positioning before continuing.':'The GM action needs review in Combat; no player turn has been skipped.'}
  if(workflow?.positionRequired)nextPrompt=workflow.summary;
  if(workflow?.blocker)nextPrompt=workflow.blocker;
  if(workflow?.declarationOptions)nextPrompt=workflow.summary;
- return {encounterId:e.id,round:e.round,location:e.sceneLocation,sceneDescription:e.sceneDescription,absentCharacters:e.sceneAbsentCharacters??[],combatants:e.combatants.map(a=>({id:a.id,name:a.name,side:a.side})),events:events.slice(-12),nextPrompt,blocked:!!workflow?.blocker||limit||p?.phase==='adjudication'||!!view&&view.side==='enemy'&&!p};
+ return {attackRules:e.pending?.rules??e.history.at(-1)?.rules,encounterId:e.id,round:e.round,location:e.sceneLocation,sceneDescription:e.sceneDescription,absentCharacters:e.sceneAbsentCharacters??[],combatants:e.combatants.map(a=>({id:a.id,name:a.name,side:a.side})),events:events.slice(-12),nextPrompt,blocked:!!workflow?.blocker||limit||p?.phase==='adjudication'||!!view&&view.side==='enemy'&&!p};
 }
 
 export function pushNarrativeEvent(roll:VerifiedRollSubmission|null|undefined):CombatNarrativeEvent|null{

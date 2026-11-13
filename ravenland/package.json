@@ -55,7 +55,8 @@
     "test:combat-narrative": "node --import tsx tests/narrative-combat-browser.cjs",
     "test:encounter-fidelity": "node --import tsx tests/encounter-fidelity-browser.cjs",
     "test:pending-encounter": "node --import tsx tests/pending-encounter-browser.cjs",
-    "test:roll-timing": "node --import tsx tests/roll-timing-browser.cjs"
+    "test:roll-timing": "node --import tsx tests/roll-timing-browser.cjs",
+    "test:dice-chat": "node --import tsx tests/dice-chat-browser.cjs"
   },
   "dependencies": {
     "exceljs": "^4.4.0",
