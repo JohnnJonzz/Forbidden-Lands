@@ -22,7 +22,7 @@ export async function orchestrateCombat(repo:SqliteCampaignRepository,c:GMTurn,r
  if(saved){requireCharacterAccess(principal,c.campaignId,c.characterId);if(saved.fingerprint!==fingerprint(c))throw new AIError('combat_duplicate','Combat request parameters changed.',409);return {...JSON.parse(saved.result_json as string),decisionUsage:[],usage:null,replayed:true}}
  let decisions=0;const usages:NonNullable<CombatTurnResult['usage']>[]=[];
  const boundedChoose:CombatChooser|undefined=choose?async input=>{if(++decisions>2)return {choiceId:input.choices[0].id,inputTokens:0,outputTokens:0,model:'application-legal-policy'};return choose(input)}:undefined;
- let first:CombatTurnResult|null;try{first=await combatTurn(repo,c,roll,principal,boundedChoose,die,{singleStep:true})}catch(error){if(c.kind==='chat'&&error instanceof AIError&&['combat_target','combat_weapon','combat_melee','combat_resource','combat_stance','combat_action','combat_loadout'].includes(error.code)){requireCharacterAccess(principal,c.campaignId,c.characterId);const e=activeCombat(repo,c.campaignId);return {narration:error.message+(e?' '+publicCombat(e,repo.get(c.campaignId)?.session.characters??[])!.workflow.summary:''),encounter:publicCombat(e,repo.get(c.campaignId)?.session.characters??[]),setup:null,usage:null,replayed:false,packet:null,decisionUsage:[]}}throw error}if(!first)return null;
+ let first:CombatTurnResult|null;try{first=await combatTurn(repo,c,roll,principal,boundedChoose,die,{singleStep:true})}catch(error){if(c.kind==='chat'&&error instanceof AIError&&['combat_target','combat_weapon','combat_melee','combat_resource','combat_stance','combat_action','combat_loadout','combat_movement'].includes(error.code)){requireCharacterAccess(principal,c.campaignId,c.characterId);const e=activeCombat(repo,c.campaignId);return {narration:error.message+(e?' '+publicCombat(e,repo.get(c.campaignId)?.session.characters??[])!.workflow.summary:''),encounter:publicCombat(e,repo.get(c.campaignId)?.session.characters??[]),setup:null,usage:null,replayed:false,packet:null,decisionUsage:[]}}throw error}if(!first)return null;
  if(!first.checkpoint)return {...first,packet:null,decisionUsage:[]};
  if(first.replayed&&first.usage&&first.usage.model!=='application-legal-policy')decisions++;
  if(first.usage&&!first.replayed){usages.push(first.usage);onDecision?.(first.usage)}
@@ -40,12 +40,12 @@ export async function orchestrateCombat(repo:SqliteCampaignRepository,c:GMTurn,r
   const previous=cursor;cursor=(await combatTurn(repo,next,null,principal,boundedChoose,die,{singleStep:true}))!;
   if(cursor.replayed&&cursor.usage&&cursor.usage.model!=='application-legal-policy')decisions++;
   if(cursor.usage&&!cursor.replayed){usages.push(cursor.usage);onDecision?.(cursor.usage)}
-  // Out of range or unsupported choice: no invented movement or busy loop.
-  if(!done&&cursor.encounter?.activeId===previous.encounter?.activeId&&!cursor.encounter?.pending&&cursor.encounter?.round===previous.encounter?.round&&/No supported attack/.test(cursor.narration))break;
+  // Every legal step spends an action, creates a player response, or ends a turn.
+  if(!done&&cursor.revision===previous.revision&&!cursor.encounter?.pending)break;
  }
  const row=cursor.encounter?repo.db.prepare('SELECT state_json FROM combat_encounters WHERE id=? AND campaign_id=?').get(cursor.encounter.id,c.campaignId):null;
  const encounter=row?JSON.parse(row.state_json as string) as CombatEncounter:null;
- const packet=encounter?combatNarrative(encounter,first.checkpoint,roll,cursor.narration,steps>=24,cursor.encounter?.workflow,first.drawnWeapon):null;
+ const packet=encounter?combatNarrative(encounter,first.checkpoint,roll,cursor.narration,steps>=24,cursor.encounter?.workflow,first.drawnWeapon,first.deferredNotice):null;
  const result:OrchestratedCombat={...cursor,setup:first.setup,packet,decisionUsage:usages,usage:null,replayed:first.replayed};
  // The immutable verified packet survives an upstream narration failure. Retrying
  // cannot regenerate initiative, defense, armor, critical dice or push effects.

@@ -867,7 +867,7 @@ Combat shows the action, target, expected skill, saved-roll time and eligible re
 
 **Selection policy:** each pending step uses the first compatible roll in server save order, irrespective of successes. Later known outcomes cannot replace it. Push that first roll before submitting if desired. Invalid rolls do not consume the action or result. A failed request before binding can retry its original saved result through Combat, including a result already marked Submitted by that failed request. Once resolved, retries reuse the existing receipt and cannot apply damage again. Completed submissions for another purpose are not offered.
 
-Explicit supported single-enemy equipment descriptions constrain its verified loadout: “a bandit armed with a sword” uses the published Broadsword and does not silently select Sling. Unsupported equipment or multi-enemy loadout assignments require clarification/adjudication. A sword-only enemy at NEAR has no supported attack in range; the engine requests positioning rather than inventing movement or a ranged weapon. Player-reported damage never substitutes for a verified result. Dodge posture, Stand costs, enemy damage and saved push consequences remain separate.
+Explicit supported single-enemy equipment descriptions constrain its verified loadout: “a bandit armed with a sword” uses the published Broadsword and does not silently select Sling. Unsupported equipment or multi-enemy loadout assignments require clarification/adjudication. Phase 6.3.2 adds source-backed movement: a sword-only enemy at NEAR can Run into melee and attack if its remaining actions permit. Unsupported routes require adjudication rather than invented movement or equipment. Player-reported damage never substitutes for a verified result. Dodge posture, Stand costs, enemy damage and saved push consequences remain separate.
 
 The new fields are optional additions to existing saved JSON; no database migration or data reset is needed. Reload the updated app/server. Legacy saved rolls retain their fingerprints and are accepted only where their recorded timing establishes the required steps.
 
@@ -913,3 +913,16 @@ RAVENLAND_REAL_SOURCEBOOK_DIR=/absolute/private/book-directory npm run test:retr
 ```
 
 See [the complete equipment audit](docs/equipment-catalog-audit.md) for all 25 melee entries, before/after corrections, source pages, tests and remaining unsupported mechanics. No database reset or migration is needed; rebuild/reload to refresh the generated sheet asset.
+
+### Phase 6.3.2: combat movement and basic enemy weapon tactics
+
+A sword-only enemy at NEAR can now Run to ARM’S LENGTH and make a slow attack when its action budget permits. SHORT → NEAR → ARM’S LENGTH takes two fast actions and leaves no slow attack. NPC turns end when no supported action remains, and “Continue” resumes the enemy instead of returning a stale setup status. Own-turn movement declarations update the saved range; out-of-turn declarations preserve the player’s actions while the enemy finishes its turn.
+
+With an explicitly configured **sling and sword**, the enemy Readies/Shoots at range and can spend a fast Draw to use its recorded sword after Edrus closes. Held, carried, readied and loaded states remain distinct. The controller does not invent or freely discard weapons. Combat displays range and actual held/readied equipment. Movement/handling is recorded before narration. Retreat requests a sheet Move roll through the existing attachment flow; failure moves to NEAR and resolves an actual undefendable free attack without charging enemy actions or automatically damaging the player sheet.
+
+Movement currently uses the existing one-on-one shared-range abstraction and an ordinary-ground baseline. Rough/blocked routes, multi-opponent positioning, exact LONG distances and special maneuvers require adjudication. See [the movement and tactics report](docs/combat-movement-tactics.md) for exact original source pages, action costs, architecture, tests and limits. No database migration or reset is required.
+
+```bash
+RAVENLAND_REAL_SOURCEBOOK_DIR=/absolute/private/book-directory npm run test:combat-mobility
+RAVENLAND_REAL_SOURCEBOOK_DIR=/absolute/private/book-directory npm run test:retrieval-check
+```
