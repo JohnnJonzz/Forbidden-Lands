@@ -1,3 +1,4 @@
+import {heldPlayerWeapons} from './player-weapons';
 import {enemyChoices} from './enemy-choices';
 import type {CombatEncounter,Defense,CombatResponse,CombatWorkflow} from '../../lib/combat/types';
 import type {Session,Character} from '../../lib/types';
@@ -9,7 +10,7 @@ import type {PendingDice} from '../../lib/dice/schema';
 export function defenseOptions(e:CombatEncounter,targetId:string,character?:Character):Defense[]{
  const p=e.pending,t=e.combatants.find(c=>c.id===targetId);if(p?.freeAttack||p?.kind==='retreat')return ['none'];if(!p||!t||!p.targets.includes(targetId)||!t.fast&&!t.slow||t.broken||t.withdrawn)return ['none'];
  const attack=e.combatants.find(c=>c.id===p.actorId)?.enemy?.attacks.find(a=>a.key===p.monsterKey);let parry=!attack||attack.parry;
- if(character){const mc=mechanicalCharacter(character),s=character.sheet,shield=s?.['shield-worn']===true&&exactInteger(s['shield-bonus'],1,12)!==null,weapon=character.sheet?.weapons?.some(w=>w.skill==='melee'),exception=character.sheet?.weapons?.some(w=>/parrying/i.test(w.feat??'')&&mc.talents.some(t=>(t.rank??0)>=2&&['sword','axe','spear','hammer','knife'].some(k=>t.name.toLowerCase().includes(k)&&(w.name??'').toLowerCase().includes(k))));parry=parry&&(p.kind==='shoot'?!!(shield||exception):!!(shield||weapon))}
+ if(character){const mc=mechanicalCharacter(character),s=character.sheet,weapons=heldPlayerWeapons(t,character),shield=s?.['shield-worn']===true&&exactInteger(s['shield-bonus'],1,12)!==null,weapon=weapons.some(w=>w.skill==='melee'),exception=weapons.some(w=>/parrying/i.test(w.feat??'')&&mc.talents.some(t=>(t.rank??0)>=2&&['sword','axe','spear','hammer','knife'].some(k=>t.name.toLowerCase().includes(k)&&(w.name??'').toLowerCase().includes(k))));parry=parry&&(p.kind==='shoot'?!!(shield||exception):!!(shield||weapon))}
  return ['none',...(!attack||attack.dodge?['dodge' as const]:[]),...(parry?['parry' as const]:[])];
 }
 export function combatWorkflow(e:CombatEncounter,characters:Character[]=[]):CombatWorkflow{

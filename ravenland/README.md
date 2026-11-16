@@ -939,3 +939,23 @@ Genuine clarifications keep the full plan across refresh/restart; a short affirm
 RAVENLAND_REAL_SOURCEBOOK_DIR=/absolute/private/book-directory npm run test:encounter-activation
 RAVENLAND_REAL_SOURCEBOOK_DIR=/absolute/private/book-directory npm run test:retrieval-check
 ```
+
+### Phase 6.4: structured AI action interface
+
+During an active encounter, normal player chat is interpreted into a strict ordered list of intentions. The shared dispatcher validates ownership, initiative, actual targets/equipment, range, pending decisions and action costs before calling the existing engine. It preserves completed actions when a later step needs a choice or is illegal. The AI cannot supply dice, damage or free actions.
+
+With a previously drawn Shortsword and both action slots available at NEAR, say “Move to arm's length and attack Bandit 1 with my shortsword.” Run updates the saved range and spends the fast action; the GM asks Slash or Stab. Choose the type, then use the existing sheet **Prepare → Roll → Optional Push → Attach → Send** workflow. A matching already-prepared attack stages directly from its sheet weapon icon. No player roll or End Turn is automatic.
+
+Player held/readied/loaded state now persists in the encounter. This supersedes the earlier ranged-preparation limitation: Draw, bow/sling Ready and crossbow Load are available in chat and under **Combat → Player action controls**. Carried weapons start with unestablished held state. Drawing costs an action; Draw + Run uses both slots, leaving no slow attack that turn. Ready + Shoot is legal with a previously held bow and both slots; Load + Shoot needs separate slow-action opportunities. Ammo remains player-managed. Weapon Parry requires held equipment or the existing shield option.
+
+Interpretations and dispatch receipts reuse the existing request audit. Retry replays the saved result without repeating actions or interpreting the message again. Unavailable/malformed interpretation leaves direct controls and sheet preparation usable. Those controls and saved-roll submissions do not require a new interpretation call. No database reset or migration is required.
+
+```bash
+RAVENLAND_REAL_SOURCEBOOK_DIR=/absolute/private/book-directory npm run test:action-interface
+RAVENLAND_REAL_SOURCEBOOK_DIR=/absolute/private/book-directory npm run test:retrieval-check
+npm run typecheck
+npm run build
+npm run dev
+```
+
+See [the action interface report](docs/ai-action-interface.md) for the schema, exact changed paths, transactions/retries, private context boundaries, original source pages, tests and a manual live-model smoke procedure. Automated tests use both actual private PDFs and controlled SDK/RNG responses; they make no paid model calls. Shared-range movement limitations and unsupported Drop/Stow/maneuver adjudication remain.

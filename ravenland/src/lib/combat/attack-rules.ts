@@ -11,5 +11,5 @@ export function weaponAttackOptions(w:CombatWeapon){return w.catalogId==='unarme
  ...(/Edged|Blunt/.test(w.features)?[{type:'slash' as const,label:/Blunt/.test(w.features)&&!/Edged/.test(w.features)?'SLASH (Blunt weapon)':'SLASH'}]:[]),
  ...(/Pointed/.test(w.features)?[{type:'stab' as const,label:'STAB'}]:[])
 ];}
-export interface PreparedWeapon {index:number;identity:string;weapon:CombatWeapon;attribute:'strength'|'agility';options:ReturnType<typeof weaponAttackOptions>}
+export interface PreparedWeapon {ref?:string;held?:boolean;ready?:boolean;loaded?:boolean;index:number;identity:string;weapon:CombatWeapon;attribute:'strength'|'agility';options:ReturnType<typeof weaponAttackOptions>}
 export interface AttackPreparationView {active:boolean;encounterId:string|null;weapons:PreparedWeapon[];targets:{id:string;name:string}[];rules:AttackRulesSummary;pending:{id:string;actorId:string;weaponIndex:number|null;type:string;targets:string[];phase:string;attackModifier:number}|null}

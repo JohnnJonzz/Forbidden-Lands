@@ -1,3 +1,4 @@
+import {heldPlayerWeapons} from './player-weapons';
 import {enemyChoices,handlingFor,heldParryWeapon,canDraw,ordinaryMove,weaponInRange} from './enemy-choices';
 import {spend,recordAction,fastCost,interruptReadiness,needsReady,needsLoad} from './action-economy';
 export {spend} from './action-economy';
@@ -56,7 +57,7 @@ export function beginPlayerAttack(e:CombatEncounter,characterId:string,targetId:
 export function declareDefense(e:CombatEncounter,character:Character,defense:Defense){const p=e.pending;if(!p||p.phase!=='declaration'||!p.targets.includes(character.id))fail('No pre-roll defensive choice is pending for this character.');if(p.defenses[character.id]!==null)fail('That defense is already declared.');const a=e.combatants.find(a=>a.id===character.id)!;const {monster}=attackData(e,p);
  if(defense!=='none'){if(!a.fast&&!a.slow)fail('No defensive action is available.');if(monster&&(defense==='dodge'&&!monster.dodge||defense==='parry'&&!monster.parry))fail('The published monster attack does not permit that defense.');const mc=mechanicalCharacter(character),s=sheetFor(character);
  if(defense==='dodge'&&(mc.attributes.agility.current===null||mc.skills['skill-move']===null))fail('The recorded Dodge pool is incomplete.');
- if(defense==='parry'){const shield=s['shield-worn']===true&&exactInteger(s['shield-bonus'],1,12)!==null,weapons=character.sheet?.weapons??[],weapon=weapons.some(w=>w.skill==='melee'),exception=weapons.some(w=>/parrying/i.test(w.feat??'')&&mc.talents.some(t=>(t.rank??0)>=2&&['sword','axe','spear','hammer','knife'].some(kind=>t.name.toLowerCase().includes(kind)&&(w.name??'').toLowerCase().includes(kind))));if(p.kind==='shoot'&&!shield&&!exception)fail('Ranged Parry requires a shield or the relevant Parrying weapon/talent exception.');if(!shield&&!weapon)fail('No suitable recorded Parry equipment is established.');if(mc.attributes.strength.current===null||mc.skills['skill-melee']===null)fail('The recorded Parry pool is incomplete.');}
+ if(defense==='parry'){const shield=s['shield-worn']===true&&exactInteger(s['shield-bonus'],1,12)!==null,weapons=heldPlayerWeapons(a,character),weapon=weapons.some(w=>w.skill==='melee'),exception=weapons.some(w=>/parrying/i.test(w.feat??'')&&mc.talents.some(t=>(t.rank??0)>=2&&['sword','axe','spear','hammer','knife'].some(kind=>t.name.toLowerCase().includes(kind)&&(w.name??'').toLowerCase().includes(kind))));if(p.kind==='shoot'&&!shield&&!exception)fail('Ranged Parry requires a shield or the relevant Parrying weapon/talent exception.');if(!shield&&!weapon)fail('No suitable recorded Parry equipment is established.');if(mc.attributes.strength.current===null||mc.skills['skill-melee']===null)fail('The recorded Parry pool is incomplete.');}
  spend(a,'fast');interruptReadiness(a);if(defense==='dodge')a.prone=true;
  }
  p.defenses[character.id]=defense;
@@ -106,5 +107,6 @@ function resolveRetreat(e:CombatEncounter,packet:VerifiedRollSubmission,session:
  rollEnemyAttack(e,die);return a.name+' retreats to NEAR but grants an undefendable free attack. '+resolveAttack(e,session,die);
 }
 export function bindPlayerRoll(e:CombatEncounter,packet:VerifiedRollSubmission,session:Session,die:Die){const {slot,target}=checkCombatRoll(e,packet,session),p=e.pending!,owner=packet.character.id;
+ if(slot==='attackRolls'&&p.kind==='shoot'){const prep=e.combatants.find(a=>a.id===owner)?.weaponHandling?.preparation?.[String(p.weaponIndex)];if(prep){prep.ready=false;prep.loaded=false}}
  e.rolls.push({id:packet.rollId,round:e.round,combatantId:owner,actionId:p.id,type:slot==='movement'?'movement':slot==='attackRolls'?'attack':slot==='defenseRolls'?'defense':'armor',pool:{base:packet.result.attribute.length,skill:packet.result.skillDice.length,gear:packet.result.gear.length},result:packet.result,table:null,pushed:packet.pushed,createdAt:packet.createdAt,source:e.sources});p.playerRolls.push(packet.rollId);e.consumedPlayerRolls.push(packet.rollId);if(slot==='movement')return resolveRetreat(e,packet,session,die);p[slot][target]=packet.rollId;return resolveAttack(e,session,die);
 }

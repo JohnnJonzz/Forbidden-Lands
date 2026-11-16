@@ -8,6 +8,6 @@ export function spend(a:Combatant,type:'slow'|'fast'){
 }
 export const needsReady=(w:CombatWeapon)=>w.skill==='marksmanship'&&!/crossbow/i.test(w.canonicalName??w.name)&&/bow|sling/i.test(w.canonicalName??w.name);
 export const needsLoad=(w:CombatWeapon)=>w.skill==='marksmanship'&&/crossbow/i.test(w.canonicalName??w.name);
-export function interruptReadiness(a:Combatant){for(const w of a.enemy?.weapons??[])if(needsReady(w))w.ready=false}
+export function interruptReadiness(a:Combatant){for(const w of a.enemy?.weapons??[])if(needsReady(w))w.ready=false;for(const w of Object.values(a.weaponHandling?.preparation??{}))w.ready=false}
 export function recordAction(e:CombatEncounter,action:Omit<CombatAction,'id'|'round'|'at'|'sources'|'attackCursor'>){const value={...action,id:randomUUID(),round:e.round,at:new Date().toISOString(),sources:e.mobilityRules?.sources??e.sources,attackCursor:e.history.length};(e.actions??=[]).push(value);return value}
 export function fastCost(a:Combatant){return a.fast?'fast' as const:'slow' as const}
