@@ -1,3 +1,5 @@
+import {outstandingBroken,lifecycleBlocker} from './lifecycle';
+import {helmetProtection} from './player-critical';
 import {defensiveSequenceIssue,needsPlayerDefense,armorRating} from './defensive-rolls';
 import {heldPlayerWeapons} from './player-weapons';
 import {enemyChoices} from './enemy-choices';
@@ -15,8 +17,11 @@ export function defenseOptions(e:CombatEncounter,targetId:string,character?:Char
 }
 export function combatWorkflow(e:CombatEncounter,characters:Character[]=[]):CombatWorkflow{
  const active=e.combatants[e.turn],p=e.pending,names=(ids:string[])=>ids.map(id=>e.combatants.find(c=>c.id===id)?.name??id),responses:CombatResponse[]=[];
+ if(e.status==='ended')return {headline:'Encounter concluded',action:null,targetNames:[],responses:[],summary:e.outcome?.reason??'Encounter ended; recorded conditions persist.',initiative:'Initiative processing has stopped.'};
+ if(!p){const entry=outstandingBroken(e)[0];if(entry){const {actor,procedure}=entry,step=procedure.stage==='helmet'?'helmet':'critical',instruction=procedure.stage==='cause'?'Confirm the cause of Broken in Combat before deciding whether a critical injury is required.':procedure.stage==='helmet'?'Use Stage requested Helmet on the character sheet. Roll once, attach and Send; this protection cannot be pushed.':'Use the D66 button on your character sheet, then attach the saved critical injury roll to chat and Send. Do not reroll to select another outcome.';return {blocker:instruction,headline:'Broken procedure · '+actor.name,action:null,targetNames:[actor.name],responses:procedure.stage==='cause'?[]:[{characterId:actor.id,name:actor.name,step,skill:step==='critical'?'D66':'Helmet',instruction,options:[]}],summary:instruction,initiative:'Initiative is paused for the mandatory injury procedure.'};}}
  const critical=e.combatants.filter(a=>a.side==='enemy'&&a.critical?.status==='required');
  if(e.status==='active'&&critical.length){const blocker='The required critical injury for '+critical.map(a=>a.name).join(', ')+' is not established by the available source table. Restore the evidence and recheck the critical before continuing.';return {blocker,blockerCode:'critical_evidence',headline:'Critical injury requires adjudication',action:null,targetNames:critical.map(a=>a.name),responses:[],summary:blocker,initiative:'The existing initiative order is preserved.'}}
+ if(!p&&lifecycleBlocker(e)){const blocker=lifecycleBlocker(e)!;return {blocker,blockerCode:'critical_evidence',headline:'Broken procedure requires official evidence',action:null,targetNames:[],responses:[],summary:blocker,initiative:'Initiative is paused; no injury or recovery was assumed.'};}
  const issue=defensiveSequenceIssue(e);if(issue)return {blocker:issue,blockerCode:'defensive_evidence',headline:'Defensive sequence needs review',action:null,targetNames:[],responses:[],summary:issue,initiative:'The existing initiative and pending attack are preserved.'};
  if(!p&&e.actionDraft){const d=e.actionDraft,target=names([d.targetId]);return {headline:active.name+' is preparing an attack.',action:d.weaponName,targetNames:target,responses:[],declarationOptions:['slash','stab'],summary:`${active.name}, Slash or Stab with ${d.weaponName} against ${target.join(', ')}? Choose before rolling; no attack or defense has been committed.`,initiative:'The existing initiative order is preserved.'}}
  if(p?.kind==='retreat'){const actor=e.combatants.find(a=>a.id===p.actorId)!;const instruction='Roll Move for Retreat on your character sheet, optionally push, then attach the result to chat and Send. Failure still moves to NEAR and grants an undefendable free attack.';return {headline:actor.name+' is attempting Retreat.',action:'Retreat',targetNames:names(p.targets),responses:[{characterId:actor.id,name:actor.name,step:'movement',skill:'Move',instruction,options:[]}],summary:'Awaiting '+actor.name+': '+instruction,initiative:'The current initiative turn is preserved.'}}
@@ -41,6 +46,15 @@ export function combatWorkflow(e:CombatEncounter,characters:Character[]=[]):Comb
  const headline='Round '+e.round+' — '+active.name+"'s turn.";return {headline,action:null,targetNames:[],responses,summary:headline+' '+(active.side==='player'?'Awaiting '+active.name+': declare your action or end your turn.':'Continue the GM turn to let '+active.name+' act.'),initiative:'Numbered cards 1–10, lowest first; the existing order persists across rounds.'};
 }
 export function checkCombatRoll(e:CombatEncounter,packet:VerifiedRollSubmission,session:Session){
+ const entry=!e.pending?outstandingBroken(e).find(x=>x.actor.id===packet.character.id):undefined;
+ if(entry&&['roll','helmet'].includes(entry.procedure.stage)){
+  const procedure=entry.procedure,step=procedure.stage==='roll'?'critical':'helmet',ctx=packet.combatContext;
+  const response:CombatResponse={characterId:entry.actor.id,name:entry.actor.name,step,skill:step==='critical'?'D66':'Helmet',instruction:'',options:[]};
+  if(e.consumedPlayerRolls.includes(packet.rollId)||!ctx||ctx.encounterId!==e.id||ctx.actionId!==procedure.id||ctx.step!==step||ctx.round!==e.round||ctx.turnId!==e.combatants[e.turn].id||packet.createdAt<procedure.openedAt||!compatibleCombatCard(e,session.dice?.find(c=>c.id===packet.rollId)!,response,session.characters))throw new AIError('combat_roll','Use the matching saved '+step+' roll requested for this Broken procedure. The roll was not consumed.',409);
+  const first=session.dice?.find(c=>c.characterId===packet.character.id&&!e.consumedPlayerRolls.includes(c.id)&&compatibleCombatCard(e,c,response,session.characters));
+  if(first?.id!==packet.rollId)throw new AIError('combat_roll','Use the first compatible saved critical procedure roll; later known outcomes cannot replace it.',409);
+  return {slot:'critical' as const,target:entry.actor.id};
+ }
  const p=e.pending,w=combatWorkflow(e,session.characters),expected=w.responses.filter(r=>r.step!=='decision');
  const need=expected.map(r=>r.name+"'s "+r.skill+' '+r.step+' roll').join(' or ')||w.summary;
  function fail(reason:string):never{throw new AIError('combat_roll','Current phase: '+(expected.some(r=>r.step==='defense')?'Defense roll':p?.phase??'no pending attack')+'. '+reason+' Waiting for '+need+(p?' against '+(e.combatants.find(a=>a.id===(p.actorId===packet.character.id?p.targets[0]:p.actorId))?.name??'the recorded participant'):'')+'. Submitted '+packet.label+' belongs to '+packet.character.name+'. The roll was not consumed.',409)}
@@ -61,6 +75,14 @@ export function checkCombatRoll(e:CombatEncounter,packet:VerifiedRollSubmission,
 // Stable save order, not highest successes or latest roll. Does not consume or
 // modify anything; the full saved-roll verifier still runs before submission.
 export function compatibleCombatCard(e:CombatEncounter,card:PendingDice,response:CombatResponse,characters:Character[]=[]){
+ if(!card)return false;
+ if(response.step==='critical'||response.step==='helmet'){
+  const entry=outstandingBroken(e).find(x=>x.actor.id===response.characterId),ctx=card.combatContext;
+  if(e.pending||!entry||!ctx||ctx.encounterId!==e.id||ctx.actionId!==entry.procedure.id||ctx.step!==response.step||ctx.round!==e.round||ctx.turnId!==e.combatants[e.turn].id||card.createdAt<entry.procedure.openedAt||card.result.pushed)return false;
+  if(response.step==='critical')return entry.procedure.stage==='roll'&&card.metadata.utility?.kind==='D66';
+  const ch=characters.find(c=>c.id===response.characterId),rating=ch?helmetProtection(ch):null;
+  return entry.procedure.stage==='helmet'&&rating!==null&&rating>0&&card.metadata.isArmor&&card.result.skill==='Helmet'&&card.metadata.attribute===null&&card.metadata.weaponIndex===null&&!card.metadata.utility&&!card.result.attribute.length&&!card.result.skillDice.length&&!card.result.artifacts.length&&!card.result.negativeSkill&&card.result.gear.length===rating;
+ }
  const p=e.pending;if(!p||card.metadata.utility||card.status==='Ready')return false;const ctx=card.combatContext;
  if(ctx&&(ctx.encounterId!==e.id||ctx.actionId!==p.id||ctx.round!==e.round||ctx.turnId!==e.combatants[e.turn].id||ctx.step!==response.step))return false;
  if(!ctx&&response.step!=='attack'&&e.rolls.some(r=>(Object.values(p.attackRolls).includes(r.id)||response.step==='armor'&&Object.values(p.defenseRolls).includes(r.id))&&card.createdAt<=r.createdAt))return false;

@@ -1,3 +1,5 @@
+import {advanceLifecycle,lifecycleBlocker} from './lifecycle';
+import {loadCombatRules} from './sources';
 import {synchronizeCombatConversation} from './conversation';
 import type {CombatEncounter} from '../../lib/combat/types';
 import {createHash} from 'node:crypto';
@@ -25,12 +27,14 @@ export function dispatchActions(repo:SqliteCampaignRepository,c:GMTurn,raw:Actio
   if(saved){if(saved.fingerprint!==fingerprint)throw new AIError('combat_duplicate','This action request was reused with different intentions.',409);db.exec('COMMIT');return {...JSON.parse(saved.result_json as string),replayed:true};}
   const existing=activeCombat(repo,c.campaignId);const record=repo.get(c.campaignId);
   if(!existing||existing.id!==plan.encounterId||!record)throw new AIError('combat_conflict','That encounter is no longer active. Refresh before declaring another action.',409);
-  let e:CombatEncounter=existing;
+  let e:CombatEncounter=existing;const beforeState=JSON.stringify(e);
   if(e.sceneHex!==record.session.campaign.hex||e.sceneLocation!==record.session.campaign.location)throw new AIError('combat_scene','The campaign location changed. Resolve this encounter before acting in another scene.',409);
   const checkpoint={pendingId:e.pending?.id??null,actions:e.actions?.length??0,encounterId:e.id,rolls:e.rolls.length,attacks:e.history.length,round:e.round,activeId:e.combatants[e.turn].id,revision:e.revision};
   const safePrompt=(text:string)=>{const guarded=synchronizeCombatConversation(e,text,record.session.characters);return guarded.startsWith(text.trim()+'\n\n')?text:'That outcome has not been verified. '+guarded};
-  const outcomes:IntentOutcome[]=[];let stopReason:string|null=null;
-  if(plan.disposition!=='actions')stopReason=plan.message?safePrompt(plan.message):'Specify the intended action or use the deterministic Combat controls.';
+  advanceLifecycle(e,record.session);if(e.combatants.some(a=>a.side==='player'&&a.broken))advanceLifecycle(e,record.session,loadCombatRules(repo,c.campaignId).handbook);const outcomes:IntentOutcome[]=[];let stopReason:string|null=null;
+  if(e.status==='ended')stopReason=e.outcome?.reason??'Encounter concluded.';
+  else if(!e.pending&&lifecycleBlocker(e))stopReason=lifecycleBlocker(e);
+  else if(plan.disposition!=='actions')stopReason=plan.message?safePrompt(plan.message):'Specify the intended action or use the deterministic Combat controls.';
   else for(const [index,intent] of plan.actions.entries()){
    const candidate:CombatEncounter=structuredClone(e);
    try{const result=executePlayerIntent(repo,record,candidate,c.characterId,intent,principal,die);if(intent.type==='clarify')result.message=safePrompt(result.message);e=candidate;outcomes.push({index,type:intent.type,status:result.waiting?'awaiting_input':'completed',code:null,message:result.message});if(result.waiting){stopReason=result.message;break;}}
@@ -38,7 +42,7 @@ export function dispatchActions(repo:SqliteCampaignRepository,c:GMTurn,raw:Actio
   }
   // The whole completed prefix and its receipt commit together. A failed step's
   // clone is discarded; its mutations cannot undo or contaminate that prefix.
-  if(outcomes.some(o=>o.status!=='blocked'))saveCombat(repo,e);
+  advanceLifecycle(e,record.session);if(e.combatants.some(a=>a.side==='player'&&a.broken))advanceLifecycle(e,record.session,loadCombatRules(repo,c.campaignId).handbook);if(outcomes.some(o=>o.status!=='blocked')||JSON.stringify(e)!==beforeState)saveCombat(repo,e);
   const packet=combatNarrative(e,checkpoint,null,'',false,publicCombat(e,record.session.characters)!.workflow);
   if(stopReason)packet.nextPrompt=stopReason;
   else if(!packet.events.length&&outcomes.length)packet.nextPrompt=outcomes.map(o=>o.message).join(' ')+' '+packet.nextPrompt;

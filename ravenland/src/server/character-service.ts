@@ -1,3 +1,4 @@
+import {reconcileCombatSheets} from './combat/lifecycle-store';
 import {z} from 'zod';
 import {characterSheetSchema,applySheet,sheetFor} from '../lib/character-sheet';
 import {getLocalRepository,type SqliteCampaignRepository} from './sqlite';
@@ -12,6 +13,6 @@ export function saveCharacter(raw:unknown,repo:SqliteCampaignRepository=getLocal
    if(JSON.stringify(merged[key])!==JSON.stringify(before[key])&&JSON.stringify(merged[key])!==JSON.stringify(next[key]))throw new Error('This character field changed in another window. Reload the saved sheet before editing it again.');
    if(next[key]===undefined)delete merged[key];else merged[key]=next[key];
   }
-  record.session.characters[i]=applySheet(record.session.characters[i],characterSheetSchema.parse(merged));const updated=repo.update(record.id,record.revision,record.session);db.exec('COMMIT');return updated;
+  record.session.characters[i]=applySheet(record.session.characters[i],characterSheetSchema.parse(merged));reconcileCombatSheets(repo,record.id,record.session);const updated=repo.update(record.id,record.revision,record.session);db.exec('COMMIT');return updated;
  }catch(e){db.exec('ROLLBACK');throw e}
 }

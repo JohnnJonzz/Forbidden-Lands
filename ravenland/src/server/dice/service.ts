@@ -1,3 +1,6 @@
+import {mechanicalCharacter} from '../mechanical-character';
+import {outstandingBroken} from '../combat/lifecycle';
+import {reconcileCombatSheets} from '../combat/lifecycle-store';
 import {AIError} from '../ai/config';
 import {catalogWeapon} from '../../lib/equipment-catalog';
 import {createHash,randomInt} from 'node:crypto';
@@ -15,8 +18,10 @@ export function executeDice(raw:unknown,repo:SqliteCampaignRepository=getLocalRe
   if(previous){if(previous.fingerprint!==fingerprint)throw new Error('Action ID reused with different parameters');db.exec('COMMIT');return {record,replayed:true}}
   if(record.session.chatJourney&&['ready','submit-group','group-coordinator'].includes(c.type))throw new Error('Journey roll matching is disabled. Roll independently and enter manual outcomes in chat.');
   const session=applyDiceCommand(record.session,c,{lookup:()=>null,adjacent:()=>false,calibrated:false},new Date().toISOString(),sides=>randomInt(1,sides+1));
-  if(c.type==='create'){const e=activeCombat(repo,c.campaignId),card=session.dice!.find(r=>r.id===c.roll.id)!;const weapon=card.weaponSnapshot?catalogWeapon(JSON.parse(card.weaponSnapshot).name??''):null;if(weapon)card.equipmentId=weapon.id;if(e?.pending?.kind==='punch'&&e.pending.actorId===card.characterId&&card.result.skill==='Melee'&&card.metadata.weaponIndex===null)card.equipmentId='unarmed';if(e){const response=combatWorkflow(e,session.characters).responses.find(r=>r.characterId===card.characterId&&r.step!=='decision');card.combatContext={encounterId:e.id,actionId:e.pending?.id??null,round:e.round,turnId:e.combatants[e.turn].id,step:response?.step==='attack'||response?.step==='defense'||response?.step==='armor'||response?.step==='movement'?response.step:null}}}
+  if(c.type==='create'){const e=activeCombat(repo,c.campaignId),card=session.dice!.find(r=>r.id===c.roll.id)!;const weapon=card.weaponSnapshot?catalogWeapon(JSON.parse(card.weaponSnapshot).name??''):null;if(weapon)card.equipmentId=weapon.id;if(e?.pending?.kind==='punch'&&e.pending.actorId===card.characterId&&card.result.skill==='Melee'&&card.metadata.weaponIndex===null)card.equipmentId='unarmed';if(e){const response=combatWorkflow(e,session.characters).responses.find(r=>r.characterId===card.characterId&&r.step!=='decision');card.combatContext={encounterId:e.id,actionId:e.pending?.id??outstandingBroken(e).find(x=>x.actor.id===card.characterId)?.procedure.id??null,round:e.round,turnId:e.combatants[e.turn].id,step:response?.step==='attack'||response?.step==='defense'||response?.step==='armor'||response?.step==='movement'||response?.step==='critical'||response?.step==='helmet'?response.step:null}}}
   if(c.type==='create'&&c.expectedCombatContext){const actual=session.dice!.find(r=>r.id===c.roll.id)!.combatContext,expected=c.expectedCombatContext;if(!actual||Object.entries(expected).some(([k,v])=>actual[k as keyof typeof actual]!==v))throw new AIError('combat_roll_stale','The requested combat step changed before these dice were saved. This roll was not reassigned. Refresh the pending roll and stage its current dice.',409);}
+  const pushed=c.type==='push'?session.dice?.find(r=>r.id===c.rollId):null;
+  reconcileCombatSheets(repo,record.id,session,pushed?.metadata.attribute&&pushed.result.attributeDamage>0&&(mechanicalCharacter(record.session.characters.find(ch=>ch.id===pushed.characterId)!).attributes[pushed.metadata.attribute].current??0)>0?{characterId:pushed.characterId,attribute:pushed.metadata.attribute}:undefined);
   const updated=repo.update(record.id,record.revision,session);db.prepare('INSERT INTO journey_actions VALUES (?,?,?,?)').run(record.id,c.actionId,fingerprint,new Date().toISOString());db.exec('COMMIT');return {record:updated,replayed:false};
  }catch(e){db.exec('ROLLBACK');throw e}
 }

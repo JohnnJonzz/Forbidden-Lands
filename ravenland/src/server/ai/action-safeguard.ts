@@ -1,3 +1,4 @@
+import {mechanicalCharacter} from '../mechanical-character';
 import {declaredAction} from '../../lib/rules/action-declaration';
 import {standardSkill} from '../../lib/rules/character-registry';
 import type {PreparedAction} from '../../lib/rules/action-preparation';
@@ -7,11 +8,14 @@ import type {VerifiedRollSubmission} from '../dice/gm-submission';
 
 export function actionSafeguard(character:Character,action:string){
  const declaration=declaredAction(action,character.name);if(!declaration)return null;
+ const broken=Object.entries(mechanicalCharacter(character).attributes).filter(([,a])=>a.current===0).map(([id])=>id);
+ if(declaration.skill&&broken.length)return {phase:'broken' as const,kind:declaration.kind,skill:standardSkill(declaration.skill),resources:[],brokenAttributes:broken,stateChangesPermitted:false,resolutionPermitted:false};
  const attention=resourceAttention(character,action,'declaration'),unavailable=attention.required.filter(r=>r.state==='empty'||r.state==='unknown');
  if(!declaration.skill&&!unavailable.length)return null;
  return {phase:unavailable.length?'clarify_resources' as const:'awaiting_roll' as const,kind:declaration.kind,skill:declaration.skill?standardSkill(declaration.skill):null,resources:unavailable,stateChangesPermitted:false,resolutionPermitted:false};
 }
 export function declarationReply(character:Character,guard:NonNullable<ReturnType<typeof actionSafeguard>>,preparation:PreparedAction|null){
+ if(guard.phase==='broken')return character.name+' is Broken ('+guard.brokenAttributes.join(', ')+'). This skill-dependent action cannot proceed. Your recorded condition and injuries persist; you can still describe permitted communication or movement, or seek help. No roll, recovery or resource expenditure was assumed.';
  const attempt=guard.kind==='ranged_attack'?`${character.name} lines up the attempted shot.`:guard.kind==='melee_attack'?`${character.name} prepares the attempted attack.`:`${character.name}'s declared attempt is pending.`;
  if(guard.phase==='clarify_resources')return attempt+' '+guard.resources.map(r=>r.state==='empty'?`Your recorded ${r.resource} are exhausted.`:`Availability of ${r.resource} is unknown (${r.recordStatus}).`).join(' ')+' How would you like to proceed, or what supplies are available? The attempt has not been resolved.';
  const skill=guard.skill!,pool=preparation?.status==='ready'&&preparation.basePool?` Verified base pool: ${preparation.basePool.base} attribute + ${preparation.basePool.skill} skill + ${preparation.basePool.gear} gear = ${preparation.basePool.total} dice.`:'';

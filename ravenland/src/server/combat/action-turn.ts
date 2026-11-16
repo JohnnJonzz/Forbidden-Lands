@@ -38,7 +38,7 @@ export async function playerActionTurn(repo:SqliteCampaignRepository,c:GMTurn,pr
  }
  const live=activeCombat(repo,c.campaignId)!;
  const view=dispatched.encounter;
- if(view&&!view.pending&&view.combatants.find(a=>a.id===view.activeId)?.side==='enemy'){
+ if(view?.status==='active'&&!view.pending&&!view.workflow.blocker&&view.combatants.find(a=>a.id===view.activeId)?.side==='enemy'){
   const continuationId=combatStepId(c.requestId,'after-player-actions');
   const savedContinuation=repo.db.prepare('SELECT 1 FROM combat_commands WHERE campaign_id=? AND request_id=?').get(c.campaignId,combatStepId(continuationId,'narrative'));
   if(!savedContinuation&&(live?.id!==view.id||live.revision!==dispatched.revision))throw new AIError('combat_conflict','The encounter changed after these actions completed. Use the current state; the saved actions will not repeat.',409);

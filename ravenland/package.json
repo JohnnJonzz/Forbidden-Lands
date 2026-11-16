@@ -61,7 +61,8 @@
     "test:combat-mobility": "node --import tsx tests/combat-mobility-browser.cjs",
     "test:encounter-activation": "node --import tsx tests/encounter-activation-browser.cjs",
     "test:action-interface": "node --import tsx tests/action-interface-browser.cjs",
-    "test:defense-sequencing": "node --import tsx tests/defense-sequencing-browser.cjs"
+    "test:defense-sequencing": "node --import tsx tests/defense-sequencing-browser.cjs",
+    "test:combat-lifecycle": "node --import tsx tests/combat-lifecycle-browser.cjs"
   },
   "dependencies": {
     "exceljs": "^4.4.0",

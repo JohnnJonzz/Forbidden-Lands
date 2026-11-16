@@ -18,7 +18,7 @@ import {mechanicalCharacter} from '../mechanical-character';
 
 export function executePlayerIntent(repo:SqliteCampaignRepository,record:CampaignRecord,e:CombatEncounter,actorId:string,intent:CombatIntent,principal:CharacterPrincipal|null,die:Die){
  const character=record.session.characters.find(c=>c.id===actorId),actor=e.combatants.find(c=>c.id===actorId&&c.side==='player');
- if(!character||!actor||actor.withdrawn)throw new AIError('combat_actor','The selected character is not an active encounter participant.',409);
+ if(!character||!actor)throw new AIError('combat_actor','The selected character is not an active encounter participant.',409);
  const attributes=mechanicalCharacter(character).attributes;
  actor.current=Object.fromEntries(Object.entries(attributes).flatMap(([key,v])=>v.current===null?[]:[[key,v.current]]));
  actor.broken=Object.values(actor.current).some(v=>v===0);
@@ -39,9 +39,9 @@ export function executePlayerIntent(repo:SqliteCampaignRepository,record:Campaig
   throw new AIError('combat_pending','Resolve the recorded decision or roll first. It cannot be replaced or bypassed by another action.',409);
  }
  if(e.combatants[e.turn].id!==actorId)throw new AIError('combat_turn',`${e.combatants[e.turn].name} owns the initiative. Your declared actions have not occurred.`,409);
+ if(intent.type==='end_turn'){nextTurn(e);return {waiting:false,message:`${actor.name}'s turn is advanced by the encounter controller.`};}
  if(actor.broken||actor.withdrawn)throw new AIError('combat_actor','A Broken or withdrawn character cannot take this action.',409);
  const rules=loadCombatRules(repo,record.id);e.mobilityRules=verifiedMobilityRules(rules.handbook);
- if(intent.type==='end_turn'){nextTurn(e);return {waiting:false,message:`${actor.name} ends the turn.`};}
  if(intent.type==='stand'){
   if(!actor.prone)throw new AIError('combat_stance','The character is already standing; no action was spent.',409);
   const cost=fastCost(actor);spend(actor,'fast');interruptReadiness(actor);actor.prone=false;recordAction(e,{actorId,kind:'stand',cost});return {waiting:false,message:`${actor.name} stands up.`};

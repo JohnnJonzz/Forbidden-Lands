@@ -974,3 +974,9 @@ RAVENLAND_REAL_SOURCEBOOK_DIR=/absolute/private/book-directory npm run test:retr
 ```
 
 See [the defensive sequencing investigation and report](docs/defensive-roll-sequencing.md) for confirmed defects, the unconfirmed historical Round 4 cause, exact compatibility rules, changed files, persistence and verification details. Original sourcebooks and temporary test databases are never committed.
+
+### Broken combatants and continuing after combat
+
+Combat now reconciles Broken sheet values, skips ineligible turns and concludes only after pending attacks, defenses, Armor and mandatory critical procedures finish. Unknown Strength/Wits injury causes can be confirmed in Combat; use the sheet's D66 button and attach the saved result when requested. A required helmet save uses **Stage requested Helmet**. Conditions and recorded injuries survive conclusion, refresh and restart. Healing and injury deadlines remain manually tracked.
+
+**End encounter** identifies outstanding mechanics. Trusted local **Encounter controller** controls distinguish an established withdrawal/surrender from an administrative interruption with a reason; neither discards required rolls. The next GM chat receives the verified outcome and established NPC motives without assuming theft, captivity or recovery. See [combat lifecycle rules, behavior, tests and limitations](docs/combat-lifecycle.md). Run `npm run test:combat-lifecycle` with `RAVENLAND_REAL_SOURCEBOOK_DIR` pointing to both private fifth-printing PDFs for the browser regression.

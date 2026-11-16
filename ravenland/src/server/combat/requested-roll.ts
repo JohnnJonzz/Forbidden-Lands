@@ -1,3 +1,5 @@
+import {outstandingBroken} from './lifecycle';
+import {helmetProtection} from './player-critical';
 import type {CombatEncounter} from '../../lib/combat/types';
 import type {Character} from '../../lib/types';
 import type {RequestedCombatRoll} from '../../lib/combat/requested-roll';
@@ -5,6 +7,7 @@ import {combatWorkflow} from './workflow';
 import {armorRating,defensePool} from './defensive-rolls';
 
 export function requestedCombatRoll(e:CombatEncounter|null,characters:Character[],characterId:string):RequestedCombatRoll|null{
+ if(e?.status==='active'&&!e.pending){const entry=outstandingBroken(e).find(x=>x.actor.id===characterId),ch=characters.find(c=>c.id===characterId);if(entry?.procedure.stage==='helmet'&&ch){const gear=helmetProtection(ch);if(gear!==null)return {context:{encounterId:e.id,actionId:entry.procedure.id,round:e.round,turnId:e.combatants[e.turn].id,step:'helmet'},label:'Helmet',purpose:'Helmet',attribute:null,base:0,skill:0,gear,modifier:0,isArmor:true,instructions:'Helmet critical protection: roll the recorded Gear Dice once, attach and Send. No push.'};}}
  if(e?.status!=='active'||!e.pending)return null;const p=e.pending,ch=characters.find(c=>c.id===characterId),response=combatWorkflow(e,characters).responses.find(r=>r.characterId===characterId);if(!ch||!response||!['defense','armor'].includes(response.step))return null;
  const context={encounterId:e.id,actionId:p.id,round:e.round,turnId:e.combatants[e.turn].id,step:response.step as 'defense'|'armor'};
  if(response.step==='defense'){

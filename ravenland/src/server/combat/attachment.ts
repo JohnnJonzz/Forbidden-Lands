@@ -3,7 +3,7 @@ import type {CombatEncounter} from '../../lib/combat/types';
 import type {VerifiedRollSubmission} from '../dice/gm-submission';
 import {AIError} from '../ai/config';
 import type {Session} from '../../lib/types';
-export function combatRollIntended(roll:VerifiedRollSubmission){return !roll.metadata.utility&&(!!roll.combatContext?.actionId&&!standardSkill(roll.label)||roll.rollType==='Attack'||roll.rollType==='Armor'||/^(?:Melee|Move|Marksmanship|Shield Parry:)/.test(roll.label))}
+export function combatRollIntended(roll:VerifiedRollSubmission){return roll.combatContext?.step==='critical'&&roll.metadata.utility?.kind==='D66'||roll.combatContext?.step==='helmet'&&roll.metadata.isArmor&&roll.label==='Helmet'||!roll.metadata.utility&&(!!roll.combatContext?.actionId&&!standardSkill(roll.label)||roll.rollType==='Attack'||roll.rollType==='Armor'||/^(?:Melee|Move|Marksmanship|Shield Parry:)/.test(roll.label))}
 export function validateAttachmentNarrative(e:CombatEncounter,roll:VerifiedRollSubmission,text:string,session:Session){
  const p=e.pending;if(!text||!p)return;
  if(p.phase==='defense_roll'&&p.targets.includes(roll.character.id)){const choice=text.match(/\b(?:I|we)\s+(?:(?:choose|declare|try to)\s+)?(dodge|parry)\b/i)?.[1].toLowerCase();if(choice&&choice!==p.defenses[roll.character.id])throw new AIError('combat_attachment','The defensive response was recorded before the attack roll. Narrative text cannot change it after seeing the result.',409)}
