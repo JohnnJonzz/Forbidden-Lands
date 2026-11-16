@@ -58,7 +58,8 @@
     "test:roll-timing": "node --import tsx tests/roll-timing-browser.cjs",
     "test:dice-chat": "node --import tsx tests/dice-chat-browser.cjs",
     "test:equipment-catalog": "node --import tsx tests/equipment-catalog-browser.cjs",
-    "test:combat-mobility": "node --import tsx tests/combat-mobility-browser.cjs"
+    "test:combat-mobility": "node --import tsx tests/combat-mobility-browser.cjs",
+    "test:encounter-activation": "node --import tsx tests/encounter-activation-browser.cjs"
   },
   "dependencies": {
     "exceljs": "^4.4.0",

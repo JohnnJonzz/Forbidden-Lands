@@ -926,3 +926,16 @@ Movement currently uses the existing one-on-one shared-range abstraction and an 
 RAVENLAND_REAL_SOURCEBOOK_DIR=/absolute/private/book-directory npm run test:combat-mobility
 RAVENLAND_REAL_SOURCEBOOK_DIR=/absolute/private/book-directory npm run test:retrieval-check
 ```
+
+### Phase 6.3.3: natural-language encounter activation
+
+You can begin an encounter directly in the main chat. Explicit local descriptions such as “a muddy forest road immediately outside The Hollow Watch,” “in the same hex,” or “this is a local scene, not a journey” no longer require another location confirmation. Conflicting hexes, travel requests and established distant locations still require correction; setup never changes campaign location, clock, weather or journey progress.
+
+The exact Edrus/one-bandit request preserves its NEAR starting plan and **Broadsword-only** equipment. When the bandit draws first, the existing controller records its Run into melee and declares its attack automatically. “The bandit acts first” does **not** force initiative: normal numbered cards are drawn, and chat/Initiative order explicitly report that limitation and the actual first actor. The test-only dice hook exercises both outcomes without adding a production override.
+
+Genuine clarifications keep the full plan across refresh/restart; a short affirmative resumes it. Replays cannot create duplicate encounters. Equipment failures and internal setup errors are reported distinctly from location conflicts. See [the activation investigation and verification report](docs/encounter-activation.md) for the complete path, changed files, tests and limitations.
+
+```bash
+RAVENLAND_REAL_SOURCEBOOK_DIR=/absolute/private/book-directory npm run test:encounter-activation
+RAVENLAND_REAL_SOURCEBOOK_DIR=/absolute/private/book-directory npm run test:retrieval-check
+```

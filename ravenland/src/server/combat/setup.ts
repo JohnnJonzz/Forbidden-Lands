@@ -7,7 +7,7 @@ import {encounterEnemies} from './setup-enemies';
 import {encounterParticipants} from './setup-participants';
 import {encounterScene,sceneQuestion,type EncounterScene} from './setup-scene';
 export {namedParticipants} from './setup-participants';
-export interface EncounterSetup {participants:string[];participantsKnown:boolean;enemies:string;range:CombatRange|null;declaration:string;enemyQuestion?:string;sceneQuestion?:string;scene?:EncounterScene;excludedParticipants?:string[];absentCharacters?:string[]}
+export interface EncounterSetup {initiativeRequest?:string;participants:string[];participantsKnown:boolean;enemies:string;range:CombatRange|null;declaration:string;enemyQuestion?:string;sceneQuestion?:string;scene?:EncounterScene;excludedParticipants?:string[];absentCharacters?:string[]}
 export function encounterRequest(text:string){return !/^\/combat\b/i.test(text)&&!/\b(?:explain|according to|rules? for|hypothetical|example of|how (?:do|does))\b/i.test(text)&&(/\b(?:start|begin|create|set up|run|play|request|want|have)\b[^.!?]{0,100}\b(?:encounter|combat|fight|ambush)\b/i.test(text)||/\b(?:fights?|are ambushed|is ambushed)\b/i.test(text)||/\bone[- ]on[- ]one\b/i.test(text))}
 export function legacySetup(repo:SqliteCampaignRepository,campaignId:string,characterId:string){
  if(latestSetup(repo,campaignId,characterId))return null;
@@ -27,9 +27,11 @@ export function parseEncounterSetup(text:string,s:Session,actorId:string,prior?:
  const findRange=(value:string)=>value.match(/\b(?:range|distance)\s+(?:(?:is|to|at)\s+)?(NEAR|SHORT|LONG|Arm)\b/i)??value.match(/\b(NEAR|SHORT|LONG|arm(?:['’]s)?(?: length)?)\s+range\b/i)??value.match(/\bat\s+(NEAR|SHORT|LONG|arm(?:['’]s)?(?: length)?)\b/i)??value.trim().match(/^(NEAR|SHORT|LONG|arm(?:['’]s)?(?: length)?)[.!]?$/i);
  const match=findRange(rangeText)??findRange(text);
  const range=match?(match[1].toLowerCase().startsWith('arm')?'Arm':match[1][0].toUpperCase()+match[1].slice(1).toLowerCase()) as CombatRange:base?.range??null;
+ const firstActor=(value:string)=>value.match(/[^.!?\n]{0,100}\b(?:acts?|goes?|attacks?) first\b[^.!?\n]{0,30}/i)?.[0].trim();
+ const initiativeRequest=firstActor(text)??base?.initiativeRequest??(base?firstActor(base.declaration):undefined);
  if(!fresh&&!party.recognized&&!enemies.mentioned&&!match&&!scene.recognized&&!setupAffirmed(text)&&!setupContinue(text))return null;
  const {recognized:_,...participants}=party;
- return {...participants,enemies:enemies.mentioned&&(!base?.enemies||base.enemyQuestion||enemies.explicit||/^(?:change|make|use|instead|actually)\b/i.test(text))?enemies.enemies:base?.enemies??'',enemyQuestion:enemies.mentioned&&(!base?.enemies||base.enemyQuestion||enemies.explicit||/^(?:change|make|use|instead|actually)\b/i.test(text))?enemies.question:base?.enemyQuestion,range,declaration:fresh?text:base?.declaration??text,scene:scene.scene,sceneQuestion:scene.question??(!fresh&&!scene.recognized?base?.sceneQuestion:undefined)};
+ return {...participants,initiativeRequest,enemies:enemies.mentioned&&(!base?.enemies||base.enemyQuestion||enemies.explicit||/^(?:change|make|use|instead|actually)\b/i.test(text))?enemies.enemies:base?.enemies??'',enemyQuestion:enemies.mentioned&&(!base?.enemies||base.enemyQuestion||enemies.explicit||/^(?:change|make|use|instead|actually)\b/i.test(text))?enemies.question:base?.enemyQuestion,range,declaration:fresh?text:base?.declaration??text,scene:scene.scene,sceneQuestion:scene.question??(!fresh&&!scene.recognized?base?.sceneQuestion:undefined)};
 }
 export function setupQuestion(d:EncounterSetup,s:Session){
  if(d.enemyQuestion)return d.participantsKnown?d.enemyQuestion:'Before drawing initiative, tell me which characters are taking part and the exact enemy counts.';if(d.sceneQuestion)return d.sceneQuestion;
