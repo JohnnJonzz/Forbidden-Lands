@@ -959,3 +959,18 @@ npm run dev
 ```
 
 See [the action interface report](docs/ai-action-interface.md) for the schema, exact changed paths, transactions/retries, private context boundaries, original source pages, tests and a manual live-model smoke procedure. Automated tests use both actual private PDFs and controlled SDK/RNG responses; they make no paid model calls. Shared-range movement limitations and unsupported Drop/Stow/maneuver adjudication remain.
+
+### Phase 6.4.1: defensive roll sequencing
+
+When Dodge, Parry or Armor is pending, the character sheet now shows the exact request and a **Stage requested …** button. Matching native skill/shield/Armor controls stage the same pool. The verified defensive modifier and pre-push values are retained, so pushing does not change the pool against which the saved result is validated.
+
+A verified Move result is consumed once before Armor becomes available. Zero defense successes still count as a recorded defense. Armor requires a proper unpushed Armor roll with the recorded rating; Custom Roll and Move cannot substitute through chat text. Attachment preflight and Recent Dice Rolls show the current phase and specific mismatch reason. A stale phase flag cannot conceal an unresolved defense or request a second defense after one is recorded. Damaged evidence stops for review.
+
+The same attack and its saved IDs survive refresh/restart and retries. Narration reports progress on that attack and the actual damage remaining after Armor. Player damage stays player-managed; no new player authentication, AI dice generation, campaign reset or sourcebook permission change is required.
+
+```bash
+RAVENLAND_REAL_SOURCEBOOK_DIR=/absolute/private/book-directory npm run test:defense-sequencing
+RAVENLAND_REAL_SOURCEBOOK_DIR=/absolute/private/book-directory npm run test:retrieval-check
+```
+
+See [the defensive sequencing investigation and report](docs/defensive-roll-sequencing.md) for confirmed defects, the unconfirmed historical Round 4 cause, exact compatibility rules, changed files, persistence and verification details. Original sourcebooks and temporary test databases are never committed.

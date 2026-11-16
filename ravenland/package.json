@@ -60,7 +60,8 @@
     "test:equipment-catalog": "node --import tsx tests/equipment-catalog-browser.cjs",
     "test:combat-mobility": "node --import tsx tests/combat-mobility-browser.cjs",
     "test:encounter-activation": "node --import tsx tests/encounter-activation-browser.cjs",
-    "test:action-interface": "node --import tsx tests/action-interface-browser.cjs"
+    "test:action-interface": "node --import tsx tests/action-interface-browser.cjs",
+    "test:defense-sequencing": "node --import tsx tests/defense-sequencing-browser.cjs"
   },
   "dependencies": {
     "exceljs": "^4.4.0",

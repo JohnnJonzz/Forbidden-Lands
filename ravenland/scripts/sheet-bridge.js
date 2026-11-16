@@ -1,6 +1,6 @@
 (() => {
  if(window.parent===window) return;
- let combatActive=true,preparingAttack=false;
+ let combatActive=true,preparingAttack=false,requestedRoll=null;
  let characterId=null, loading=false, savedRoll=null, pushInFlight=false, allowRestore=true, pendingSave=null, saveInFlight=false;
  const notify=(type,data={})=>window.parent.postMessage({type,...data},location.origin);
  const portraitFrame=document.querySelector('.portrait-frame'),placeholder=portraitFrame.innerHTML;
@@ -28,6 +28,11 @@
  app.retryRollSave=sendPending;
  const originalStage=app.stagePool.bind(app);app.stagePool=function(...args){preparingAttack=false;document.getElementById('btn-roll-pool').disabled=false;allowRestore=false;originalStage(...args);if(!savedRoll&&!pendingSave)pushState(false,'Roll dice to check whether a push is available.');notify('ravenland:focus-roller',{characterId})};
  const originalClear=app.clearPool.bind(app);app.clearPool=function(){originalClear();allowRestore=false;savedRoll=null;pendingSave=null;saveInFlight=false;document.getElementById('btn-retry-roll').hidden=true;pushState(false,'Roll dice to check whether a push is available.')};
+ function stageRequested(request){if(!request)return;let artifacts=[];if(request.isArmor){originalArmor();artifacts=app.artifactDice.slice()}else if(request.label.startsWith('Shield Parry:')){originalShield('Parry');artifacts=app.artifactDice.slice()}app.stagePool(request.label,request.attribute,request.base,request.skill,request.gear);app.stagedRoll.isArmor=request.isArmor;app.stagedRoll.requestedContext=request.context;app.artifactDice=artifacts;document.getElementById('pool-modifier').value=request.modifier;app.updatePoolPreview();}
+ const originalSkill=app.rollSkill.bind(app);app.rollSkill=function(id){const skill=app.skillsConfig.find(s=>s.id===id);if(requestedRoll&&requestedRoll.context.step==='defense'&&requestedRoll.label===skill?.name){stageRequested(requestedRoll);return}originalSkill(id)};
+ const originalShield=app.stageShield.bind(app);app.stageShield=function(action){if(action==='Parry'&&requestedRoll?.label.startsWith('Shield Parry:')){stageRequested(requestedRoll);return}originalShield(action)};
+ const originalArmor=app.stageArmor.bind(app);app.stageArmor=function(){if(requestedRoll?.isArmor){stageRequested(requestedRoll);return}originalArmor()};
+ window.addEventListener('message',event=>{if(event.origin!==location.origin||event.source!==window.parent)return;if(event.data?.type==='ravenland:requested-roll')requestedRoll=event.data.request;if(event.data?.type==='ravenland:stage-requested-roll')stageRequested(event.data.request)});
  const originalPoolRoll=app.rollStagedPool.bind(app);app.rollStagedPool=function(){if(preparingAttack){document.getElementById('btn-roll-pool').disabled=true;document.getElementById('staged-label').textContent='Combat attack is not prepared. Complete preparation before rolling.';return}originalPoolRoll()};
  const originalAttack=app.rollWeaponAttack.bind(app);
  const originalUnarmed=app.stageUnarmed.bind(app);app.stageUnarmed=function(){if(combatActive){preparingAttack=true;document.getElementById('btn-roll-pool').disabled=true;document.getElementById('staged-label').textContent='Combat attack is not prepared. Complete preparation before rolling.';notify('ravenland:prepare-weapon',{characterId,weaponIndex:-1});return}originalUnarmed()};
@@ -41,7 +46,7 @@
   pushState(false,'Saving roll…');
   const dice=roll.dice,successes=Math.max(0,dice.reduce((n,d)=>n+(d.value>=6?(d.type==='negative-skill'?-1:d.type==='artifact'?Math.floor((d.value-6)/2)+1:1):0),0));
   const event={id:roll.ravenlandRollId??(roll.ravenlandRollId=crypto.randomUUID()),characterId,skill:roll.label,attribute:dice.filter(d=>d.type==='base').map(d=>d.value),skillDice:dice.filter(d=>['skill','negative-skill'].includes(d.type)).map(d=>d.value),negativeSkill:dice.some(d=>d.type==='negative-skill'),gear:dice.filter(d=>d.type==='gear').map(d=>d.value),artifacts:dice.filter(d=>d.type==='artifact').map(d=>({sides:d.sides,value:d.value})),successes,pushed:false,attributeDamage:0,gearDamage:0,willpower:0,quarterDayId:null,requestId:null};
-  pendingSave={characterId,roll:event,metadata:{attribute:roll.attribute||null,isArmor:!!roll.isArmor,weaponIndex:roll.weaponIndex>=0?roll.weaponIndex:null,weaponDamage:roll.weaponDamage??null}};saveInFlight=false;sendPending();
+  pendingSave={characterId,roll:event,...(roll.requestedContext?{expectedCombatContext:roll.requestedContext}:{}),metadata:{attribute:roll.attribute||null,isArmor:!!roll.isArmor,weaponIndex:roll.weaponIndex>=0?roll.weaponIndex:null,weaponDamage:roll.weaponDamage??null}};saveInFlight=false;sendPending();
   appendBanes(event);document.getElementById('dice-summary').append(document.createTextNode(' · Push availability and save status are shown below.'));
  };
  function appendBanes(r){

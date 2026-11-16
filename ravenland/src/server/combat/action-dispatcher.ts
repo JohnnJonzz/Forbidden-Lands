@@ -27,7 +27,7 @@ export function dispatchActions(repo:SqliteCampaignRepository,c:GMTurn,raw:Actio
   if(!existing||existing.id!==plan.encounterId||!record)throw new AIError('combat_conflict','That encounter is no longer active. Refresh before declaring another action.',409);
   let e:CombatEncounter=existing;
   if(e.sceneHex!==record.session.campaign.hex||e.sceneLocation!==record.session.campaign.location)throw new AIError('combat_scene','The campaign location changed. Resolve this encounter before acting in another scene.',409);
-  const checkpoint={actions:e.actions?.length??0,encounterId:e.id,rolls:e.rolls.length,attacks:e.history.length,round:e.round,activeId:e.combatants[e.turn].id,revision:e.revision};
+  const checkpoint={pendingId:e.pending?.id??null,actions:e.actions?.length??0,encounterId:e.id,rolls:e.rolls.length,attacks:e.history.length,round:e.round,activeId:e.combatants[e.turn].id,revision:e.revision};
   const safePrompt=(text:string)=>{const guarded=synchronizeCombatConversation(e,text,record.session.characters);return guarded.startsWith(text.trim()+'\n\n')?text:'That outcome has not been verified. '+guarded};
   const outcomes:IntentOutcome[]=[];let stopReason:string|null=null;
   if(plan.disposition!=='actions')stopReason=plan.message?safePrompt(plan.message):'Specify the intended action or use the deterministic Combat controls.';
