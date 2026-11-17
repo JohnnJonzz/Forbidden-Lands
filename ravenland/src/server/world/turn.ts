@@ -1,10 +1,16 @@
+import { aiWorkflowPermit } from "../rulings/ai-policy";
 import type { SqliteCampaignRepository } from "../sqlite";
 import type { GMTurn } from "../../lib/ai/schema";
 import { worldDecisionSchema, type WorldEvent } from "../../lib/world/schema";
 import type { CharacterPrincipal } from "../character-access";
 import { requireCharacterAccess } from "../character-access";
 import { consequenceContext } from "../consequences/context";
-import { worldContext, worldHash, type WorldChooser } from "./context";
+import {
+  worldContext,
+  worldEvents,
+  worldHash,
+  type WorldChooser,
+} from "./context";
 import { dispatchWorldAction } from "./dispatcher";
 import { AIError } from "../ai/config";
 export const WORLD_ACTION_BUDGET = 3;
@@ -33,6 +39,7 @@ export async function worldTurn(
   const saved = read(receiptId);
   if (saved) return saved.worldBoundary as string;
   const summaries: string[] = [];
+  const aiPermit = aiWorkflowPermit(repo, c);
   function finish(text?: string) {
     if (text && summaries.at(-1) !== text) summaries.push(text);
     const narration = summaries.join("\n\n");
@@ -71,7 +78,7 @@ export async function worldTurn(
       return finish(
         "Historical NPC narration has no verified world-action receipt. A trusted local controller must reconcile it before the next NPC action. No search, theft or elapsed round has been replayed; the saved injury and deadline remain authoritative.",
       );
-    if (context.pending) return finish(context.pending.summary);
+    if (context.pending && !aiPermit) return finish(context.pending.summary);
     if (!context.actors.length)
       return finish(
         summaries.length
@@ -110,6 +117,36 @@ export async function worldTurn(
           ? undefined
           : "The GM reached a scene boundary. No additional NPC action or elapsed time was verified. Resolve the visible player decision, roll or adjudication before continuing.",
       );
+    const held = context.pending
+      ? worldEvents(repo, c.campaignId).find(
+          (v) => v.requestId === context.pending!.requestId,
+        )?.intent
+      : null;
+    if (
+      held &&
+      !(
+        aiPermit &&
+        held.kind === "interact" &&
+        (!process.env.RAVENLAND_AI_RULINGS ||
+          process.env.RAVENLAND_AI_RULINGS === "enabled") &&
+        repo.db
+          .prepare("SELECT routine_ai FROM gm_policy WHERE campaign_id=?")
+          .get(c.campaignId)?.routine_ai !== 0
+      ) &&
+      [
+        "kind",
+        "actorId",
+        "targetId",
+        "itemRef",
+        "destination",
+        "interaction",
+      ].every(
+        (k) =>
+          (held as unknown as Record<string, unknown>)[k] ===
+          (parsed.data.action as unknown as Record<string, unknown>)[k],
+      )
+    )
+      return finish(context.pending!.summary);
     const event = dispatchWorldAction(
       {
         type: "propose",
@@ -122,6 +159,8 @@ export async function worldTurn(
       },
       repo,
       principal,
+      undefined,
+      aiPermit,
     );
     summaries.push(event.summary);
     if (

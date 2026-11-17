@@ -124,10 +124,7 @@ test("verified item existence does not authorize transfer or invent quantities",
     const before = JSON.stringify(f.repo.get(f.r.id)!.session.characters);
     const p = f.propose("transfer", { itemRef: "gear:0" });
     assert.equal(run(f, p).code, "transfer_unsupported");
-    assert.equal(
-      run(f, adjudicate(f, p.requestId, 0)).code,
-      "transfer_unsupported",
-    );
+    assert.throws(()=>run(f, adjudicate(f, p.requestId, 0)),/no safe resolution adapter/);
     assert.equal(
       JSON.stringify(f.repo.get(f.r.id)!.session.characters),
       before,

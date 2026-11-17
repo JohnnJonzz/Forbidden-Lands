@@ -1,3 +1,4 @@
+import {holdFor} from '../rulings/store';
 import {worldEvents} from '../world/context';
 import {readConsequences} from './store';
 import type {Consequence,TreatmentAttempt} from '../../lib/consequences/schema';
@@ -10,10 +11,11 @@ import {treatmentRules} from './rules';
 import {activeCombat} from '../combat/store';
 export function treatmentPool(repo:SqliteCampaignRepository,c:Consequence,healerId:string){
  if(worldEvents(repo,c.campaignId).some(v=>v.sceneId===c.source.encounterId&&v.actorId===healerId&&v.code==='departed'&&v.status==='completed'))throw new AIError('consequence_presence','This NPC has a verified departure and cannot treat the patient here.',409);
- const rules=treatmentRules(repo,c.campaignId),source=injurySource(repo,c),patientId=c.characterIds[0],session=repo.get(c.campaignId)!.session;
+ const rules=treatmentRules(repo,c.campaignId,c.id),source=injurySource(repo,c),patientId=c.characterIds[0],session=repo.get(c.campaignId)!.session;
  if(!source||!c.state.deadline||c.state.deadline.value===null||c.status==='resolved')throw new AIError('consequence_treatment','Establish the actual lethal deadline before preparing treatment. A resolved injury cannot be treated again.',409);
  if(activeCombat(repo,c.campaignId))throw new AIError('consequence_treatment','Treatment during active initiative requires combat adjudication. It cannot bypass the player-action dispatcher or pending attacks.',409);
  if(c.state.deadline.clockReviewRequired)throw new AIError('consequence_treatment','Reconcile the actual elapsed time before treatment; no time was assumed.',409);
+ const hold=holdFor(repo,c.campaignId,c.id);if(hold)throw new AIError('consequence_ruling_hold','Resolve the scoped treatment ruling first: '+hold.question,409);
  const healer=session.characters.find(c=>c.id===healerId),npc=source.encounter.combatants.find(a=>a.side==='enemy'&&a.id===healerId),combatant=source.encounter.combatants.find(a=>a.id===healerId),recordedAccess=c.state.sceneAccess,clock=session.campaign,access=recordedAccess&&recordedAccess.hex===clock.hex&&recordedAccess.location===clock.location&&recordedAccess.date===clock.date&&recordedAccess.quarter===clock.quarter?recordedAccess:null;
  if(!healer&&!npc)throw new AIError('consequence_healer','Choose an actual recorded healer; no new NPC or statistics were invented.',409);
  if(c.state.attempts.some(a=>a.healerId===healerId&&a.status!=='cancelled'))throw new AIError('consequence_attempt','That person already has an attempt reserved or recorded for this injury. Each person may try only once.',409);

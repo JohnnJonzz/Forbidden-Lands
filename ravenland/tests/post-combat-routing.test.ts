@@ -121,7 +121,7 @@ for (const status of ["pending", "cancelled", "superseded", "resumed"] as const)
           );
           assert.equal((await gm.run(c)).replayed, true);
         }
-        assert.equal(choices, 1);
+        assert.equal(choices, 3);
         assert.equal(worldEvents(f.repo, f.r.id).length, 1);
         assert.equal(baseline(f), before);
         assert.equal(

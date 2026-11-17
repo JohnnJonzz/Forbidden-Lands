@@ -1,3 +1,4 @@
+import {mutationDenial} from '@/server/mutation-authority';
 import {NextResponse} from 'next/server';
 import {z} from 'zod';
 import {getLocalRepository} from '@/server/sqlite';
@@ -11,7 +12,7 @@ export async function GET(request:Request){try{
  const campaignId=z.string().uuid().parse(new URL(request.url).searchParams.get('campaignId'));
  return NextResponse.json(readGMInstructions(getLocalRepository(),campaignId),{headers:privateHeaders});
 }catch(error){const response=aiFailure(error);response.headers.set('Cache-Control','private, no-store');return response}}
-export async function POST(request:Request){try{
+export async function POST(request:Request){const denied=mutationDenial(request);if(denied)return denied;try{
  requireGM(request.headers.get('x-ravenland-gm-token'));
  const command=await aiBody(request,512000);
  return NextResponse.json(changeGMInstructions(getLocalRepository(),command),{headers:privateHeaders});

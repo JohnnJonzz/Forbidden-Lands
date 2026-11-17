@@ -1,3 +1,4 @@
+import {mutationDenial} from '@/server/mutation-authority';
 import { AIError } from "@/server/ai/config";
 import { NextResponse } from "next/server";
 import { z } from "zod";
@@ -29,7 +30,7 @@ export async function GET(request: Request) {
     return aiFailure(error);
   }
 }
-export async function POST(request: Request) {
+export async function POST(request: Request) {const denied=mutationDenial(request);if(denied)return denied;
   try {
     const c = worldCommandSchema.parse(await aiBody(request)),
       principal = gameplayPrincipal(request, c.campaignId, c.characterId);

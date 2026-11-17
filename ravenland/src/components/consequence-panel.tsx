@@ -1,5 +1,6 @@
 'use client';
 import {useEffect,useState} from 'react';
+import {RulingPanel} from './ruling-panel';
 import {WorldActionPanel} from './world-action-panel';
 import type {Character,JournalEntry} from '@/lib/types';
 import type {ConsequenceCommand} from '@/lib/consequences/schema';
@@ -12,6 +13,7 @@ export function ConsequencePanel({campaignId,actorId,characters,journal,revision
  async function run(command:Record<string,unknown>){setBusy(true);setError('');try{const r=await fetch('/api/consequences',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({campaignId,characterId:actorId,requestId:crypto.randomUUID(),confirmed:true,...command})}),v=await r.json();if(!r.ok)throw Error(v.error);await refresh();window.dispatchEvent(new Event('ravenland:ai-refresh'))}catch(e){setError((e as Error).message)}finally{setBusy(false)}}
  const focus=context?.focus,urgent=focus&&['life','mandatory'].includes(focus.urgency),npcs=focus?.patient?.survivingNPCs??[],choices=[...characters.map(c=>({id:c.id,name:c.name})),...npcs],selected=choices.find(c=>c.id===healer),npc=!!npcs.find(c=>c.id===healer);
  return <details className={'consequence-panel'+(urgent?' urgent':'')} id="consequence-panel" open={urgent||undefined}><summary>Unresolved situations{focus?' · '+focus.description:''}</summary><div>
+ <RulingPanel campaignId={campaignId} characterId={actorId} revision={revision}/>
  <WorldActionPanel campaignId={campaignId} characterId={actorId} revision={revision}/>
  {error&&<p role="alert">{error}</p>}{focus&&<section aria-label="Current consequence"><strong>{focus.urgency.replaceAll('_',' ')} · {focus.status.replaceAll('_',' ')}</strong><p>{focus.nextProcedure}</p>{focus.patient&&<p>{focus.patient.name} · Original critical D66 {focus.patient.sourceCritical.value} · Current attributes remain authoritative on the sheet.</p>}
  {focus.state.deadline?.value===null&&focus.characterIds[0]&&<button disabled={busy} onClick={()=>actorId===focus.characterIds[0]?onOpenCharacter(actorId):onActAs(focus.characterIds[0])}>{actorId===focus.characterIds[0]?'Open sheet for Injury deadline':'Act as '+focus.patient?.name}</button>}

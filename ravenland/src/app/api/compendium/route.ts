@@ -1,3 +1,4 @@
+import {mutationDenial} from '@/server/mutation-authority';
 import {NextResponse} from 'next/server';
 import {z} from 'zod';
 import {getLocalRepository} from '@/server/sqlite';
@@ -9,7 +10,7 @@ export const runtime='nodejs';
 const id=z.string().uuid(),headers={'Cache-Control':'private, no-store','Vary':'x-ravenland-gm-token'};
 export async function GET(request:Request){try{requireGM(request.headers.get('x-ravenland-gm-token'));const p=new URL(request.url).searchParams,campaignId=id.parse(p.get('campaignId')),store=new CompendiumStore(getLocalRepository());if(p.get('type')==='metadata-preview')return NextResponse.json({suggestions:store.metadataPreview(campaignId),limit:200},{headers});return NextResponse.json(p.has('id')?{rule:store.get(campaignId,id.parse(p.get('id')),'admin')}:{rules:store.list(campaignId,p.get('topic')?z.enum(ruleTopics).parse(p.get('topic')):undefined,p.get('visibility')?z.enum(ruleVisibilities).parse(p.get('visibility')):undefined,z.string().max(400).parse(p.get('query')??'')).map(({body,...summary})=>summary)},{headers})}catch(e){return fail(e)}}
 function fail(e:unknown){const response=aiFailure(e);response.headers.set('Cache-Control','private, no-store');return response}
-export async function POST(request:Request){try{requireGM(request.headers.get('x-ravenland-gm-token'));const p=new URL(request.url).searchParams;
+export async function POST(request:Request){const denied=mutationDenial(request);if(denied)return denied;try{requireGM(request.headers.get('x-ravenland-gm-token'));const p=new URL(request.url).searchParams;
  if(p.get('type')==='import'){
   const origin=request.headers.get('origin');if(origin&&new URL(origin).host!==request.headers.get('host'))throw new AIError('origin','Origin mismatch',403);
   const filename=(p.get('filename')??'').split(/[\\/]/).at(-1)!;if(!/\.(md|txt)$/i.test(filename))throw new AIError('file','Import a .md or .txt file.');if(!['text/plain','text/markdown','text/x-markdown','application/octet-stream'].includes(request.headers.get('content-type')?.split(';')[0]??''))throw new AIError('file','Use a Markdown or plain-text file.');if(!request.body)throw new AIError('file','Choose a text file.');const reader=request.body.getReader(),buffers:Uint8Array[]=[];let size=0;try{while(true){const {done,value}=await reader.read();if(done)break;size+=value.byteLength;if(size>1048576)throw new AIError('size','Text import exceeds 1 MB.',413);buffers.push(value)}}catch(e){await reader.cancel().catch(()=>{});throw e}finally{reader.releaseLock()}

@@ -82,6 +82,7 @@ export const worldCommandSchema = z.discriminatedUnion("type", [
 export type WorldCommand = z.infer<typeof worldCommandSchema>;
 export type Duration = z.infer<typeof durationSchema>;
 export interface WorldEvent {
+  scopeFingerprint?:string;
   requestId: string;
   campaignId: string;
   sceneId: string;

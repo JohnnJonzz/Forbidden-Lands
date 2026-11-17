@@ -1,3 +1,4 @@
+import {mutationDenial} from '@/server/mutation-authority';
 import {NextResponse} from 'next/server';
 import {z,ZodError} from 'zod';
 import {getLocalRepository} from '@/server/sqlite';
@@ -10,7 +11,7 @@ export const runtime='nodejs';
 function libraryFailure(error:unknown){return aiFailure(error instanceof AIError||error instanceof ZodError||error instanceof SyntaxError?error:new AIError('library','Sourcebook request failed. Check storage and retry.',500))}
 const id=z.string().uuid(),headers={'Cache-Control':'private, no-store','Vary':'x-ravenland-gm-token'};
 export async function GET(request:Request){try{requireGM(request.headers.get('x-ravenland-gm-token'));const p=new URL(request.url).searchParams,campaignId=id.parse(p.get('campaignId')),library=new SourcebookLibrary(getLocalRepository());const query=p.get('query'),chunkId=p.get('chunkId');return NextResponse.json(chunkId?{passages:library.passage(campaignId,chunkId)}:query!==null?{passages:library.search({campaignId,query,...(p.get('category')?{category:p.get('category')}:{}),...(p.get('documentId')?{documentId:p.get('documentId')}:{})},'admin')}:{documents:library.list(campaignId),maxUploadBytes:maxPDFBytes()},{headers})}catch(error){const r=libraryFailure(error);r.headers.set('Cache-Control','private, no-store');return r}}
-export async function POST(request:Request){try{requireGM(request.headers.get('x-ravenland-gm-token'));const library=new SourcebookLibrary(getLocalRepository());
+export async function POST(request:Request){const denied=mutationDenial(request);if(denied)return denied;try{requireGM(request.headers.get('x-ravenland-gm-token'));const library=new SourcebookLibrary(getLocalRepository());
  if(request.headers.get('content-type')?.split(';')[0]==='application/pdf'){
   const origin=request.headers.get('origin');if(origin&&new URL(origin).host!==request.headers.get('host'))throw new AIError('origin','Origin mismatch',403);
   const p=new URL(request.url).searchParams,campaignId=id.parse(p.get('campaignId')),metadata=sourceMetadataSchema.parse({title:p.get('title'),category:p.get('category'),...(p.get('visibility')?{visibility:p.get('visibility')}:{})});

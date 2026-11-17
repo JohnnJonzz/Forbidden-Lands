@@ -1,3 +1,7 @@
+import {CompendiumStore} from '../src/server/compendium/store';
+import {rulings} from '../src/server/rulings/store';
+import {resolveRuling,currentRulingScope} from '../src/server/rulings/service';
+import {treatmentRules} from '../src/server/consequences/rules';
 import type { TestContext } from "node:test";
 import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
@@ -106,6 +110,15 @@ export async function realWorldActionTests(
         assert.equal(injury.state.deadline!.value, 4);
         assert.equal(injury.state.resolution, null);
         assert.equal(JSON.stringify(repo.get(f.r.id)!.session), before);
+        const rule=new CompendiumStore(repo).save(f.r.id,{title:'Isolated Healing exception',body:'Test-only scoped Healing exception.',topic:'Combat',documentType:'House Rule',visibility:'Player Visible',sourceReference:'Isolated test ruling',overrideScope:'Lifesaving Healing'});
+        assert.throws(()=>treatmentRules(repo,f.r.id,f.injury.id));
+        const held=rulings(repo,f.r.id).find(r=>r.domain==='healing_rule'&&r.status==='awaiting_review')!;
+        resolveRuling({campaignId:f.r.id,characterId:f.patient.id,requestId:randomUUID(),rulingId:held.id,revision:held.revision,expectedScope:currentRulingScope(repo,held),reason:'Explicit isolated review: use original verified official procedure for this injury only.',decision:'apply',effect:{type:'healing_rule',consequenceId:f.injury.id,rules:[{id:rule.id,revision:rule.revision}],interpretation:'official_in_this_scope'},confirmed:true},repo,f.principal);
+        assert.ok(treatmentRules(repo,f.r.id,f.injury.id).sources.length,'Original sourcebook procedure remains required after scoped review');
+        assert.equal(readConsequences(repo,f.r.id).find(c=>c.id===f.injury.id)!.state.deadline!.elapsed,1);
+        assert.equal(JSON.stringify(repo.get(f.r.id)!.session),before);
+        new CompendiumStore(repo).delete(f.r.id,rule.id,rule.revision);
+
       } finally {
         for (const id of docs)
           repo.db.prepare("DELETE FROM source_documents WHERE id=?").run(id);

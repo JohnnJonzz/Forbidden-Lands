@@ -1,3 +1,4 @@
+import {observeClockChange} from './time/service';
 import {reindexExistingCuratedRules} from './compendium/indexer';
 import {explorationFor} from '../lib/map/exploration';
 import { DatabaseSync } from 'node:sqlite';
@@ -27,7 +28,7 @@ export class SqliteCampaignRepository implements CampaignRepository {
  select(id:string){const record=this.get(id);if(!record)throw new Error('Campaign not found');this.db.prepare("INSERT INTO application_meta(key,value) VALUES ('active_campaign',?) ON CONFLICT(key) DO UPDATE SET value=excluded.value").run(id);return record}
  current(){const active=this.db.prepare("SELECT value FROM application_meta WHERE key='active_campaign'").get() as {value:string}|undefined;const current=active?this.get(active.value):null;if(current)return current;const existing=this.list()[0];return existing?this.select(existing.id):this.create(initialSession)}
  create(session:Session){const data=sessionSchema.parse(session);this.normalizeExploration(data);const id=randomUUID(),now=new Date().toISOString();this.db.exec('BEGIN IMMEDIATE');try{this.db.prepare('INSERT INTO campaigns VALUES (?,1,?,?,?)').run(id,JSON.stringify(data),now,now);for(const character of data.characters){if(character.portraitId)this.db.prepare('INSERT OR IGNORE INTO campaign_images(campaign_id,image_id,name,category) SELECT ?,image_id,name,category FROM campaign_images WHERE image_id=? LIMIT 1').run(id,character.portraitId)}const record=this.select(id);this.db.exec('COMMIT');return record}catch(e){this.db.exec('ROLLBACK');throw e}}
- update(id:string,revision:number,session:Session,options?:{workflowValidated?:boolean;explorationValidated?:boolean;locationsValidated?:boolean}){
+ update(id:string,revision:number,session:Session,options?:{workflowValidated?:boolean;explorationValidated?:boolean;locationsValidated?:boolean;elapsedQuarters?:number;timeEventId?:string}){
   const data=sessionSchema.parse(session),previous=this.get(id);
   if(!previous||previous.revision!==revision)throw new ConflictError('This campaign changed in another tab. Export your local changes, then reload the campaign.');
   if(!options?.explorationValidated&&JSON.stringify(data.exploration)!==JSON.stringify(previous.session.exploration))throw new ConflictError('Exploration edits must use the map exploration service');
@@ -44,9 +45,12 @@ export class SqliteCampaignRepository implements CampaignRepository {
   for(const update of previous.session.chatJourney?.updates??[]){if(JSON.stringify(data.chatJourney?.updates.find(u=>u.id===update.id))!==JSON.stringify(update))throw new Error('Quarter-day resolution history is immutable')}
   for(const form of previous.session.chatJourney?.forms.filter(f=>f.entryId)??[]){if(JSON.stringify(data.chatJourney?.forms.find(f=>f.id===form.id))!==JSON.stringify(form))throw new Error('Submitted activity forms are immutable')}
   if(!options?.workflowValidated&&JSON.stringify(data.chatJourney)!==JSON.stringify(previous.session.chatJourney))throw new ConflictError('Quarter-day workflow changes must use validated journey actions');
+  const own=!this.db.isTransaction;if(own)this.db.exec('BEGIN IMMEDIATE');try{
   const result=this.db.prepare('UPDATE campaigns SET public_state=?,revision=revision+1,updated_at=? WHERE id=? AND revision=?').run(JSON.stringify(data),new Date().toISOString(),id,revision);
   if(!result.changes)throw new ConflictError('This campaign changed in another tab. Export your local changes, then reload the campaign.');
-  return this.get(id)!;
+  observeClockChange(this,id,previous.session.campaign,data.campaign,options?.timeEventId??'revision:'+(revision+1),options?.elapsedQuarters);
+  if(own)this.db.exec('COMMIT');return this.get(id)!;
+  }catch(error){if(own)this.db.exec('ROLLBACK');throw error;}
  }
 
  private normalizeExploration(data:Session,previous?:Session){const hexes=this.db.prepare('SELECT coordinate FROM geography_hexes').all() as {coordinate:string}[];if(data.exploration||hexes.some(h=>h.coordinate===data.campaign.hex)||previous&&hexes.some(h=>h.coordinate===previous.campaign.hex)){const state=explorationFor(data,hexes);if(previous&&previous.campaign.hex!==data.campaign.hex&&hexes.some(h=>h.coordinate===previous.campaign.hex))state.explored=[...new Set([...state.explored,previous.campaign.hex])].sort();data.exploration=state}}

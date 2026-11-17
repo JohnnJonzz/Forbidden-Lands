@@ -93,7 +93,7 @@ const { spawn } = require("node:child_process"),
     db((r) =>
       r.db
         .prepare(
-          "SELECT result_json FROM consequence_commands WHERE campaign_id=? AND json_extract(result_json,'$.worldEvent') IS NOT NULL",
+          "SELECT result_json FROM consequence_commands WHERE campaign_id=? AND json_extract(result_json,'$.worldEvent') IS NOT NULL ORDER BY created_at,rowid",
         )
         .all(id)
         .map((v) => JSON.parse(v.result_json).worldEvent),
@@ -253,7 +253,8 @@ const { spawn } = require("node:child_process"),
       reply.text,
       /setup is no longer pending|Public Rules library does not establish/,
     );
-    assert.equal(calls().length, 2);
+    // A fresh request may choose an alternative to a protected pending action.
+    assert.equal(calls().length, 3);
     unchanged();
     const payload = db((r) =>
       JSON.parse(
@@ -282,7 +283,7 @@ const { spawn } = require("node:child_process"),
     );
     assert.equal(replay.at(-1).reply.replayed, true);
     assert.equal(worldEvents().length, 2);
-    assert.equal(calls().length, 2);
+    assert.equal(calls().length, 3);
     await page.reload();
     await page
       .getByRole("region", { name: "World actions", exact: true })

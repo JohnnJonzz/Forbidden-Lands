@@ -1,3 +1,21 @@
+import {
+  validReviewedPermit,
+  type ReviewedRulingPermit,
+} from "../rulings/review-permit";
+import { advanceTime } from "../time/service";
+import {
+  routineRuling,
+  isAIWorkflow,
+  actionScope,
+  type AIWorkflowPermit,
+} from "../rulings/ai-policy";
+import { recordWorldHold } from "../rulings/world-holds";
+import {
+  makeRuling,
+  rulingTransition,
+  rulingHash,
+  rulings,
+} from "../rulings/store";
 import { secureDie, type Die } from "../combat/engine";
 import { randomUUID } from "node:crypto";
 import type { CombatSource } from "../../lib/combat/types";
@@ -41,12 +59,15 @@ export function dispatchWorldAction(
   repo: SqliteCampaignRepository,
   principal: CharacterPrincipal | null,
   die: Die = secureDie,
+  aiPermit?: AIWorkflowPermit,
+  reviewed?: ReviewedRulingPermit,
 ): WorldEvent {
   const c = worldCommandSchema.parse(raw);
   requireCharacterAccess(principal, c.campaignId, c.characterId);
   const db = repo.db,
     hash = worldHash(c);
-  db.exec("BEGIN IMMEDIATE");
+  const own = !db.isTransaction;
+  if (own) db.exec("BEGIN IMMEDIATE");
   try {
     const old = db
       .prepare(
@@ -67,7 +88,7 @@ export function dispatchWorldAction(
           "This request belongs to another procedure.",
           409,
         );
-      db.exec("COMMIT");
+      if (own) db.exec("COMMIT");
       return { ...event, replayed: true };
     }
     const context = worldContext(repo, c.campaignId, principal),
@@ -137,7 +158,9 @@ export function dispatchWorldAction(
           prior.sceneId !== e.id ||
           prior.status !== "awaiting_adjudication" ||
           worldEvents(repo, c.campaignId).some(
-            (v) => v.pendingId === prior.requestId,
+            (v) =>
+              v.pendingId === prior.requestId &&
+              (v.status === "completed" || v.code === "declined"),
           )
         )
           throw new AIError(
@@ -145,10 +168,37 @@ export function dispatchWorldAction(
             "This proposal is missing or has already been adjudicated.",
             409,
           );
-        if (c.decision === "approve" && prior.state !== c.expectedState)
+        if (
+          c.decision === "approve" &&
+          prior.state !== c.expectedState &&
+          !validReviewedPermit(
+            repo,
+            reviewed,
+            c.campaignId,
+            c.pendingId,
+            c.expectedState,
+          )
+        )
           throw new AIError(
             "world_stale",
             "The proposed action is stale. Decline it and propose a new action against the current scene.",
+            409,
+          );
+        if (
+          c.decision === "approve" &&
+          [
+            "transfer_unsupported",
+            "possession_unverified",
+            "motivation_required",
+            "interaction_unsupported",
+            "movement_destination",
+          ].includes(prior.code)
+        )
+          throw new AIError(
+            "ruling_unsupported",
+            "This hold has no safe resolution adapter. A generic duration approval cannot resolve " +
+              prior.code +
+              ".",
             409,
           );
         event.pendingId = prior.requestId;
@@ -165,6 +215,7 @@ export function dispatchWorldAction(
       }
       if (action && (c.type === "propose" || approved)) {
         event.intent = action;
+        event.scopeFingerprint = actionScope(repo, c.campaignId, action);
         event.actorId = action.actorId;
         event.targetId = action.targetId;
         const actor = context.actors.find((a) => a.id === action!.actorId),
@@ -201,7 +252,11 @@ export function dispatchWorldAction(
             "historical_review",
             "Reconcile historical narration first. No past NPC action or elapsed round was accepted or replayed.",
           );
-        else if (c.type === "propose" && context.pending)
+        else if (
+          c.type === "propose" &&
+          context.pending &&
+          !isAIWorkflow(repo, aiPermit, c.campaignId, c.characterId)
+        )
           outcome(
             "blocked",
             "pending_decision",
@@ -225,6 +280,18 @@ export function dispatchWorldAction(
             "awaiting_adjudication",
             "motivation_required",
             "The NPC motivation and relevant circumstances lack an authoritative scene reference. Establish them before resolving this action.",
+          );
+        else if (
+          action.kind === "search" &&
+          action.itemRef &&
+          !context.possessions.some(
+            (i) => i.ref === action.itemRef && i.ownerId === action.targetId,
+          )
+        )
+          outcome(
+            "awaiting_adjudication",
+            "possession_unverified",
+            "The specified object or possession is not verified in accessible authorized inventory. No container or search result was invented.",
           );
         else if (action.kind === "transfer") {
           const item = context.possessions.find(
@@ -281,6 +348,9 @@ export function dispatchWorldAction(
               v.actorId === action.actorId &&
               v.targetId === action.targetId &&
               v.intent?.destination === action.destination &&
+              v.intent?.itemRef === action.itemRef &&
+              (!v.scopeFingerprint ||
+                v.scopeFingerprint === event.scopeFingerprint) &&
               action.kind !== "advance_time" &&
               action.kind !== "interact",
           )
@@ -290,7 +360,26 @@ export function dispatchWorldAction(
             "already_completed",
             "This NPC action has already been recorded in this scene. Choose a different supported next step; no event or time was repeated.",
           );
-        else if (action.kind === "observe")
+        else if (action.kind === "observe") {
+          const r = routineRuling(
+            repo,
+            aiPermit,
+            c.campaignId,
+            c.characterId,
+            e.id,
+            action,
+            event.requestId,
+          );
+          if (r) {
+            event.evidence.push("ruling:" + r.id);
+            r.receiptId = event.requestId;
+            rulingTransition(
+              repo,
+              r,
+              "applied",
+              "Verified observation of present scene; no hidden discovery or time.",
+            );
+          }
           outcome(
             "completed",
             "observed",
@@ -299,7 +388,77 @@ export function dispatchWorldAction(
               (target?.name ?? "the current scene") +
               ". No hidden information, discovery, inventory change or elapsed duration is established.",
           );
-        else if (!approved)
+        } else if (
+          isAIWorkflow(repo, aiPermit, c.campaignId, c.characterId) &&
+          action.kind === "interact" &&
+          routineRuling(
+            repo,
+            aiPermit,
+            c.campaignId,
+            c.characterId,
+            e.id,
+            action,
+            event.requestId,
+          )
+        ) {
+          const r = routineRuling(
+            repo,
+            aiPermit,
+            c.campaignId,
+            c.characterId,
+            e.id,
+            action,
+            event.requestId,
+          )!;
+          event.evidence.push("ruling:" + r.id);
+          outcome(
+            "completed",
+            "interacted",
+            actor.name +
+              " makes a bounded " +
+              action.interaction +
+              " interaction. No player decision, resource change, roll result or precise elapsed interval is established.",
+          );
+          if (context.pending && context.pending.code === "duration_required") {
+            const held = worldEvents(repo, c.campaignId).find(
+              (v) => v.requestId === context.pending!.requestId,
+            )?.intent;
+            if (
+              held?.kind === "interact" &&
+              held.actorId === action.actorId &&
+              held.targetId === action.targetId &&
+              held.interaction === action.interaction
+            )
+              event.pendingId = context.pending.requestId;
+          }
+          r.receiptId = event.requestId;
+          rulingTransition(
+            repo,
+            r,
+            "applied",
+            "Validated routine interaction; no clock change.",
+          );
+        } else if (!approved) {
+          if (action.kind === "search") {
+            const access = routineRuling(
+              repo,
+              aiPermit,
+              c.campaignId,
+              c.characterId,
+              e.id,
+              action,
+              event.requestId,
+            );
+            if (access) {
+              event.evidence.push("ruling:" + access.id);
+              rulingTransition(
+                repo,
+                access,
+                "applied",
+                "Verified access only; significant duration still requires its own decision.",
+              );
+            }
+          }
           outcome(
             "awaiting_adjudication",
             "duration_required",
@@ -308,10 +467,11 @@ export function dispatchWorldAction(
               action.kind.replace("_", " ") +
               ". The action has not completed. Its duration and any required access or uncertainty must be explicitly adjudicated; no elapsed round is established.",
           );
-        else {
+        } else {
           const obligations = readConsequences(repo, c.campaignId).filter(
             (v) =>
               v.state.deadline &&
+              v.source.encounterId === e.id &&
               !["resolved", "superseded"].includes(v.status),
           );
           if (!duration)
@@ -347,7 +507,7 @@ export function dispatchWorldAction(
             try {
               for (const v of obligations)
                 if (duration.amount > 0) {
-                  const rules = treatmentRules(repo, v.campaignId);
+                  const rules = treatmentRules(repo, v.campaignId, v.id);
                   event.evidence.push(
                     ...rules.sources.map((r) => r.documentId + ":" + r.page),
                   );
@@ -425,27 +585,25 @@ export function dispatchWorldAction(
                 }
               }
               if (assistanceReady) {
-                if (duration.amount > 0) {
-                  for (const previous of obligations) {
-                    const v = readConsequences(repo, c.campaignId).find(
-                        (v) => v.id === previous.id,
-                      )!,
-                      d = v.state.deadline!;
-                    d.elapsed += duration.amount;
-                    v.state.notes.push(
-                      "World event " +
-                        event.requestId +
-                        ": verified " +
-                        duration.amount +
-                        " " +
-                        duration.unit +
-                        "; " +
-                        event.evidence[0],
-                    );
-                    nextConsequenceStep(v);
-                    saveConsequence(repo, v);
-                  }
-                }
+                if (duration.amount > 0)
+                  advanceTime(repo, {
+                    campaignId: c.campaignId,
+                    eventId: event.requestId,
+                    sceneId: e.id,
+                    unit: duration.unit as
+                      | "rounds"
+                      | "minutes"
+                      | "hours"
+                      | "days",
+                    amount: duration.amount,
+                    source: event.requestId,
+                    authority: {
+                      kind: "human_controller",
+                      id: principal!.playerId,
+                    },
+                    reason: event.evidence[0],
+                    includeResolvedIds: obligations.map((v) => v.id),
+                  });
                 event.elapsed = duration;
                 const code =
                   action.kind === "move"
@@ -512,7 +670,69 @@ export function dispatchWorldAction(
           }
       }
     }
+    if (c.type === "adjudicate" && c.decision === "approve") {
+      const r = makeRuling(repo, {
+        campaignId: c.campaignId,
+        sceneId: e.id,
+        originId: c.pendingId,
+        domain: "duration",
+        question:
+          "Authorize the actual duration for this exact pending NPC action.",
+        scope: { key: c.pendingId, fingerprint: c.expectedState },
+        decision: c.reason,
+        reasoning: c.reason,
+        decisionMaker: { kind: "human_controller", id: principal!.playerId },
+        effects:
+          c.duration &&
+          ["rounds", "minutes", "hours", "days"].includes(c.duration.unit)
+            ? [
+                {
+                  type: "duration",
+                  pendingId: c.pendingId,
+                  unit: c.duration.unit as
+                    | "rounds"
+                    | "minutes"
+                    | "hours"
+                    | "days",
+                  amount: c.duration.amount,
+                },
+              ]
+            : [],
+        requestId: c.requestId,
+        receiptId: c.requestId,
+      });
+      r.decision = c.reason;
+      r.reasoning = c.reason;
+      r.decisionMaker = { kind: "human_controller", id: principal!.playerId };
+      r.requestId = c.requestId;
+      r.receiptId = c.requestId;
+      r.effects =
+        c.duration &&
+        ["rounds", "minutes", "hours", "days"].includes(c.duration.unit)
+          ? [
+              {
+                type: "duration",
+                pendingId: c.pendingId,
+                unit: c.duration.unit as
+                  | "rounds"
+                  | "minutes"
+                  | "hours"
+                  | "days",
+                amount: c.duration.amount,
+              },
+            ]
+          : [];
+      if (event.status === "completed")
+        rulingTransition(repo, r, "applied", c.reason);
+      else rulingTransition(repo, r, "awaiting_review", event.summary);
+    }
+    if (event.status === "awaiting_adjudication") recordWorldHold(repo, event);
+    if(event.status==='completed'&&event.code==='departed'){for(const r of rulings(repo,c.campaignId).filter(r=>r.sceneId===e.id&&!r.consequenceId&&['proposed','accepted','awaiting_review'].includes(r.status))){const origin=worldEvents(repo,c.campaignId).find(v=>v.requestId===r.originId);if(origin?.actorId===event.actorId)rulingTransition(repo,r,'invalidated','Verified event '+event.requestId+' records this NPC departing; the proposed operation is no longer available.');}}
     // Shared event summaries carry no character-private consequence text.
+    // A completed operation owns its resulting scope, including its own elapsed
+    // interval. That interval must not make the same operation appear new.
+    if (event.status === "completed" && event.intent)
+      event.scopeFingerprint = actionScope(repo, c.campaignId, event.intent);
     db.prepare("INSERT INTO consequence_commands VALUES (?,?,?,?,?)").run(
       c.campaignId,
       c.requestId,
@@ -520,10 +740,24 @@ export function dispatchWorldAction(
       JSON.stringify({ worldEvent: event }),
       event.createdAt,
     );
-    db.exec("COMMIT");
+    if (event.status === "completed" && event.pendingId) {
+      for (const old of rulings(repo, c.campaignId).filter(
+        (r) =>
+          r.originId === event.pendingId &&
+          r.domain === "duration" &&
+          ["awaiting_review", "proposed"].includes(r.status),
+      ))
+        rulingTransition(
+          repo,
+          old,
+          "superseded",
+          "Verified bounded speech establishes no precise elapsed interval; its routine scope was validated.",
+        );
+    }
+    if (own) db.exec("COMMIT");
     return event;
   } catch (error) {
-    db.exec("ROLLBACK");
+    if (own) db.exec("ROLLBACK");
     throw error;
   }
 }

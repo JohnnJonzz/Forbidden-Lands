@@ -107,7 +107,7 @@ export function WorldActionPanel({
           {local && (
             <>
               <button
-                disabled={busy}
+                disabled={busy||!context.pending||context.pending.code!=='duration_required'}
                 onClick={() => {
                   if (!context.pending) return;
                   const unit = prompt(

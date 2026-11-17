@@ -1,10 +1,11 @@
+import {mutationDenial} from '@/server/mutation-authority';
 import {z} from 'zod';
 import {imageCategories} from '@/lib/images';
 import {NextResponse} from 'next/server';
 import {ImageLibrary,maxImageBytes} from '@/server/images/library';
 export const runtime='nodejs';
 export async function GET(request:Request){try{return NextResponse.json({images:new ImageLibrary().list(new URL(request.url).searchParams.get('campaignId')??'')},{headers:{'Cache-Control':'no-store'}})}catch{return NextResponse.json({error:'Campaign image library not found'},{status:404})}}
-export async function POST(request:Request){try{
+export async function POST(request:Request){const denied=mutationDenial(request);if(denied)return denied;try{
  const origin=request.headers.get('origin');if(origin&&new URL(origin).host!==request.headers.get('host'))throw new Error('Origin mismatch');
  if(!request.headers.get('content-type')?.startsWith('multipart/form-data'))throw new Error('Upload an image file');
  const limit=maxImageBytes+65536;if(Number(request.headers.get('content-length')||0)>limit)throw new Error('Image upload exceeds 8 MB');
@@ -14,4 +15,4 @@ export async function POST(request:Request){try{
  const image=await new ImageLibrary().upload(String(data.get('campaignId')??''),{bytes:Buffer.from(await file.arrayBuffer()),type:file.type,name:String(data.get('name')??file.name)},category);return NextResponse.json({image},{status:201});
  }catch(e){return NextResponse.json({error:e instanceof Error?e.message:'Image upload failed'},{status:400})}}
 
-export async function PATCH(request:Request){try{const origin=request.headers.get('origin');if(origin&&new URL(origin).host!==request.headers.get('host'))throw new Error('Origin mismatch');const body=await request.text();if(body.length>4096)throw new Error('Invalid image metadata');return NextResponse.json({image:new ImageLibrary().updateCategory(JSON.parse(body))})}catch(e){return NextResponse.json({error:e instanceof Error?e.message:'Category update failed'},{status:400})}}
+export async function PATCH(request:Request){const denied=mutationDenial(request);if(denied)return denied;try{const origin=request.headers.get('origin');if(origin&&new URL(origin).host!==request.headers.get('host'))throw new Error('Origin mismatch');const body=await request.text();if(body.length>4096)throw new Error('Invalid image metadata');return NextResponse.json({image:new ImageLibrary().updateCategory(JSON.parse(body))})}catch(e){return NextResponse.json({error:e instanceof Error?e.message:'Category update failed'},{status:400})}}

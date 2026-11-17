@@ -67,7 +67,9 @@
     "test:world-actions": "tsx --test tests/world-actions.test.ts",
     "test:world-actions:browser": "node --import tsx tests/world-actions-browser.cjs",
     "test:post-combat-routing": "tsx --test tests/post-combat-routing.test.ts",
-    "test:post-combat-routing:browser": "node --import tsx tests/post-combat-routing-browser.cjs"
+    "test:post-combat-routing:browser": "node --import tsx tests/post-combat-routing-browser.cjs",
+    "test:gm-rulings": "tsx --test tests/gm-rulings.test.ts tests/ruling-defects.test.ts",
+    "test:gm-rulings:browser": "node --import tsx tests/gm-rulings-browser.cjs"
   },
   "dependencies": {
     "exceljs": "^4.4.0",
