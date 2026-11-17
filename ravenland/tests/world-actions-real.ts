@@ -122,6 +122,8 @@ export async function realWorldActionTests(
       } finally {
         for (const id of docs)
           repo.db.prepare("DELETE FROM source_documents WHERE id=?").run(id);
+        repo.db.prepare("DELETE FROM combat_commands WHERE campaign_id=?").run(f.r.id);
+        repo.db.prepare("DELETE FROM combat_encounters WHERE campaign_id=?").run(f.r.id);
         repo.db.prepare("DELETE FROM campaigns WHERE id=?").run(f.r.id);
       }
     },
