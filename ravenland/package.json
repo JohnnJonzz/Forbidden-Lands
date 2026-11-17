@@ -63,7 +63,11 @@
     "test:action-interface": "node --import tsx tests/action-interface-browser.cjs",
     "test:defense-sequencing": "node --import tsx tests/defense-sequencing-browser.cjs",
     "test:combat-lifecycle": "node --import tsx tests/combat-lifecycle-browser.cjs",
-    "test:consequences": "node --import tsx tests/consequences-browser.cjs"
+    "test:consequences": "node --import tsx tests/consequences-browser.cjs",
+    "test:world-actions": "tsx --test tests/world-actions.test.ts",
+    "test:world-actions:browser": "node --import tsx tests/world-actions-browser.cjs",
+    "test:post-combat-routing": "tsx --test tests/post-combat-routing.test.ts",
+    "test:post-combat-routing:browser": "node --import tsx tests/post-combat-routing-browser.cjs"
   },
   "dependencies": {
     "exceljs": "^4.4.0",

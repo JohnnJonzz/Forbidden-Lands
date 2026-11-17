@@ -6,7 +6,12 @@ export const setupNegative=(text:string)=>/^(?:no\b|nope\b|not quite\b|that.s no
 export const withoutTravelDenials=(text:string)=>text.replace(/\b(?:not|neither) (?:a |an )?(?:journey|location change|hex change|travel)(?:\s*(?:or|nor)\s*(?:a )?(?:journey|location change|hex change|travel))?\b/gi,'').replace(/\bno (?:journey|travel|location change|hex change)\b/gi,'').replace(/\b(?:do not|don't|never)\s+(?:move us|move the party|travel to|relocate|change (?:our|the|campaign) hex|advance (?:the )?time)\b/gi,'');
 export const setupTravel=(text:string)=>/\b(?:move us|move the party|travel to|relocate|change (?:our|the) hex|advance (?:the )?time|(?:proceed|continue|go) to|different hex|far from)\b/i.test(withoutTravelDenials(text));
 export function setupAffirmed(text:string){return !setupTravel(text)&&/^(?:yes|yep|yeah|sure|correct|confirmed|affirmative)\b/i.test(text.trim())&&!/\b(?:but not|not yet|don.t start|do not start|wait|cancel)\b/i.test(text)}
-export function setupContinue(text:string){return !setupTravel(text)&&(/^(?:proceed|go ahead|continue|let.s begin)(?:[,.! ]|$)/i.test(text.trim())||/^(?:run|start|begin)\b.*\b(?:as described|as planned|same (?:encounter|proposal)|original (?:encounter|proposal))\b/i.test(text.trim()))}
+// Continuation of a scene is not confirmation of an encounter plan. Keep bare
+// confirmations for the currently pending question and explicit plan references.
+export function setupContinue(text:string){return !setupTravel(text)&&(/^(?:proceed|go ahead|continue|let[’']s begin)[.! ]*$/i.test(text.trim())||/^(?:proceed|go ahead|continue|resume|run|start|begin)\s+(?:(?:with|using|from)\s+)?(?:(?:the|this|that|same|original|held|pending|previous)\s+)*(?:encounter|setup|proposal|plan)\b[^.!?\n]*[.!]?$/i.test(text.trim()))}
+// With no pending question, a generic “yes” is not a request to reuse an old plan.
+export const setupResumeRequested=(text:string)=>setupContinue(text)&&/\b(?:encounter|setup|proposal|plan)\b/i.test(text)||/^(?:yes|yep|yeah|sure|correct|confirmed|affirmative)[, ]+(?:(?:please|proceed|go ahead|continue)[, ]*)+[.!]?$/i.test(text.trim())||/^(?:please\s+)?(?:resume|proceed with|start|begin|run|use)\s+(?:(?:the|same|original|held|pending|previous|that)\s+)*(?:encounter|setup|proposal|plan)\b/i.test(text);
+
 export const setupUseCurrent=(text:string)=>/^(?:(?:no|actually|instead)[,.]?\s+)?(?:use|keep) (?:the )?(?:current|existing|saved) (?:campaign )?location[.!]?$/i.test(text.trim());
 // Questions about people or rules are not edits just because they mention a
 // participant or enemy from the held proposal.

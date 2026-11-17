@@ -1,3 +1,4 @@
+import {worldEvents} from '../world/context';
 import {readConsequences} from './store';
 import type {Consequence,TreatmentAttempt} from '../../lib/consequences/schema';
 import type {SqliteCampaignRepository} from '../sqlite';
@@ -8,6 +9,7 @@ import {injurySource} from './registry';
 import {treatmentRules} from './rules';
 import {activeCombat} from '../combat/store';
 export function treatmentPool(repo:SqliteCampaignRepository,c:Consequence,healerId:string){
+ if(worldEvents(repo,c.campaignId).some(v=>v.sceneId===c.source.encounterId&&v.actorId===healerId&&v.code==='departed'&&v.status==='completed'))throw new AIError('consequence_presence','This NPC has a verified departure and cannot treat the patient here.',409);
  const rules=treatmentRules(repo,c.campaignId),source=injurySource(repo,c),patientId=c.characterIds[0],session=repo.get(c.campaignId)!.session;
  if(!source||!c.state.deadline||c.state.deadline.value===null||c.status==='resolved')throw new AIError('consequence_treatment','Establish the actual lethal deadline before preparing treatment. A resolved injury cannot be treated again.',409);
  if(activeCombat(repo,c.campaignId))throw new AIError('consequence_treatment','Treatment during active initiative requires combat adjudication. It cannot bypass the player-action dispatcher or pending attacks.',409);

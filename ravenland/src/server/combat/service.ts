@@ -5,14 +5,14 @@ import {movementIntent,runMovement} from './movement';
 import {interruptReadiness,recordAction,fastCost} from './action-economy';
 import {verifiedAttackRules} from './attack-rules';
 import {weaponAttackOptions,type WeaponAttackType} from '../../lib/combat/attack-rules';
-import {prepareEncounterSetup,validateReadySetup,consumeSetup} from './setup-workflow';
-import {latestSetup,hasSetupAction} from './setup-store';
+import {prepareEncounterSetup,validateReadySetup,consumeSetup,encounterSetupRouting} from './setup-workflow';
+import {latestSetup} from './setup-store';
 import {setupAffirmed,setupContinue} from './setup-intent';
 import {applyDeclaredLoadout} from './loadout';
 import {pushNarrativeEvent} from './narrative';
 import {verifiedCombatWeapon} from './equipment';
 import {combatWorkflow,checkCombatRoll} from './workflow';
-import {encounterRequest,previousSetup,type EncounterSetup} from './setup';
+import {encounterRequest,type EncounterSetup} from './setup';
 import {parseAttackAdjudication} from '../dice/attack-adjudication';
 import {resolveEnemyCritical} from './critical';
 import {createHash} from 'node:crypto';
@@ -32,7 +32,7 @@ export type CombatChoice=ReturnType<typeof enemyChoices>[number];
 const drawRequested=(text:string)=>/^(?:I|we)\s+(?:(?:will|want to|try to)\s+)?draw\b[^.!?]{0,160}\b(?:and|then)\b/i.test(text.trim());
 export type CombatChooser=(input:{round:number;actor:{name:string;current:Record<string,number>;kind:string};choices:CombatChoice[]})=>Promise<{choiceId:string;inputTokens:number|null;outputTokens:number|null;model:string}>;
 export interface CombatTurnResult {deferredNotice?:string;drawnWeapon?:string;command?:string;revision?:number;checkpoint?:{actions?:number;encounterId:string|null;rolls:number;attacks:number;round:number|null;activeId:string|null;pendingId?:string|null;revision:number};narration:string;encounter:PublicCombat|null;setup:EncounterSetup|null;usage:{choiceId:string;inputTokens:number|null;outputTokens:number|null;model:string}|null;replayed:boolean}
-export function combatRouting(repo:SqliteCampaignRepository,c:GMTurn){return !!activeCombat(repo,c.campaignId)||c.kind==='chat'&&(/^\/combat\b/i.test(c.action)||encounterRequest(c.action)||!!previousSetup(repo,c.campaignId,c.characterId)||hasSetupAction(repo,c))}
+export function combatRouting(repo:SqliteCampaignRepository,c:GMTurn){return !!activeCombat(repo,c.campaignId)||c.kind==='chat'&&(/^\/combat\b/i.test(c.action)||encounterSetupRouting(repo,c))}
 export async function combatTurn(repo:SqliteCampaignRepository,c:GMTurn,roll:VerifiedRollSubmission|null|undefined,principal:CharacterPrincipal|null,choose?:CombatChooser,die:Die=secureDie,options:{singleStep?:boolean;attack?:{weaponIndex:number;targetId:string;type:WeaponAttackType}}={}):Promise<CombatTurnResult|null>{
  if(!['chat','roll'].includes(c.kind))return null;
  let e=activeCombat(repo,c.campaignId);const manual=e&&c.kind==='chat'?parseAttackAdjudication(c.action,c.requestId):null;let command=c.kind==='chat'?c.action.match(/^\/combat\s+(.*)$/i)?.[1].trim():null;

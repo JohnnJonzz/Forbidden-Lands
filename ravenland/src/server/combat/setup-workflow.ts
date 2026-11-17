@@ -1,10 +1,12 @@
+import type {Session} from '../../lib/types';
+import {worldContinuationRequested} from '../world/routing';
 import {randomUUID} from 'node:crypto';
 import type {GMTurn} from '../../lib/ai/schema';
 import type {SqliteCampaignRepository} from '../sqlite';
 import {requireCharacterAccess,type CharacterPrincipal} from '../character-access';
 import {AIError} from '../ai/config';
 import {encounterRequest,legacySetup,parseEncounterSetup,setupQuestion,type EncounterSetup} from './setup';
-import {setupCancelled,setupNegative,setupAffirmed,setupContinue,setupUseCurrent,setupInquiry} from './setup-intent';
+import {setupCancelled,setupNegative,setupAffirmed,setupContinue,setupUseCurrent,setupInquiry,setupResumeRequested} from './setup-intent';
 import {sceneMatches} from './setup-scene';
 import {pendingSetup,latestSetup,setupSnapshot,saveSetup,setupReceipt,saveSetupReceipt,setupById,hasSetupAction,type PendingSetup} from './setup-store';
 export type SetupDecision={kind:'respond';narration:string;setup:EncounterSetup|null}|{kind:'start';proposalId:string;revision:number;setup:EncounterSetup};
@@ -15,17 +17,35 @@ function insert(repo:SqliteCampaignRepository,c:GMTurn,proposal:EncounterSetup,o
  repo.db.prepare('INSERT INTO combat_setup_proposals VALUES (?,?,?,?,?,?,?,?,NULL,NULL,?,?)').run(id,c.campaignId,c.characterId,originId,'pending',1,JSON.stringify(proposal),JSON.stringify(snapshot),now,now);
  return {id,campaignId:c.campaignId,characterId:c.characterId,originRequestId:originId,status:'pending',revision:1,proposal,snapshot,encounterId:null};
 }
+// A held plan owns replies to its actual question, not the whole conversation.
+export function relevantSetupReply(text:string,proposal:EncounterSetup,session:Session,characterId:string){
+ if(setupCancelled(text)||setupNegative(text)||setupAffirmed(text)||setupContinue(text)||setupUseCurrent(text))return true;
+ if(setupInquiry(text))return false;
+ const next=parseEncounterSetup(text,session,characterId,proposal,'revise');if(!next)return false;
+ if(/^(?:change|make|use|instead|actually|replace|start over)\b/i.test(text.trim()))return true;
+ // Unprompted mentions of actors/range are not revisions to an already complete
+ // field. Accept direct answers only for the fields this plan actually lacks.
+ return !proposal.range&&next.range!==null||!proposal.participantsKnown&&next.participantsKnown||(!proposal.enemies||!!proposal.enemyQuestion)&&next.enemies!==proposal.enemies||!!proposal.scene&&!proposal.scene.confirmed&&!!next.scene?.confirmed;
+}
+export function encounterSetupRouting(repo:SqliteCampaignRepository,c:GMTurn){
+ if(c.kind!=='chat'||/^\/combat\b/i.test(c.action))return false;
+ if(hasSetupAction(repo,c)||encounterRequest(c.action))return true;
+ if(worldContinuationRequested(c.action))return false;
+ const existing=pendingSetup(repo,c.campaignId,c.characterId),legacy=!existing?legacySetup(repo,c.campaignId,c.characterId):null,held=existing?.proposal??legacy?.proposal;
+ return held?relevantSetupReply(c.action,held,repo.get(c.campaignId)!.session,c.characterId):!!latestSetup(repo,c.campaignId,c.characterId)&&setupResumeRequested(c.action);
+}
 export function prepareEncounterSetup(repo:SqliteCampaignRepository,c:GMTurn,principal:CharacterPrincipal|null):SetupDecision|null{
  if(c.kind!=='chat'||/^\/combat\b/i.test(c.action))return null;
  if(hasSetupAction(repo,c)){requireCharacterAccess(principal,c.campaignId,c.characterId);return setupReceipt(repo,c) as SetupDecision}
  const existing=pendingSetup(repo,c.campaignId,c.characterId),legacy=!existing?legacySetup(repo,c.campaignId,c.characterId):null,last=latestSetup(repo,c.campaignId,c.characterId);
- if(!existing&&!legacy&&!encounterRequest(c.action)&&!(last&&(setupAffirmed(c.action)||setupContinue(c.action))))return null;
+ const fresh=encounterRequest(c.action);
+ if(!encounterSetupRouting(repo,c))return null;
  requireCharacterAccess(principal,c.campaignId,c.characterId);
  const db=repo.db;db.exec('BEGIN IMMEDIATE');try{
   const saved=setupReceipt(repo,c) as SetupDecision|null;if(saved){db.exec('COMMIT');return saved}
   const record=repo.get(c.campaignId);if(!record)throw new AIError('not_found','Campaign not found',404);
   let pending=pendingSetup(repo,c.campaignId,c.characterId);if(!pending&&legacy)pending=insert(repo,c,legacy.proposal,legacy.requestId);
-  if(!pending&&last&&(!encounterRequest(c.action)||setupAffirmed(c.action)||setupContinue(c.action))){const result:SetupDecision={kind:'respond',narration:last.status==='resumed'?'That setup has already been used. Its encounter is recorded; describe a new encounter if you want another.':'That setup is no longer pending. Describe a new encounter when you are ready.',setup:null};saveSetupReceipt(repo,c,last.id,result);db.exec('COMMIT');return result}
+  if(!pending&&last&&!fresh&&setupResumeRequested(c.action)){const result:SetupDecision={kind:'respond',narration:last.status==='resumed'?'That setup has already been used. Its encounter is recorded; describe a new encounter if you want another.':'That setup is no longer pending. Describe a new encounter when you are ready.',setup:null};saveSetupReceipt(repo,c,last.id,result);db.exec('COMMIT');return result}
   if(pending&&setupCancelled(c.action)){db.prepare("UPDATE combat_setup_proposals SET status='cancelled',resolved_request_id=?,updated_at=? WHERE id=?").run(c.requestId,new Date().toISOString(),pending.id);const result:SetupDecision={kind:'respond',narration:'All right, that encounter is cancelled. Nothing has moved and no initiative was drawn.',setup:null};saveSetupReceipt(repo,c,pending.id,result);db.exec('COMMIT');return result}
   const replace=!!pending&&/\b(?:new encounter|replace (?:the|that|this) (?:encounter|proposal)|start over)\b/i.test(c.action),negative=!!pending&&setupNegative(c.action),affirmative=setupAffirmed(c.action)||setupContinue(c.action);
   const inquiry=!!pending&&!encounterRequest(c.action)&&setupInquiry(c.action);
