@@ -1,3 +1,4 @@
+import {assertCurrentRequest} from '../request-epoch';
 import {
   validReviewedPermit,
   type ReviewedRulingPermit,
@@ -67,6 +68,7 @@ export function dispatchWorldAction(
   const db = repo.db,
     hash = worldHash(c);
   const own = !db.isTransaction;
+  assertCurrentRequest(repo,c.campaignId,c.requestId);
   if (own) db.exec("BEGIN IMMEDIATE");
   try {
     const old = db

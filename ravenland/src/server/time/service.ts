@@ -74,7 +74,7 @@ export function advanceTime(repo: SqliteCampaignRepository, raw: TimeInput) {
       !row &&
       !(
         c.sceneId === "campaign:" + c.campaignId &&
-        c.authority.kind === "deterministic"
+        ["deterministic","human_controller"].includes(c.authority.kind)
       )
     )
       throw new AIError(

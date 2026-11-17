@@ -1,3 +1,4 @@
+import {currentWeaponGear} from '../../lib/character-data';
 import type {Character} from '../../lib/types';
 import type {CombatAttack,CombatEncounter,Defense} from '../../lib/combat/types';
 import {countSuccesses} from '../../lib/dice/engine';
@@ -26,10 +27,11 @@ export function defensePool(e:CombatEncounter,character:Character,defense:Exclud
  if(base===null||skill===null)return null;
  if(defense==='dodge')return {defense,label:'Move',attribute,base,skill,gear:0,modifier:p.kind==='slash'?rules.modifiers.slashDodge:0};
  const s=character.sheet!,shield=s['shield-worn']===true&&s['shield-carried']!=='No'&&exactInteger(s['shield-bonus'],1,12)!==null,actor=e.combatants.find(a=>a.id===character.id)!,held=heldPlayerWeapons(actor,character).filter(w=>w.skill==='melee'),active=s.weapons?.[actor.weaponHandling?.active??-1],weapon=held.includes(active!)?active:held.length===1?held[0]:null;
- const gear=shield?exactInteger(s['shield-bonus'],0,100):weapon?exactInteger(weapon.bonus,0,100):null;if(gear===null)return null;
+ const gear=shield?exactInteger(s['shield-bonus'],0,100):weapon?exactInteger(currentWeaponGear(weapon),0,100):null;if(gear===null)return null;
  const features=weapon?(catalogWeapon(weapon.name??'')?.features??weapon.feat??''):'';
  const misc=shield?exactInteger(s['shield-modifier']??'0',-100,100):0;if(misc===null)return null;
- const modifier=misc+(p.kind==='stab'?(shield?rules.modifiers.stabShieldParry:rules.modifiers.stabWeaponParry):p.kind==='punch'?rules.unarmed?.parryBonus??0:0)+(!shield&&!/Parrying/i.test(features)?rules.modifiers.nonParryingWeapon:0);
+ let talentBonus=0;if(!shield&&weapon){const sword=['shortsword','broadsword','longsword','two-handed-sword','scimitar','falchion'].includes(catalogWeapon(weapon.name??'')?.id??''),talent=mc.talents.find(t=>t.name.toLowerCase()==='sword fighter');if(sword&&talent){if(talent.rank!==1||!rules.swordFighter)return null;talentBonus=rules.swordFighter.parryBonus;}if(weapon.destroyed||Number(currentWeaponGear(weapon))===0&&Number(weapon.gearBonus)>0)return null;}
+ const modifier=talentBonus+misc+(p.kind==='stab'?(shield?rules.modifiers.stabShieldParry:rules.modifiers.stabWeaponParry):p.kind==='punch'?rules.unarmed?.parryBonus??0:0)+(!shield&&!/Parrying/i.test(features)?rules.modifiers.nonParryingWeapon:0);
  return {defense,label:shield?'Shield Parry: '+(s['shield-name']||'Shield'):'Melee',attribute,base,skill,gear,modifier};
 }
 export function armorRating(character:Character,ignore=0):number|null{

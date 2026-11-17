@@ -2,6 +2,7 @@ import { z } from "zod";
 const ref = z.string().min(1).max(160),
   text = z.string().trim().min(1).max(1600);
 export const rulingDomains = [
+  "weapon_repair",
   "routine_action",
   "duration",
   "scene_access",
@@ -12,6 +13,7 @@ export const rulingDomains = [
   "consequence_review",
 ] as const;
 export const effectSchema = z.discriminatedUnion("type", [
+ z.object({type:z.literal("weapon_repair"),characterId:ref,weaponIndex:z.number().int().nonnegative(),rollId:ref,before:z.number().int().nonnegative(),after:z.number().int().nonnegative(),repairLimit:z.number().int().nonnegative()}).strict(),
   z
     .object({
       type: z.literal("routine_action"),

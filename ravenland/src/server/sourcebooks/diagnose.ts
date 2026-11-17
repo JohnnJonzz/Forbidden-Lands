@@ -8,7 +8,7 @@ export const handbookQuestion="Using the official Player's Handbook PDF, find th
 export const handbookQueries=['Hunter','Hunter profession','Stealth Move Marksmanship Scouting Survival','Key Attribute Agility',"Player's Handbook Hunter"];
 // Read-only developer audit: no source classification, indexing, AI call or canon writes.
 export async function diagnoseHandbook(repo:SqliteCampaignRepository,campaignId:string,documentId:string,storage:SourcebookStorage){
- const source=repo.db.prepare("SELECT id,title,status,page_count,processed_pages,storage_key FROM source_documents WHERE campaign_id=? AND id=? AND visibility='Public Rules' AND category IN ('Rules','Bestiary','House Rules')").get(campaignId,documentId);
+ const source=repo.db.prepare("SELECT id,title,status,page_count,processed_pages,storage_key FROM accessible_source_documents WHERE campaign_id=? AND id=? AND visibility='Public Rules' AND category IN ('Rules','Bestiary','House Rules')").get(campaignId,documentId);
  if(!source)return {source:{id:null,title:null,status:'not_found_or_not_authorized',pageCount:null,processedPages:null,fileAccessible:false,fileExtraction:'not_attempted' as const,chunks:0,indexedChunks:0}};
  const library=new SourcebookLibrary(repo,storage),rawSearches=handbookQueries.map(query=>({query,hits:library.search({campaignId,documentId,query},'player',40).map(p=>({documentId:p.documentId,chunkId:p.chunkId,physicalPage:p.startPage,heading:p.heading}))}));
  const count=repo.db.prepare('SELECT COUNT(*) AS chunks,COUNT(f.id) AS indexedChunks FROM source_chunks c LEFT JOIN source_search_docsize f ON f.id=c.rowid WHERE c.document_id=?').get(documentId),texts=repo.db.prepare('SELECT text,start_page FROM source_chunks WHERE document_id=? ORDER BY sequence').all(documentId);

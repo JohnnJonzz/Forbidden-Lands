@@ -1,3 +1,4 @@
+import {normalizeCharacterSheet,currentWeaponGear} from '../character-data';
 import type {Session} from '../types';
 import {applySheet,sheetFor} from '../character-sheet';
 import {groupsFor,groupReadiness} from './groups';
@@ -60,7 +61,7 @@ export function applyDiceCommand(input:Session,c:DiceCommand,geo:JourneyGeograph
   const wp=Math.max(0,Math.min(10,Math.trunc(Number(sheet.willpower)||0)));sheet.willpower=String(Math.min(10,wp+baseBanes));r.willpower=Math.max(0,Math.min(10,wp+baseBanes)-wp);
   if(card.metadata.weaponIndex!==null){const weapon=sheet.weapons?.[card.metadata.weaponIndex];
    // A reordered/deleted weapon must never damage a different item.
-   if(weapon&&JSON.stringify(weapon)===card.weaponSnapshot&&weapon.name===card.result.skill.replace(/^Attack: /,'')){const before=Math.max(0,Math.trunc(Number(weapon.bonus)||0));weapon.bonus=String(Math.max(0,before-r.gearDamage));card.gearDamageApplied=Math.min(Math.max(0,before),r.gearDamage)}
+   if(weapon&&JSON.stringify(weapon)===JSON.stringify(normalizeCharacterSheet({weapons:[JSON.parse(card.weaponSnapshot??'{}')]}).weapons[0])&&weapon.name===card.result.skill.replace(/^Attack: /,'')){const before=Math.max(0,Math.trunc(Number(currentWeaponGear(weapon))||0));weapon.current=String(Math.max(0,before-r.gearDamage));card.gearDamageApplied=Math.min(Math.max(0,before),r.gearDamage)}
   }
   card.gearDamageManual=r.gearDamage-card.gearDamageApplied;s.characters[index]=applySheet(s.characters[index],sheet);return s;
  }

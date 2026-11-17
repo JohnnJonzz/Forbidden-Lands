@@ -24,5 +24,7 @@ export function verifiedAttackRules(pages:SourcePassage[]):AttackRulesSummary{
  const rangedModifiers={Arm:-Number(range[3]),Near:0,Short:-Number(range[1]),Long:-Number(range[2])};
  find(/defender must declare.*DODGE.*PARRY.*before you roll/i,'pre-roll defense timing');
  find(/Every x x you roll decreases the damage by one.*cannot be pushed/i,'armor reduction and push restriction');
- return {...(unarmed?{unarmed:{parryBonus:unarmed.parryBonus}}:{}),version:1,skill:'melee',actionCost:'slow',requiredSuccesses:1,extraSuccessDamage:1,slashFeatures:['Edged','Blunt'],stabFeature:'Pointed',bluntIsFeature:true,modifiers:{slashDodge,stabWeaponParry,stabShieldParry,nonParryingWeapon,proneTarget},rangedModifiers,defenseBeforeRoll:true,armor:{perSuccess:1,pushable:false},sources:[...new Map(sources.map(s=>[s.chunkId,s])).values()]};
+ const sword=pages.find(p=>/SWORD FIGHTER.*RANK 1:.*attack and PARRY rolls are.*modified by \+1.*sword/i.test(p.text.replace(/\s+/g,' ')));
+ if(sword)sources.push(citation(sword));
+ return {...(sword?{swordFighter:{parryBonus:1,source:citation(sword)}}:{}),...(unarmed?{unarmed:{parryBonus:unarmed.parryBonus}}:{}),version:1,skill:'melee',actionCost:'slow',requiredSuccesses:1,extraSuccessDamage:1,slashFeatures:['Edged','Blunt'],stabFeature:'Pointed',bluntIsFeature:true,modifiers:{slashDodge,stabWeaponParry,stabShieldParry,nonParryingWeapon,proneTarget},rangedModifiers,defenseBeforeRoll:true,armor:{perSuccess:1,pushable:false},sources:[...new Map(sources.map(s=>[s.chunkId,s])).values()]};
 }

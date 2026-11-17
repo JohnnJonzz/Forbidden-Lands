@@ -581,7 +581,7 @@
         <table class="dynamic-table" id="talents-table">
             <thead>
                 <tr>
-                    <th>Talent Name</th>
+                    <th style="width:85px">Type</th><th>Talent Name</th>
                     <th style="width: 60px;">Rank</th>
                     <th>Description</th>
                     <th style="width: 30px;"></th>
@@ -619,15 +619,15 @@
 
 
     <!-- Weapons Table -->
-    <div class="panel equipment-block" id="weapons-section">
+    <div class="panel equipment-block" id="weapons-section" style="grid-column:1 / -1;width:100%;min-width:0">
         <h3>Weapons</h3>
-        <p class="weapon-help">Choose a preset to fill a row, then edit any value for your weapon. Choosing another preset replaces that row’s values.</p>
+        <p class="weapon-help">Bonus is an additional skill modifier requiring applicable rules. Gear Bonus is the original rating; Current is the condition used for Gear Dice. Choose a preset to fill a row, then edit any value for your weapon. Choosing another preset replaces that row’s values.</p>
         <table class="dynamic-table" id="weapons-table">
             <thead>
                 <tr>
                     <th>Weapon</th>
                     <th>Equipped</th>
-                    <th style="width: 50px;">Bonus</th>
+                    <th style="width:60px">Bonus</th><th style="width:70px">Gear Bonus</th><th style="width:65px">Current</th>
                     <th style="width: 50px;">Dmg</th>
                     <th style="width: 60px;">Range</th>
                     <th>Features</th>
@@ -1180,6 +1180,7 @@ class ForbiddenLandsApp {
         });
 
         data.talents = Array.from(document.querySelectorAll('#talents-table tbody tr')).map(tr => ({
+            ...(tr.querySelector('.t-type').value?{type:tr.querySelector('.t-type').value}:{}),
             name: tr.querySelector('.t-name').value,
             rank: tr.querySelector('.t-rank').value,
             desc: tr.querySelector('.t-desc').value
@@ -1188,6 +1189,9 @@ class ForbiddenLandsApp {
         data.weapons = Array.from(document.querySelectorAll('#weapons-table tbody tr')).map(tr => ({
             name: tr.querySelector('.w-name').value,
             bonus: tr.querySelector('.w-bonus').value,
+            gearBonus: tr.querySelector('.w-original').value,
+            current: tr.querySelector('.w-current').value,
+            ...(tr.dataset.repairLimit!==undefined?{repairLimit:tr.dataset.repairLimit}:{}),...(tr.dataset.destroyed?{destroyed:true}:{}),
             dmg: tr.querySelector('.w-dmg').value,
             range: tr.querySelector('.w-range').value,
             feat: tr.querySelector('.w-feat').value,
@@ -1256,10 +1260,10 @@ class ForbiddenLandsApp {
         });
 
         document.querySelector('#talents-table tbody').innerHTML = '';
-        if (data.talents) data.talents.forEach(t => this.addTalentRow(t.name, t.rank, t.desc));
+        if (data.talents) data.talents.forEach(t => this.addTalentRow(t.name, t.rank, t.desc, t.type));
 
         document.querySelector('#weapons-table tbody').innerHTML = '';
-        if (data.weapons) data.weapons.forEach(w => this.addWeaponRow(w.name, w.bonus, w.dmg, w.range, w.feat, w.skill, w.artifact, w.equipped, w.grip, w.cost));
+        if (data.weapons) data.weapons.forEach(w => this.addWeaponRow(w.name, w.bonus, w.dmg, w.range, w.feat, w.skill, w.artifact, w.equipped, w.grip, w.cost, w.gearBonus, w.current, w.repairLimit, w.destroyed));
 
         document.querySelector('#gear-table tbody').innerHTML = '';
         if (Array.isArray(data.spells)) data.spells.forEach(spell=>{if(spell && typeof spell === 'object') this.addSpell(spell);});
@@ -1275,12 +1279,14 @@ class ForbiddenLandsApp {
     }
 
     // --- Dynamic Table Adders ---
-    addTalentRow(name = '', rank = 1, desc = '') {
+    addTalentRow(name = '', rank = 1, desc = '', type = '') {
         this.createTableRow('talents-table', [
+            `<select aria-label="Talent Type" class="t-type" onchange="this.nextElementSibling.textContent=''; app.saveState()"><option value="K">K — Kin</option><option value="P">P — Professional</option><option value="G">G — General</option></select><small>${type?'':'Review type'}</small>`,
             `<input type="text" value="${this.escapeHTML(name)}" class="t-name" onchange="app.saveState()">`,
             `<input type="number" value="${this.escapeHTML(rank)}" min="1" max="3" class="t-rank" onchange="app.saveState()">`,
             `<input type="text" value="${this.escapeHTML(desc)}" class="t-desc" onchange="app.saveState()">`
         ]);
+        const select=document.querySelector('#talents-table tbody tr:last-child .t-type');select.value=type;
     }
 
     weaponPreset(w) {
@@ -1310,8 +1316,10 @@ class ForbiddenLandsApp {
         this.stagePool('Melee', 'strength', Number(document.getElementById('attr-strength').value), Number(document.getElementById('skill-melee').value), 0);
     }
 
-    addWeaponRow(name = '', bonus = 0, dmg = 1, range = 'Arm', feat = '', skill = 'melee', artifact = 'None', equipped = false, grip = '', cost = '') {
+    addWeaponRow(name = '', bonus = 0, dmg = 1, range = 'Arm', feat = '', skill = 'melee', artifact = 'None', equipped = false, grip = '', cost = '', gearBonus, current, repairLimit, destroyed) {
+        if(current===undefined){current=bonus;bonus=0;gearBonus=gearBonus??this.equipmentCatalog.weapons.find(w=>[w.name,...w.aliases].includes(name))?.bonus??'';}
         const tr = document.createElement('tr');
+        if(repairLimit!==undefined)tr.dataset.repairLimit=repairLimit;if(destroyed)tr.dataset.destroyed='true';
         tr.innerHTML = `
             <td>
                 <select class="w-preset w-name" aria-label="Weapon name" onchange="app.applyWeaponPreset(this)">
@@ -1327,7 +1335,7 @@ class ForbiddenLandsApp {
                 </select>
             </td>
             <td><input type="checkbox" class="w-equipped" aria-label="Weapon equipped" ${equipped === true ? 'checked' : ''} onchange="app.saveState()"></td>
-            <td><input type="number" value="${this.escapeHTML(bonus)}" class="w-bonus" onchange="app.saveState()"></td>
+            <td><input type="number" min="-10" max="10" value="${this.escapeHTML(bonus)}" class="w-bonus" onchange="app.saveState()"></td><td><input type="number" min="0" max="12" aria-label="Weapon original gear bonus" value="${this.escapeHTML(gearBonus)}" class="w-original" onchange="app.saveState()"></td><td><input type="number" min="0" max="12" aria-label="Weapon current gear bonus" value="${this.escapeHTML(current)}" class="w-current" onchange="app.saveState()"></td>
             <td><input type="number" value="${this.escapeHTML(dmg)}" class="w-dmg" onchange="app.saveState()"></td>
             <td><input type="text" value="${this.escapeHTML(range)}" class="w-range" onchange="app.saveState()"></td>
             <td><input type="text" value="${this.escapeHTML(feat)}" class="w-feat" onchange="app.saveState()"></td>
@@ -1365,7 +1373,8 @@ class ForbiddenLandsApp {
             const weapon = this.weaponPresets.find(weapon => weapon.name === select.value);
             if (weapon) {
                 const row = select.closest('tr');
-                for (const field of ['bonus', 'dmg', 'range', 'feat', 'skill', 'grip', 'cost']) row.querySelector('.w-' + field).value = weapon[field];
+                for (const field of ['dmg', 'range', 'feat', 'skill', 'grip', 'cost']) row.querySelector('.w-' + field).value = weapon[field];
+                delete row.dataset.repairLimit;delete row.dataset.destroyed;row.querySelector('.w-bonus').value=0;row.querySelector('.w-original').value=weapon.bonus;row.querySelector('.w-current').value=weapon.bonus;
             }
         }
         this.updateWeaponIcon(select.closest('tr'));
@@ -1435,13 +1444,16 @@ class ForbiddenLandsApp {
     rollWeaponAttack(btn) {
         const tr = btn.closest('tr');
         const wName = tr.querySelector('.w-name').value;
-        const wBonus = parseInt(tr.querySelector('.w-bonus').value) || 0;
+        if(tr.dataset.destroyed||Number(tr.querySelector('.w-current').value)===0&&Number(tr.querySelector('.w-original').value)>0){document.getElementById('staged-label').textContent='Weapon is broken; repair it before use.';return;}
+        const wBonus = parseInt(tr.querySelector('.w-current').value) || 0;
+        const additionalBonus = parseInt(tr.querySelector('.w-bonus').value) || 0;
         const skill = tr.querySelector('.w-skill').value;
         const attribute = skill === 'marksmanship' ? 'agility' : 'strength';
         const skillVal = parseInt(document.getElementById('skill-' + skill).value) || 0;
         const attrVal = parseInt(document.getElementById('attr-' + attribute).value) || 0;
 
         this.stagePool(`Attack: ${wName || 'Weapon'}`, attribute, attrVal, skillVal, wBonus);
+        document.getElementById('pool-modifier').value=additionalBonus;
         this.stagedRoll.weaponDamage = Math.max(0, Number(tr.querySelector('.w-dmg').value) || 0);
         const artifactIndex = {D8:0, D10:2, D12:3}[tr.querySelector('.w-artifact').value];
         this.artifactDice = artifactIndex === undefined ? [] : [artifactIndex];
@@ -1608,7 +1620,7 @@ const app = new ForbiddenLandsApp();
 window.addEventListener('DOMContentLoaded', () => {
     app.init();
     document.addEventListener('input', event => {
-        if (!event.target.closest('#dice-panel') && event.target.matches('input:not([type=file]):not([id$="-regular"]), textarea')) app.saveState();
+        if (!event.target.closest('#dice-panel') && event.target.matches('input:not([type=file]), textarea')) app.saveState();
     });
     document.querySelectorAll('input[id], select[id], textarea[id]').forEach(el => el.setAttribute('aria-label', el.id.replaceAll('-', ' ')));
 });

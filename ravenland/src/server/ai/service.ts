@@ -1,3 +1,4 @@
+import {assertCurrentRequest} from '../request-epoch';
 import {worldContinuationRequested} from '../world/routing';
 import {worldTurn} from '../world/turn';
 import {worldContext} from '../world/context';
@@ -48,7 +49,7 @@ export function recentAIRequests(repo:SqliteCampaignRepository,campaignId:string
 export class AIService {
  constructor(readonly repo:SqliteCampaignRepository=getLocalRepository(),readonly provider:GMProvider=new OpenAIProvider(),readonly principal:CharacterPrincipal|null=null){}
  private reply(row:RequestRow):AIReply {const raw=JSON.parse(row.response_json!);return {...raw.reply,replayed:true}}
- private claim(c:GMTurn){const db=this.repo.db,fingerprint=createHash('sha256').update(JSON.stringify(c.kind==='quarter'?{kind:c.kind,entryId:c.entryId}:{kind:c.kind,action:c.action,characterId:c.characterId,entryId:c.entryId,...(c.kind==='roll'?{rollId:c.rollId,rollFingerprint:c.rollFingerprint}:{})})).digest('hex');db.exec('BEGIN IMMEDIATE');try{
+ private claim(c:GMTurn){assertCurrentRequest(this.repo,c.campaignId,c.requestId);const db=this.repo.db,fingerprint=createHash('sha256').update(JSON.stringify(c.kind==='quarter'?{kind:c.kind,entryId:c.entryId}:{kind:c.kind,action:c.action,characterId:c.characterId,entryId:c.entryId,...(c.kind==='roll'?{rollId:c.rollId,rollFingerprint:c.rollFingerprint}:{})})).digest('hex');db.exec('BEGIN IMMEDIATE');try{
   let record:ReturnType<SqliteCampaignRepository['get']>;try{record=this.repo.get(c.campaignId)}catch(error){if(c.kind==='roll'&&error instanceof ZodError)throw new AIError('roll_unverified','The saved campaign or dice record could not be validated. No result was submitted.',409);throw error}if(!record)throw new AIError('not_found','Campaign not found',404);const roll=c.kind==='roll'?verifiedRollSubmission(this.repo,record,c,this.principal):null,config=aiConfig(this.repo,c.campaignId);
   if(c.kind==='recap'){const prior=db.prepare('SELECT request_id FROM ai_recaps WHERE campaign_id=? AND session_id=?').get(c.campaignId,config.sessionId) as {request_id:string}|undefined;if(prior){const row=db.prepare('SELECT * FROM ai_requests WHERE campaign_id=? AND id=?').get(c.campaignId,prior.request_id) as unknown as RequestRow;db.exec('COMMIT');return {cached:this.reply(row),attempt:0}}}
   const prior=db.prepare('SELECT * FROM ai_requests WHERE campaign_id=? AND id=?').get(c.campaignId,c.requestId) as unknown as RequestRow|undefined;

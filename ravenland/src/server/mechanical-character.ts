@@ -1,10 +1,11 @@
+import {currentWeaponGear} from '../lib/character-data';
 import type {CharacterSheet} from '../lib/character-sheet';
 import type {Character} from '../lib/types';
 import {standardAttributes,standardSkills} from '../lib/rules/character-registry';
 import type {MechanicalCharacter} from '../lib/rules/action-preparation';
 export function exactInteger(value:unknown,min:number,max:number){if(typeof value!=='number'&&!(typeof value==='string'&&/^\d+$/.test(value)))return null;const n=Number(value);return Number.isSafeInteger(n)&&n>=min&&n<=max?n:null}
 const short=(value:unknown,n=100)=>typeof value==='string'?value.slice(0,n):'';
-export function mechanicalWeapon(w:NonNullable<CharacterSheet['weapons']>[number],index:number):MechanicalCharacter['weapons'][number]{return {index,name:short(w.name),bonus:exactInteger(w.bonus,0,12),damage:exactInteger(w.dmg,0,100),range:short(w.range),skill:short(w.skill),artifact:short(w.artifact,20),equipped:typeof w.equipped==='boolean'?w.equipped:null}}
+export function mechanicalWeapon(w:NonNullable<CharacterSheet['weapons']>[number],index:number):MechanicalCharacter['weapons'][number]{return {index,name:short(w.name),bonus:exactInteger(currentWeaponGear(w),0,12),damage:exactInteger(w.dmg,0,100),range:short(w.range),skill:short(w.skill),artifact:short(w.artifact,20),equipped:typeof w.equipped==='boolean'?w.equipped:null}}
 export function mechanicalCharacter(character:Character):MechanicalCharacter {
  const s=character.sheet;
  return {id:character.id,name:character.name,

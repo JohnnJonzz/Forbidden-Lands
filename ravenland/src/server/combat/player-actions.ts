@@ -75,7 +75,7 @@ export function executePlayerIntent(repo:SqliteCampaignRepository,record:Campaig
   if(needsReady(w.weapon)&&!state.ready||needsLoad(w.weapon)&&!state.loaded)throw new AIError('combat_weapon_not_ready',needsLoad(w.weapon)?'Load this crossbow before preparing its shot.':'Ready this bow or sling before preparing its shot.',409);
  }
  const wasProne=target.prone,message=beginPlayerAttack(e,actorId,target.id,w.index,character,w.weapon,kind);
- e.pending!.rules=verifiedAttackRules(rules.handbook);e.pending!.attackModifier=kind==='shoot'?e.pending!.rules!.rangedModifiers[e.range]:wasProne?e.pending!.rules!.modifiers.proneTarget:0;
+ e.pending!.rules=verifiedAttackRules(rules.handbook);e.pending!.attackModifier=(kind==='shoot'?e.pending!.rules!.rangedModifiers[e.range]:wasProne?e.pending!.rules!.modifiers.proneTarget:0)+(e.pending!.playerWeapon?.skillModifier??0);
  // Actual verified shot submission consumes readiness/loading in bindPlayerRoll.
  if(kind!=='shoot')interruptReadiness(actor);
  delete e.actionDraft;return {waiting:true,message};

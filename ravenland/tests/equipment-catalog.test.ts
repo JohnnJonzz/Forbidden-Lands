@@ -16,7 +16,7 @@ test('one catalog has 25 melee options, nine ranged weapons, eight armor pieces 
 });
 test('new character defaults use the catalog without rewriting saved inventories',()=>{
  const ch=structuredClone(initialSession.characters[0]);delete ch.sheet;const expected=weaponPreset(catalogWeapon('Dagger')!);assert.equal(sheetFor(ch).weapons![0].feat,expected.feat);assert.equal(sheetFor(ch).weapons![0].grip,expected.grip);
- ch.sheet={weapons:[{name:'Short sword',bonus:'2',dmg:'1',feat:'My existing notes'}],gear:[{item:'arrows',quantity:'7'}]};const before=JSON.stringify(ch);assert.strictEqual(sheetFor(ch),ch.sheet);assert.equal(JSON.stringify(ch),before);
+ ch.sheet={weapons:[{name:'Short sword',bonus:'2',dmg:'1',feat:'My existing notes'}],gear:[{item:'arrows',quantity:'7'}]};const before=JSON.stringify(ch);assert.equal(sheetFor(ch).weapons![0].current,'2');assert.equal(sheetFor(ch).weapons![0].gearBonus,'2');assert.equal(JSON.stringify(ch),before);
 });
 test('table parser reads actual row fields rather than catalog defaults and separates overlapping/wrapped names',()=>{
  const page={text:'MELEE WEAPONS\nWEAPON GRIP BONUS DAMAGE RANGE COST FEATURES\nWarhammer 1H +7 9 Arm 12 Blunt, Hook\nHeavy\nWarhammer\n2H +4 5 Arm 22 Heavy, Blunt, Hook\nStaff 2H +3 4 Near 1 Blunt, Hook, Parrying\nJohn Hadley',startPage:105} as SourcePassage;

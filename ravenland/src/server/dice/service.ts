@@ -1,3 +1,4 @@
+import {assertCurrentRequest} from '../request-epoch';
 import {requireCharacterAccess,type CharacterPrincipal} from '../character-access';
 import {requestedConsequenceRoll} from '../consequences/context';
 import {mechanicalCharacter} from '../mechanical-character';
@@ -12,7 +13,7 @@ import {getLocalRepository,type SqliteCampaignRepository} from '../sqlite';
 import {activeCombat} from '../combat/store';
 import {combatWorkflow} from '../combat/workflow';
 export function executeDice(raw:unknown,repo:SqliteCampaignRepository=getLocalRepository(),principal:CharacterPrincipal|null=null){
- const c=diceCommandSchema.parse(raw),db=repo.db,fingerprint=createHash('sha256').update(JSON.stringify(c)).digest('hex');
+ const c=diceCommandSchema.parse(raw);assertCurrentRequest(repo,c.campaignId,c.actionId);const db=repo.db,fingerprint=createHash('sha256').update(JSON.stringify(c)).digest('hex');
  db.exec('BEGIN IMMEDIATE');try{
   const record=repo.get(c.campaignId);if(!record)throw new Error('Campaign not found');
   // Authorization boundary: resolve authenticated principal and campaign/character ownership here when accounts are introduced.

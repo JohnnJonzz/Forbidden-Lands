@@ -69,7 +69,9 @@
     "test:post-combat-routing": "tsx --test tests/post-combat-routing.test.ts",
     "test:post-combat-routing:browser": "node --import tsx tests/post-combat-routing-browser.cjs",
     "test:gm-rulings": "tsx --test tests/gm-rulings.test.ts tests/ruling-defects.test.ts",
-    "test:gm-rulings:browser": "node --import tsx tests/gm-rulings-browser.cjs"
+    "test:gm-rulings:browser": "node --import tsx tests/gm-rulings-browser.cjs",
+    "test:data-integrity": "tsx --test tests/data-integrity.test.ts tests/data-integrity-defects.test.ts",
+    "test:data-integrity:browser": "node --import tsx tests/data-integrity-browser.cjs"
   },
   "dependencies": {
     "exceljs": "^4.4.0",

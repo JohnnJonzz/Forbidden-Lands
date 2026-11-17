@@ -1,3 +1,4 @@
+import {realCharacterIntegrityTests} from './character-integrity-real';
 import {realWorldActionTests} from './world-actions-real';
 import {realCombatTests} from './combat-real';
 import test from 'node:test';
@@ -205,6 +206,7 @@ test('REAL fifth-printing sourcebooks: extraction, persisted FTS and complete re
     report.checks.push({name:'Submitted attack '+scenario.name,status:'PASS',attackSuccesses:scenario.successes,requiredSuccesses:first.attackInterpretation.requiredSuccesses,baseDamage:final.baseDamage,phase:final.phase,damageAfterArmor:final.damageAfterArmor,evidencePages:[...new Set(first.rules.passages.filter((p:any)=>p.documentId===ids[0]).map((p:any)=>p.startPage))],mechanicalStateUnchanged:true});
    }finally{const current=db.get(id)!;db.update(id,current.revision,original);for(const requestId of requestIds){db.db.prepare('DELETE FROM ai_usage WHERE campaign_id=? AND request_id=?').run(id,requestId);db.db.prepare('DELETE FROM ai_requests WHERE campaign_id=? AND id=?').run(id,requestId)}db.db.prepare('DELETE FROM journey_actions WHERE campaign_id=? AND action_id=?').run(id,actionId)}
   });
+  await realCharacterIntegrityTests(t,db,id);
   await realWorldActionTests(t,db,id);
   await realCombatTests(t,db,id,filename);
   await t.test('MELEE is reviewed independently: STAB and GRAPPLE have distinct procedures',()=>{const stab=library.search({campaignId:id,documentId:ids[0],query:'STAB POINTED'},'player',40),grapple=library.search({campaignId:id,documentId:ids[0],query:'GRAPPLE BREAK FREE'},'player',20);check(stab.some(p=>p.startPage===96&&/STAB:/i.test(p.text)&&/POINTED/i.test(p.text)&&/MELEE/i.test(p.text)),'Actual STAB procedure missing');check(grapple.some(p=>p.startPage===96&&/GRAPPLE:[\s\S]*BREAK\s+FREE/i.test(p.text)),'Distinct GRAPPLE procedure missing');report.checks.push({name:'Separate MELEE rule review',status:'PASS',physicalPages:[96],shootResolverNotApplied:true})});

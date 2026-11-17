@@ -1,6 +1,7 @@
 import type {CombatSource,CombatWeapon} from './types';
 export type WeaponAttackType='slash'|'stab'|'shoot'|'punch';
 export interface AttackRulesSummary {
+ swordFighter?:{parryBonus:number;source:import('./types').CombatSource};
  unarmed?:{parryBonus:number};
  version:1;skill:'melee';actionCost:'slow';requiredSuccesses:1;extraSuccessDamage:1;
  slashFeatures:('Edged'|'Blunt')[];stabFeature:'Pointed';bluntIsFeature:true;
