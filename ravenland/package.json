@@ -19,7 +19,7 @@
     "test:fog": "node tests/fog-browser.cjs",
     "test:map": "node tests/map-browser.cjs",
     "map:prepare": "tsx scripts/prepare-map.ts",
-    "prestart": "tsx scripts/prepare-map.ts",
+    "prestart": "node scripts/generate-sheet.mjs && tsx scripts/prepare-map.ts",
     "test:map:real": "node tests/real-map-browser.cjs",
     "test:quarter": "node tests/quarter-browser.cjs",
     "test:dice-repair": "node tests/dice-repair-browser.cjs",
@@ -71,7 +71,9 @@
     "test:gm-rulings": "tsx --test tests/gm-rulings.test.ts tests/ruling-defects.test.ts",
     "test:gm-rulings:browser": "node --import tsx tests/gm-rulings-browser.cjs",
     "test:data-integrity": "tsx --test tests/data-integrity.test.ts tests/data-integrity-defects.test.ts",
-    "test:data-integrity:browser": "node --import tsx tests/data-integrity-browser.cjs"
+    "test:data-integrity:browser": "node --import tsx tests/data-integrity-browser.cjs",
+    "test:library-corrections": "tsx --test tests/library-corrections.test.ts",
+    "test:library-corrections:browser": "node --import tsx tests/library-corrections-browser.cjs"
   },
   "dependencies": {
     "exceljs": "^4.4.0",

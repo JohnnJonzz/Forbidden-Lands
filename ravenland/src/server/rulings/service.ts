@@ -88,7 +88,7 @@ export function rulingContext(
                 r.domain === "healing_rule"
                   ? repo.db
                       .prepare(
-                        "SELECT id,revision,title,override_scope FROM curated_rules WHERE campaign_id=?",
+                        "SELECT id,revision,title,override_scope FROM applicable_curated_rules WHERE campaign_id=?",
                       )
                       .all(campaignId)
                       .filter((v) => r.sources.includes(String(v.id)))
@@ -200,7 +200,7 @@ export function resolveRuling(
       if (e.type === "healing_rule") {
         const actual = repo.db
           .prepare(
-            "SELECT id,revision FROM curated_rules WHERE campaign_id=? AND document_type='House Rule' AND override_scope<>''",
+            "SELECT id,revision FROM applicable_curated_rules WHERE campaign_id=? AND document_type='House Rule' AND override_scope<>''",
           )
           .all(c.campaignId);
         if (

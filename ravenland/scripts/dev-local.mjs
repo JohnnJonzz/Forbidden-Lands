@@ -1,7 +1,9 @@
+import {execFileSync} from 'node:child_process';
 import {createServer} from 'node:http';
 import {randomBytes} from 'node:crypto';
 
 if(process.env.NODE_ENV==='production')throw Error('Trusted local play is development-only. Use npm start for hosted production.');
+execFileSync(process.execPath,['scripts/generate-sheet.mjs'],{stdio:'inherit'});
 const args=process.argv.slice(2);
 if(args.length!==0&&(args.length!==2||args[0]!=='--port'||!/^\d+$/.test(args[1])))throw Error('Trusted local play accepts --port only; its loopback binding cannot be changed.');
 const port=Number(process.argv[2]==='--port'?process.argv[3]:process.env.PORT??3000);

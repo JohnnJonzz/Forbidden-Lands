@@ -6,7 +6,7 @@ export const sourceCategories=['Rules','Bestiary','Adventure','Campaign Referenc
 export const sourceVisibilities=['Public Rules','GM Only'] as const;
 export const sourceMetadataSchema=z.object({title:z.string().trim().min(1).max(200),category:z.enum(sourceCategories),visibility:z.enum(sourceVisibilities).default('GM Only')}).strict();
 export type SourceMetadata=z.infer<typeof sourceMetadataSchema>;
-export interface SourceDocument extends SourceMetadata {id:string;campaignId:string;originalFilename:string;fileSize:number;pageCount:number|null;processedPages:number;uploadedAt:string;status:'Uploaded'|'Processing'|'Indexed'|'Failed';error:string|null;revision:number}
+export interface SourceDocument extends SourceMetadata {inherited?:boolean;applicable?:boolean;id:string;campaignId:string;originalFilename:string;fileSize:number;pageCount:number|null;processedPages:number;uploadedAt:string;status:'Uploaded'|'Processing'|'Indexed'|'Failed';error:string|null;revision:number}
 export interface SourcePassage {chunkId:string;documentId:string;title:string;category:SourceMetadata['category'];startPage:number;endPage:number;sequence:number;text:string;heading:string|null}
 export interface SourceCitation {documentId:string;chunkId:string;title:string;startPage:number|null;endPage:number|null;sourceType?:'curated'|'house-rule'|'pdf';sourceReference?:string;overrideApplicable?:boolean;headingPath?:string[]}
 export type RulePassage=SourcePassage|CuratedPassage;

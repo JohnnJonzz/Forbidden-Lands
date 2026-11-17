@@ -42,7 +42,7 @@ export function consequenceRulePages(
 ) {
   const overrides = repo.db
     .prepare(
-      "SELECT id,revision,override_scope FROM curated_rules WHERE campaign_id=? AND document_type='House Rule' AND override_scope<>''",
+      "SELECT id,revision,override_scope FROM applicable_curated_rules WHERE campaign_id=? AND document_type='House Rule' AND override_scope<>''",
     )
     .all(campaignId);
   const conflicting = overrides.filter(

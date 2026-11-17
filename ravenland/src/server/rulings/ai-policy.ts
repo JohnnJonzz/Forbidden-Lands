@@ -86,7 +86,7 @@ export function actionScope(
       })),
     rules: repo.db
       .prepare(
-        "SELECT id,revision FROM curated_rules WHERE campaign_id=? ORDER BY id",
+        "SELECT id,revision FROM applicable_curated_rules WHERE campaign_id=? ORDER BY id",
       )
       .all(campaignId),
   });

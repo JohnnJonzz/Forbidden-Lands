@@ -118,7 +118,7 @@ export function ruleScopeFingerprint(
     .get(campaignId, consequenceId);
   const rules = repo.db
     .prepare(
-      "SELECT id,revision,override_scope,body FROM curated_rules WHERE campaign_id=? AND document_type='House Rule' ORDER BY id",
+      "SELECT id,revision,override_scope,body FROM applicable_curated_rules WHERE campaign_id=? AND document_type='House Rule' ORDER BY id",
     )
     .all(campaignId);
   return rulingHash({

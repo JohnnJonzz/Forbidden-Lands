@@ -14,3 +14,5 @@ public/character-sheet.html
 public/images/**/*
 !public/images/**/
 !public/images/**/.gitkeep
+
+public/character-sheet-*.html
