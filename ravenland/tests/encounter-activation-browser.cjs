@@ -1,3 +1,4 @@
+const {finishBrowserEncounter}=require('./fixtures/finish-browser-encounter.cjs');
 const {chromium}=require('playwright'),assert=require('node:assert/strict'),{spawn,spawnSync}=require('node:child_process'),{mkdtempSync,rmSync,writeFileSync,existsSync}=require('node:fs'),{tmpdir}=require('node:os'),path=require('node:path'),{pathToFileURL}=require('node:url'),net=require('node:net');
 (async()=>{
  const root=path.resolve(__dirname,'..'),folder=mkdtempSync(path.join(tmpdir(),'raven-activation-browser-')),books=process.env.RAVENLAND_REAL_SOURCEBOOK_DIR||path.join(root,'tests/fixtures/private-sourcebooks'),diceFile=path.join(folder,'dice.json');
@@ -17,7 +18,7 @@ const {chromium}=require('playwright'),assert=require('node:assert/strict'),{spa
   await start();browser=await chromium.launch({executablePath:process.env.CHROMIUM_PATH||'/usr/bin/chromium',args:['--no-sandbox']});page=await browser.newPage({viewport:{width:1440,height:1000}});page.setDefaultTimeout(45000);const errors=[],requests=[];page.on('pageerror',e=>errors.push(e.message));page.on('dialog',d=>d.accept().catch(()=>{}));page.on('request',r=>{if(r.url().endsWith('/api/gm')&&r.method()==='POST')requests.push(r.postDataJSON())});await page.goto(url+'/campaigns/'+id);await page.getByLabel('Player action',{exact:true}).waitFor();await until(async()=>(await current()).session.chatJourney?.forms?.length);const baseline=(await current()).session,panel=page.locator('.combat-panel');
   const idle=()=>until(async()=>await page.locator('.ai-stream').count()===0);
   async function say(text){await idle();const count=(await current()).session.messages.length;await page.getByLabel('Player action',{exact:true}).fill(text);await page.getByRole('button',{name:'Send action',exact:true}).click();await until(async()=>(await current()).session.messages.length>=count+2);await idle();return(await current()).session.messages.at(-1)}
-  async function end(){await panel.getByRole('button',{name:'End encounter',exact:true}).click();await until(async()=>raw().status==='ended');await idle()}
+  async function end(){await finishBrowserEncounter(root,env.RAVENLAND_DB_PATH,id,actor.id);await page.reload();await page.getByLabel('Player action',{exact:true}).waitFor();await panel.evaluate(e=>e.open=true);await panel.getByRole('button',{name:'Begin encounter',exact:true}).waitFor()}
   function unchanged(s){for(const key of ['campaign','characters','journey','quarterDays','dayTracker','chatJourney','locations','exploration'])assert.deepEqual(s[key],baseline[key],key+' must not change during local setup')}
 
   // The acceptance test enters the complete request into the main composer.

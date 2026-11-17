@@ -1,3 +1,4 @@
+import {narrativeConsequenceSchema,worldActionSchema} from '../consequences/schema';
 import {actionInterpretationSchema} from '../combat/action-intents';
 import type {SourceCitation} from '../sourcebooks/schema';
 import {z} from 'zod';
@@ -17,7 +18,8 @@ export interface Memory extends MemoryContent {id:string;campaignId:string;day:s
 export const aiSettingsSchema=z.object({style:z.enum(['Concise','Balanced','Descriptive']),autonomy:z.enum(['Guided','Autonomous Narrative'])}).strict();
 export type AISettings=z.infer<typeof aiSettingsSchema>;
 // All structured-output properties are required; nullable values mean no action.
-export const aiActionSchema=z.object({type:z.enum(['request_quarter_day','ask_quarter_question','narrate_quarter_day','propose_quarter_resolution']),entryId:z.string().nullable(),text:z.string().max(5000),resolution:z.object({endingHex:z.string().max(50),quarterDays:z.literal(1),nextWeather:z.string().max(300),adjudication:z.string().max(5000),narrative:z.string().max(5000)}).strict().nullable()}).strict();
+const quarterActionSchema=z.object({type:z.enum(['request_quarter_day','ask_quarter_question','narrate_quarter_day','propose_quarter_resolution']),entryId:z.string().nullable(),text:z.string().max(5000),resolution:z.object({endingHex:z.string().max(50),quarterDays:z.literal(1),nextWeather:z.string().max(300),adjudication:z.string().max(5000),narrative:z.string().max(5000)}).strict().nullable()}).strict();
+export const aiActionSchema=z.union([quarterActionSchema,z.object({type:z.literal('propose_consequence'),entryId:z.null(),text:z.string().max(5000),resolution:z.null(),consequence:narrativeConsequenceSchema}).strict(),z.object({type:z.literal('propose_world_action'),entryId:z.null(),text:z.string().max(5000),resolution:z.null(),world:worldActionSchema}).strict()]);
 export const proposalEvidenceSchema=z.object({sourceType:z.enum(['chat','journal','memory','campaign_record']),sourceId:z.string().min(1).max(160),excerpt:z.string().min(1).max(600),claimType:z.enum(['event','statement','development','historical_recall']),acceptedByMessageId:z.string().nullable()}).strict();
 export type ProposalEvidence=z.infer<typeof proposalEvidenceSchema>;
 export const gmOutputSchema=z.object({narration:z.string().min(1).max(18000),memoryProposals:z.array(memoryContentSchema.extend({targetMemoryId:z.string().nullable(),evidence:proposalEvidenceSchema.nullable()}).strict()).max(6),actions:z.array(aiActionSchema).max(4),selectedImageId:z.string().nullable()}).strict();
