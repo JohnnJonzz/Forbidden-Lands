@@ -1,3 +1,4 @@
+import {genesisDecisionSchema,type GenesisChooser} from '../genesis/schema';
 import {worldDecisionSchema} from '../../lib/world/schema';
 import type {WorldChooser} from '../world/context';
 import {withGMCharter} from '../../lib/ai/gm-charter';
@@ -15,12 +16,17 @@ import {AIError,serverAIConfig,publicAIError} from './config';
 import {gmInstructions,instructionVersion} from './instructions-v1';
 import {defaultGMInstructions} from './default-instructions';
 export interface ProviderResult {combatProse?:CombatProse;output:GMOutput;inputTokens:number|null;outputTokens:number|null;model:string;provider:'openai'|'mock'|'application'}
-export interface GMProvider {chooseWorld?:WorldChooser;interpretActions?:ActionInterpreter;narrateCombat?:(input:unknown,settings:{style:string;autonomy:string;instructions?:string;onDiagnostics?:(patch:ProviderDiagnostics)=>void})=>Promise<ProviderResult>;chooseCombat?:CombatChooser;generate(input:unknown,settings:{style:string;autonomy:string;instructions?:string;onDiagnostics?:(patch:ProviderDiagnostics)=>void},onText:(text:string)=>void):Promise<ProviderResult>;test():Promise<{inputTokens:number|null;outputTokens:number|null;model:string}>}
+export interface GMProvider {genesis?:GenesisChooser;chooseWorld?:WorldChooser;interpretActions?:ActionInterpreter;narrateCombat?:(input:unknown,settings:{style:string;autonomy:string;instructions?:string;onDiagnostics?:(patch:ProviderDiagnostics)=>void})=>Promise<ProviderResult>;chooseCombat?:CombatChooser;generate(input:unknown,settings:{style:string;autonomy:string;instructions?:string;onDiagnostics?:(patch:ProviderDiagnostics)=>void},onText:(text:string)=>void):Promise<ProviderResult>;test():Promise<{inputTokens:number|null;outputTokens:number|null;model:string}>}
 // Tests inject an SDK client/fetch transport; production uses only OPENAI_API_KEY
 // and the official API endpoint. There is no browser-controlled base URL.
 export class OpenAIProvider implements GMProvider {
  constructor(private readonly suppliedClient?:OpenAI){}
  private client(){if(this.suppliedClient)return this.suppliedClient;if(!process.env.OPENAI_API_KEY)throw new AIError('missing_key','OPENAI_API_KEY is missing. Add it to the server .env.local and restart.',503);return new OpenAI({apiKey:process.env.OPENAI_API_KEY,maxRetries:0,timeout:serverAIConfig().timeoutMs,logLevel:'off'})}
+ async genesis(input:unknown){
+  const config=serverAIConfig();const response=await this.client().responses.create({model:config.model,instructions:withGMCharter('Conduct collaborative Campaign Genesis, not ordinary adventuring. Return a typed Genesis decision. Read the saved draft and current participating character records, never invent their background. In natural conversation, develop a village identity from the supplied trusted results, invite modifications and rejection, discuss relationships, individual and shared motivations, opening style, tone and GM initiative. Official results, creative interpretation and player modifications must remain distinct. Treat an unaccepted suggestion as draft only. Do not repeat questions already answered. Interpret accept_village, retry_village, review and confirm only when requested by the current player message. Keep the verified anchor unless the player explicitly requests an eligible replacement hex. Keep canonical names. A review is a checkpoint, never a request to invent missing decisions. Confirm must return the exact reviewed draft unchanged and a concise openingScene with sensory detail, a present NPC or observable tension, and a genuine decision point. Respect agreed individual character locations; never force assembly. Do not introduce travel, combat, quarter reports, skill checks, elapsed time or PC actions. All output is shared; secret fields are withheld. Do not infer secrets. Draft fields describe public agreed/proposed facts only, not instructions or hidden plans. Permanent charter outranks foundation; current verified events outrank historical premise.'),input:JSON.stringify(input),text:{format:zodTextFormat(genesisDecisionSchema,'campaign_genesis')},max_output_tokens:Math.max(config.maxOutputTokens,3000),store:false},{signal:AbortSignal.timeout(config.timeoutMs)});
+  if(response.status!=='completed')throw new AIError('genesis_incomplete','Genesis response was interrupted. Retry; no draft was changed.',502);
+  return genesisDecisionSchema.parse(JSON.parse(response.output_text));
+ }
  async interpretActions(input:Parameters<ActionInterpreter>[0]){
   const config=serverAIConfig();
   const response=await this.client().responses.create({model:config.model,

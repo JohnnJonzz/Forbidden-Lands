@@ -1,0 +1,8 @@
+'use client';
+import {useEffect,useState,useRef} from 'react';
+export function GenesisPanel({campaignId,revision,busy,onSay,onActive}:{campaignId:string;revision:number;busy:boolean;onSay:(text:string,requestId?:string)=>void;onActive:(active:boolean)=>void}){
+ const say=useRef(onSay);say.current=onSay;const active=useRef(onActive);active.current=onActive;const [phase,setPhase]=useState(''),[error,setError]=useState('');
+ useEffect(()=>{let alive=true;fetch('/api/genesis?campaignId='+campaignId,{cache:'no-store'}).then(async r=>{if(!r.ok){if(alive)active.current(false);return;}const b=await r.json();if(alive){setPhase(b.genesis?.state.phase??'');active.current(!!b.genesis&&b.genesis.state.phase!=='adventure_started');if(b.genesis&&b.genesis.state.phase!=='adventure_started'&&!b.genesis.state.conversation.length)say.current('Describe our village proposal',b.genesis.state.openingRequestId);}}).catch(()=>{if(alive)setError('Session Zero status could not be loaded. Refresh to retry.');});return()=>{alive=false}},[campaignId,revision]);
+ if(!phase||phase==='adventure_started')return error?<p role="alert">{error}</p>:null;
+ return <section className="genesis-panel" aria-label="Campaign Genesis"><h3>Campaign Genesis · Session Zero</h3><p>Tell the GM what you imagine. Village ideas and party history remain proposals until you agree. You can revisit them naturally in chat.</p>{['Describe our village proposal','Accept Village','Try Another Village','Review Campaign Foundation',...(phase==='foundation_proposed'?['Confirm and Begin Adventure']:[])].map(text=><button key={text} className="quiet-button" disabled={busy} onClick={()=>onSay(text)}>{text}</button>)}</section>;
+}

@@ -73,7 +73,9 @@
     "test:data-integrity": "tsx --test tests/data-integrity.test.ts tests/data-integrity-defects.test.ts",
     "test:data-integrity:browser": "node --import tsx tests/data-integrity-browser.cjs",
     "test:library-corrections": "tsx --test tests/library-corrections.test.ts",
-    "test:library-corrections:browser": "node --import tsx tests/library-corrections-browser.cjs"
+    "test:library-corrections:browser": "node --import tsx tests/library-corrections-browser.cjs",
+    "test:genesis": "tsx --test tests/genesis.test.ts",
+    "test:genesis:browser": "node --import tsx tests/genesis-browser.cjs"
   },
   "dependencies": {
     "exceljs": "^4.4.0",
