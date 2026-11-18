@@ -75,7 +75,10 @@
     "test:library-corrections": "tsx --test tests/library-corrections.test.ts",
     "test:library-corrections:browser": "node --import tsx tests/library-corrections-browser.cjs",
     "test:genesis": "tsx --test tests/genesis.test.ts",
-    "test:genesis:browser": "node --import tsx tests/genesis-browser.cjs"
+    "test:genesis:browser": "node --import tsx tests/genesis-browser.cjs",
+    "test:context-logistics": "tsx --test tests/context-logistics.test.ts",
+    "test:context-logistics:browser": "node --import tsx tests/context-logistics-browser.cjs",
+    "test:logistics:real": "tsx --test tests/logistics.integration.ts"
   },
   "dependencies": {
     "exceljs": "^4.4.0",

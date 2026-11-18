@@ -669,7 +669,7 @@
         <p>Total dice: <output id="shield-total">2</output></p>
         <label class="armor-worn"><input id="shield-worn" type="checkbox" checked onchange="app.saveState()"> Don</label>
         <label for="shield-notes">Features</label><input id="shield-notes" type="text" onchange="app.saveState()">
-        <div class="grid-2"><div><label for="shield-carried">Carried</label><select id="shield-carried" onchange="app.saveState()"><option>Yes</option><option>No</option></select></div><div><label for="shield-weight">Weight</label><select id="shield-weight" onchange="app.saveState()"><option>Tiny</option><option>Light</option><option selected>Normal</option><option>Heavy</option></select></div></div>
+        <div class="grid-2"><div><label for="shield-carried">Carried</label><select id="shield-carried" onchange="delete this.dataset.unestablished;app.saveState()"><option>Yes</option><option>No</option></select></div><div><label for="shield-weight">Weight</label><select id="shield-weight" onchange="delete this.dataset.unestablished;app.saveState()"><option>Tiny</option><option>Light</option><option selected>Normal</option><option>Heavy</option></select></div></div>
         <p class="save-note">Rolls use current Strength, Melee, shield bonus, and modifier. A named shield counts toward encumbrance when Carried is Yes, even when not donned.</p>
     </section>
     <section class="panel equipment-block" id="armor-section">
@@ -685,8 +685,8 @@
             <div class="armor-details">
                 <label class="armor-worn"><input type="checkbox" id="armor-worn" checked onchange="app.saveState()"> Don</label>
                 <div><label for="armor-notes">Features</label><input type="text" id="armor-notes" onchange="app.saveState()"></div>
-                <div><label for="armor-carried">Carried</label><select id="armor-carried" onchange="app.saveState()"><option>Yes</option><option>No</option></select></div>
-                <div><label for="armor-weight">Weight</label><select id="armor-weight" onchange="app.saveState()"><option>Tiny</option><option>Light</option><option selected>Normal</option><option>Heavy</option></select></div>
+                <div><label for="armor-carried">Carried</label><select id="armor-carried" onchange="delete this.dataset.unestablished;app.saveState()"><option>Yes</option><option>No</option></select></div>
+                <div><label for="armor-weight">Weight</label><select id="armor-weight" onchange="delete this.dataset.unestablished;app.saveState()"><option>Tiny</option><option>Light</option><option selected>Normal</option><option>Heavy</option></select></div>
             </div>
         </div>
         <div class="armor-piece" data-piece="helmet">
@@ -700,8 +700,8 @@
             <div class="armor-details">
                 <label class="armor-worn"><input type="checkbox" id="helmet-worn" checked onchange="app.saveState()"> Don</label>
                 <div><label for="helmet-notes">Features</label><input type="text" id="helmet-notes" onchange="app.saveState()"></div>
-                <div><label for="helmet-carried">Carried</label><select id="helmet-carried" onchange="app.saveState()"><option>Yes</option><option>No</option></select></div>
-                <div><label for="helmet-weight">Weight</label><select id="helmet-weight" onchange="app.saveState()"><option>Tiny</option><option>Light</option><option selected>Normal</option><option>Heavy</option></select></div>
+                <div><label for="helmet-carried">Carried</label><select id="helmet-carried" onchange="delete this.dataset.unestablished;app.saveState()"><option>Yes</option><option>No</option></select></div>
+                <div><label for="helmet-weight">Weight</label><select id="helmet-weight" onchange="delete this.dataset.unestablished;app.saveState()"><option>Tiny</option><option>Light</option><option selected>Normal</option><option>Heavy</option></select></div>
             </div>
         </div>
         <div class="armor-footer"><strong>Armor rating <output id="combined-armor-rating" aria-live="polite">0</output></strong><button onclick="app.stageArmor()" aria-label="Stage armor roll" title="Stage armor roll"><svg class="action-icon" aria-hidden="true"><use href="#icon-shield"></use></svg></button></div>
@@ -720,6 +720,92 @@
 </div>
 
 <script>
+// BEGIN GENERATED CARRYING
+// One pure calculation is compiled into the standalone/embedded sheet and used by services.
+function carryingTotals(sheet, catalog = { weapons: [] }) {
+    const weights = { Heavy: 2, Normal: 1, Light: .5, Tiny: 0 }, issues = [], seen = new Map();
+    const key = (v) => v.trim().toLowerCase().replace(/[‐‑–]/g, '-');
+    let gear = 0, weapons = 0, armor = 0, resources = 0, coins = 0;
+    const gearRows = (sheet.gear ?? []).filter((g) => g.item?.trim());
+    const add = (id, weight) => { if (id) {
+        if (seen.has(id)) {
+            if (seen.get(id) !== weight)
+                issues.push('Linked item has inconsistent weight/quantity');
+            return 0;
+        }
+        seen.set(id, weight);
+    } return weight; };
+    for (const g of gearRows) {
+        if (/^(?:food|water|arrows?|torches?|rations?)$/i.test(g.item.trim()))
+            issues.push('Review consumable recorded as physical gear: ' + g.item);
+        const n = g.quantity === '' || g.quantity === undefined ? null : Number(g.quantity);
+        if (n === null || !Number.isInteger(n) || n < 0 || weights[g.weight] === undefined) {
+            issues.push('Review quantity/weight for ' + g.item);
+            continue;
+        }
+        gear += add(g.itemId, weights[g.weight] * n);
+    }
+    for (const w of sheet.weapons ?? []) {
+        if (!w.name?.trim())
+            continue;
+        const entry = catalog.weapons.find(e => [e.name, e.id, ...(e.aliases ?? [])].some((n) => key(n) === key(w.name)));
+        const weight = w.weight || (entry ? (/\bHeavy\b/i.test(entry.features) ? 'Heavy' : /\bLight\b/i.test(entry.features) ? 'Light' : 'Normal') : null);
+        if (weight === null || weights[weight] === undefined) {
+            issues.push('Review weapon weight for ' + w.name);
+            continue;
+        }
+        const identity = (name) => catalog.weapons.find(e => [e.name, e.id, ...(e.aliases ?? [])].some((n) => key(n) === key(name)))?.id ?? key(name);
+        if (gearRows.some((g) => identity(g.item) === identity(w.name) && (!g.itemId || !w.itemId)))
+            issues.push('Resolve legacy item identity for ' + w.name + ' in weapons and inventory');
+        weapons += add(w.itemId, weights[weight]);
+    }
+    for (const p of ['armor', 'helmet', 'shield'])
+        if (sheet[p + '-name']?.trim()) {
+            const carried = sheet[p + '-carried'], worn = sheet[p + '-worn'];
+            if (carried === 'Yes' || carried === undefined && worn === true) {
+                const w = weights[sheet[p + '-weight']];
+                if (w === undefined)
+                    issues.push('Review ' + p + ' weight');
+                else
+                    armor += w;
+            }
+            else if (carried !== 'No')
+                issues.push('Review ' + p + ' carried status');
+        }
+    for (const p of ['food', 'water', 'arrows', 'torches']) {
+        const raw = sheet['res-' + p];
+        if (/^D(?:6|8|10|12)$/i.test(raw ?? '')) {
+            resources++;
+            if (gearRows.some((g) => key(g.item) === p))
+                issues.push('Review ' + p + ' represented both as gear and a resource die');
+        }
+        else if (raw !== undefined && raw !== '' && !/^(?:None|Empty|0)$/i.test(raw))
+            issues.push('Review ' + p + ' resource value');
+    }
+    let coinCount = 0;
+    for (const kind of ['copper', 'silver', 'gold']) {
+        const value = sheet['coin-' + kind];
+        if (value !== undefined && value !== '') {
+            const n = Number(value);
+            if (!Number.isInteger(n) || n < 0)
+                issues.push('Review ' + kind + ' coins');
+            else
+                coinCount += n;
+        }
+    }
+    coins = Math.floor(coinCount / 100) * .5;
+    const strength = Number(sheet['attr-strength-regular']);
+    if (!Number.isInteger(strength) || strength < 1)
+        issues.push('Base Strength is unestablished');
+    const bonus = Number(sheet['capacity-bonus'] || 0);
+    if (!Number.isFinite(bonus) || bonus < 0)
+        issues.push('Review capacity bonus');
+    const capacity = Number.isInteger(strength) && strength > 0 ? strength * 2 + (Number.isFinite(bonus) && bonus >= 0 ? bonus : 0) : null, total = issues.length ? null : gear + weapons + armor + resources + coins;
+    return { gear, weapons, armor, resources, coins, total, capacity, overloaded: total !== null && capacity !== null ? total > capacity : null, issues };
+}
+
+// END GENERATED CARRYING
+
 /**
  * Forbidden Lands Character Sheet Single Page Application
  */
@@ -975,25 +1061,14 @@ class ForbiddenLandsApp {
     }
 
     renderEncumbrance() {
-        const weights = {Tiny: 0, Light: 0.5, Normal: 1, Heavy: 2};
-        const gearWeight = Array.from(document.querySelectorAll('#gear-table tbody tr')).reduce((total, row) => {
-            if (!row.querySelector('.g-item').value.trim()) return total;
-            const quantity = Math.max(0, Math.floor(Number(row.querySelector('.g-qty').value) || 0));
-            return total + (weights[row.querySelector('.g-weight').value] ?? 1) * quantity;
-        }, 0);
-        const equipmentWeight = ['armor','helmet','shield'].reduce((total, piece) => {
-            const selected = document.getElementById(piece + '-name').value.trim();
-            const isCarried = document.getElementById(piece + '-carried').value === 'Yes';
-            return total + (selected && isCarried ? (weights[document.getElementById(piece + '-weight').value] ?? 1) : 0);
-        }, 0);
-        const carried = gearWeight + equipmentWeight;
-        const strength = Math.max(1, Math.min(6, Number(document.getElementById('attr-strength-regular').value) || 1));
-        const bonus = Math.max(0, Number(document.getElementById('capacity-bonus').value) || 0);
-        const capacity = strength * 2 + bonus;
-        const summary = document.getElementById('encumbrance-summary');
-        const difference = capacity - carried;
-        summary.classList.toggle('overloaded', difference < 0);
-        summary.textContent = `${carried} / ${capacity} units · ` + (difference < 0 ? `Over capacity by ${-difference}` : `${difference} remaining`);
+        const sheet={};this.fieldIds.forEach(id=>{const e=document.getElementById(id);if(e)sheet[id]=e.type==='checkbox'?e.checked:e.value;});
+        sheet.gear=[...document.querySelectorAll('#gear-table tbody tr')].map(r=>({item:r.querySelector('.g-item').value,quantity:r.querySelector('.g-qty').value,weight:r.querySelector('.g-weight').value,itemId:r.dataset.itemId}));
+        sheet.weapons=[...document.querySelectorAll('#weapons-table tbody tr')].map(r=>({name:r.querySelector('.w-name').value,weight:r.querySelector('.w-weight').value||undefined,itemId:r.dataset.itemId}));
+        for(const id of this.fieldIds)if(document.getElementById(id)?.dataset.unestablished)delete sheet[id];
+        const result=carryingTotals(sheet,this.equipmentCatalog);
+        const summary=document.getElementById('encumbrance-summary');
+        summary.classList.toggle('overloaded',result.overloaded===true);
+        summary.textContent=result.issues.length?'Carrying review required: '+result.issues.join('; '):`Gear ${result.gear} · Weapons ${result.weapons} · Armor/shield ${result.armor} · Resources ${result.resources} · Coins ${result.coins} · Total ${result.total} / ${result.capacity} units${result.overloaded?' · Over encumbered: Endurance required for Hike/Run':''}`;
     }
 
     renderAttributes() {
@@ -1038,6 +1113,7 @@ class ForbiddenLandsApp {
     }
 
     updateAttribute(attribute) {
+        delete document.getElementById('attr-'+attribute+'-regular').dataset.unestablished;
         const regular = document.getElementById(`attr-${attribute}-regular`);
         const current = document.getElementById(`attr-${attribute}`);
         const previous = Number(regular.dataset.previous) || Number(regular.value);
@@ -1161,6 +1237,7 @@ class ForbiddenLandsApp {
         this.updatePoolPreview();
         this.fieldIds.forEach(id => {
             const el = document.getElementById(id);
+            if(el?.dataset.unestablished)return;
             if (el) {
                 if (el.type === 'checkbox') el.checked = el.defaultChecked;
                 else if (el.type === 'number') el.value = el.defaultValue || el.min || 0;
@@ -1189,6 +1266,7 @@ class ForbiddenLandsApp {
         
         this.fieldIds.forEach(id => {
             const el = document.getElementById(id);
+            if(el?.dataset.unestablished)return;
             if (el) data[id] = el.type === 'checkbox' ? el.checked : el.value;
         });
 
@@ -1204,7 +1282,7 @@ class ForbiddenLandsApp {
         }));
 
         data.weapons = Array.from(document.querySelectorAll('#weapons-table tbody tr')).map(tr => ({
-            name: tr.querySelector('.w-name').value,
+            ...(tr.dataset.itemId?{itemId:tr.dataset.itemId}:{}),...(tr.querySelector('.w-weight').value?{weight:tr.querySelector('.w-weight').value}:{}),name: tr.querySelector('.w-name').value,
             bonus: tr.querySelector('.w-bonus').value,
             gearBonus: tr.querySelector('.w-original').value,
             current: tr.querySelector('.w-current').value,
@@ -1220,7 +1298,7 @@ class ForbiddenLandsApp {
         }));
 
         data.gear = Array.from(document.querySelectorAll('#gear-table tbody tr')).map(tr => ({
-            item: tr.querySelector('.g-item').value,
+            ...(tr.dataset.itemId?{itemId:tr.dataset.itemId}:{}),item: tr.querySelector('.g-item').value,
             weight: tr.querySelector('.g-weight').value,
             quantity: tr.querySelector('.g-qty').value,
             notes: tr.querySelector('.g-notes').value
@@ -1239,6 +1317,8 @@ class ForbiddenLandsApp {
     loadCharacter(id) {
         const data = this.roster[id];
         if (!data) return;
+        for(const prefix of ['armor','helmet','shield'])for(const field of ['weight','carried']){const el=document.getElementById(prefix+'-'+field);delete el.dataset.unestablished;if(data[prefix+'-name']?.trim()&&data[prefix+'-'+field]===undefined){if(field==='carried'&&data[prefix+'-worn']===true){el.value='Yes';continue;}el.dataset.unestablished='true';if(![...el.options].some(o=>o.value===''))el.add(new Option('Review '+field,''),0);el.value='';}}
+        if(data['attr-strength-regular']===undefined)document.getElementById('attr-strength-regular').dataset.unestablished='true';else delete document.getElementById('attr-strength-regular').dataset.unestablished;
         this.resetForm();
         this.artifactDice = [];
         this.currentRoll = null;
@@ -1280,11 +1360,11 @@ class ForbiddenLandsApp {
         if (data.talents) data.talents.forEach(t => this.addTalentRow(t.name, t.rank, t.desc, t.type));
 
         document.querySelector('#weapons-table tbody').innerHTML = '';
-        if (data.weapons) data.weapons.forEach(w => this.addWeaponRow(w.name, w.bonus, w.dmg, w.range, w.feat, w.skill, w.artifact, w.equipped, w.grip, w.cost, w.gearBonus, w.current, w.repairLimit, w.destroyed));
+        if (data.weapons) data.weapons.forEach(w => this.addWeaponRow(w.name, w.bonus, w.dmg, w.range, w.feat, w.skill, w.artifact, w.equipped, w.grip, w.cost, w.gearBonus, w.current, w.repairLimit, w.destroyed, w.itemId, w.weight));
 
         document.querySelector('#gear-table tbody').innerHTML = '';
         if (Array.isArray(data.spells)) data.spells.forEach(spell=>{if(spell && typeof spell === 'object') this.addSpell(spell);});
-        if (data.gear) data.gear.forEach(g => this.addGearRow(g.item, g.weight, g.notes, g.quantity));
+        if (data.gear) data.gear.forEach(g => this.addGearRow(g.item, g.weight===undefined?'':g.weight, g.notes, g.quantity===undefined?'':g.quantity, g.itemId));
         this.renderAttributes();
         this.renderEncumbrance();
         this.renderArmor();
@@ -1333,7 +1413,7 @@ class ForbiddenLandsApp {
         this.stagePool('Melee', 'strength', Number(document.getElementById('attr-strength').value), Number(document.getElementById('skill-melee').value), 0);
     }
 
-    addWeaponRow(name = '', bonus = 0, dmg = 1, range = 'Arm', feat = '', skill = 'melee', artifact = 'None', equipped = false, grip = '', cost = '', gearBonus, current, repairLimit, destroyed) {
+    addWeaponRow(name = '', bonus = 0, dmg = 1, range = 'Arm', feat = '', skill = 'melee', artifact = 'None', equipped = false, grip = '', cost = '', gearBonus, current, repairLimit, destroyed, itemId, weight) {
         if(current===undefined){current=bonus;bonus=0;gearBonus=gearBonus??this.equipmentCatalog.weapons.find(w=>[w.name,...w.aliases].includes(name))?.bonus??'';}
         const tr = document.createElement('tr');
         if(repairLimit!==undefined)tr.dataset.repairLimit=repairLimit;if(destroyed)tr.dataset.destroyed='true';
@@ -1350,7 +1430,7 @@ class ForbiddenLandsApp {
                     <option value="melee" ${skill === 'melee' ? 'selected' : ''}>Melee (Strength)</option>
                     <option value="marksmanship" ${skill === 'marksmanship' ? 'selected' : ''}>Marksmanship (Agility)</option>
                 </select>
-            </td>
+            <label class="weapon-weight-label">Weight<select class="w-weight" aria-label="Weapon weight" onchange="app.saveState()"><option value="">Catalog / review</option><option>Heavy</option><option>Normal</option><option>Light</option><option>Tiny</option></select></label></td>
             <td><input type="checkbox" class="w-equipped" aria-label="Weapon equipped" ${equipped === true ? 'checked' : ''} onchange="app.saveState()"></td>
             <td><input type="number" min="-10" max="10" value="${this.escapeHTML(bonus)}" class="w-bonus" onchange="app.saveState()"></td><td><input type="number" min="0" max="12" aria-label="Weapon original gear bonus" value="${this.escapeHTML(gearBonus)}" class="w-original" onchange="app.saveState()"></td><td><input type="number" min="0" max="12" aria-label="Weapon current gear bonus" value="${this.escapeHTML(current)}" class="w-current" onchange="app.saveState()"></td>
             <td><input type="number" value="${this.escapeHTML(dmg)}" class="w-dmg" onchange="app.saveState()"></td>
@@ -1367,7 +1447,7 @@ class ForbiddenLandsApp {
         }
         [...tr.cells].forEach((cell,i)=>cell.dataset.label=document.querySelectorAll('#weapons-table thead th')[i]?.textContent.trim()||'Remove');
         this.updateWeaponIcon(tr);
-        tr.querySelector('.w-name').dataset.previous = name;
+        if(itemId)tr.dataset.itemId=itemId;tr.querySelector('.w-weight').value=weight||'';tr.querySelector('.w-name').dataset.previous = name;
         document.querySelector('#weapons-table tbody').appendChild(tr);
     }
 
@@ -1400,11 +1480,11 @@ class ForbiddenLandsApp {
         this.saveState();
     }
 
-    addGearRow(item = '', weight = 'Normal', notes = '', quantity = 1) {
+    addGearRow(item = '', weight = 'Normal', notes = '', quantity = 1, itemId) {
         this.createTableRow('gear-table', [
             `<input type="text" aria-label="Gear item" value="${this.escapeHTML(item)}" class="g-item" onchange="app.saveState()">`,
             `<input type="number" aria-label="Gear quantity" min="0" step="1" value="${this.escapeHTML(quantity)}" class="g-qty" onchange="app.saveState()">`,
-            `<select class="g-weight" onchange="app.saveState()">
+            `<select class="g-weight" onchange="app.saveState()"><option value="" ${weight===''?'selected':''}>Review weight</option>
                 <option ${weight==='Tiny'?'selected':''}>Tiny</option>
                 <option ${weight==='Light'?'selected':''}>Light</option>
                 <option ${weight==='Normal'?'selected':''}>Normal</option>
@@ -1412,6 +1492,7 @@ class ForbiddenLandsApp {
             </select>`,
             `<input type="text" value="${this.escapeHTML(notes)}" class="g-notes" onchange="app.saveState()">`
         ]);
+        if(itemId)document.querySelector('#gear-table tbody tr:last-child').dataset.itemId=itemId;
     }
 
     createTableRow(tableId, cellHTMLs) {

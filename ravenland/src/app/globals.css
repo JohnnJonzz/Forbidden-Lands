@@ -94,3 +94,8 @@ button.party-member{width:100%;padding:4px 0;border:0;background:transparent;tex
 
 .genesis-panel{margin:12px 24px;padding:16px;border:1px solid var(--border,#555443);border-radius:8px;background:rgba(120,110,70,.08)}
 .genesis-panel h3{font-family:Georgia,serif;font-size:1.2rem;margin:0 0 8px}.genesis-panel p{margin-bottom:12px}.genesis-panel button{margin:3px}
+
+.logistics-panel label{display:inline-flex;flex-direction:column;vertical-align:top;gap:6px;margin:8px 14px 8px 0;min-width:170px;max-width:100%;font-size:.82rem;color:var(--muted,#bcb7a6)}
+.logistics-panel input:not([type=checkbox]),.logistics-panel select,.logistics-panel textarea{background:#171c18;color:#ece8da;border:1px solid #57533c;border-radius:4px;padding:8px;min-height:36px;max-width:100%;font:inherit}
+.logistics-panel textarea{min-width:260px;min-height:72px}.logistics-panel button{margin:8px 8px 8px 0}.logistics-panel h3{margin-top:20px}.logistics-panel details{margin:12px 0}.logistics-panel article,.logistics-panel section{padding:12px;margin:12px 0;border:1px solid #454832;border-radius:5px}.logistics-panel p{line-height:1.6}.logistics-panel summary{cursor:pointer;padding:6px 0;color:#d8ceaa}
+@media(max-width:700px){.logistics-panel label{display:flex;min-width:0;width:100%;margin-right:0}.logistics-panel textarea{min-width:0;width:100%}.logistics-panel select{width:100%}}

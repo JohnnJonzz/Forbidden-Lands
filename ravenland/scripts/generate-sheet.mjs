@@ -1,8 +1,10 @@
+import ts from 'typescript';
 import {readFileSync,writeFileSync,mkdirSync} from 'node:fs';
 import {createHash} from 'node:crypto';
 import {fileURLToPath} from 'node:url';
 const root=fileURLToPath(new URL('../',import.meta.url));
 let html=readFileSync(root+'../index.html','utf8');
+const carrying=ts.transpile(readFileSync(root+'src/lib/carrying.ts','utf8'),{target:ts.ScriptTarget.ES2020,module:ts.ModuleKind.ES2020}).replace(/^export /gm,'');html=html.replace(/\/\/ BEGIN GENERATED CARRYING[\s\S]*?\/\/ END GENERATED CARRYING/,'// BEGIN GENERATED CARRYING\n'+carrying+'\n// END GENERATED CARRYING');
 const registry=JSON.parse(readFileSync(root+'../character-rules.json','utf8'));
 const equipment=JSON.parse(readFileSync(root+'../equipment-catalog.json','utf8'));
 for(const rows of [equipment.weapons,equipment.armor,equipment.shields]){

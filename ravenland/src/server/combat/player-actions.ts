@@ -1,3 +1,4 @@
+import {enforceCarrying} from '../logistics/overload';
 import {weaponInRange} from './enemy-choices';
 import type {CombatIntent} from '../../lib/combat/action-intents';
 import type {CombatEncounter} from '../../lib/combat/types';
@@ -51,7 +52,7 @@ export function executePlayerIntent(repo:SqliteCampaignRepository,record:Campaig
   if(!target)throw new AIError('combat_target','Choose an actual active enemy reference for this movement.',409);
   if(e.range===intent.to)throw new AIError('combat_range','The target is already at that range; no additional movement or action was recorded.',409);
   if(e.range==='Arm'&&intent.to==='Near'){const message=declareRetreat(e,actorId,target.id);e.pending!.rules=verifiedAttackRules(rules.handbook);return {waiting:true,message};}
-  return {waiting:false,message:runMovement(e,actorId,target.id,intent.to)};
+  const movementKey='Run:'+e.id+':'+e.round+':'+(e.actions?.length??0);enforceCarrying(repo,record.id,actorId,'Run',movementKey,false);const message=runMovement(e,actorId,target.id,intent.to);enforceCarrying(repo,record.id,actorId,'Run',movementKey);return {waiting:false,message};
  }
  const w=resolvePlayerWeapon(repo,record,actorId,intent.weaponRef,rules.handbook,principal);
  if(intent.type!=='prepare_attack')return {waiting:false,message:handlePlayerWeapon(e,actor,character,w.index,w.weapon,intent.type)};
