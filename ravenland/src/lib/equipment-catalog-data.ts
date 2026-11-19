@@ -1,0 +1,585 @@
+// Generated from equipment-catalog.json. Edit the root JSON, not this file.
+export const equipmentCatalog = {
+  "edition": "Forbidden Lands Player's Handbook, fifth printing",
+  "sources": {
+    "melee": {
+      "physicalPage": 105,
+      "printedPage": 101,
+      "table": "MELEE WEAPONS"
+    },
+    "ranged": {
+      "physicalPage": 107,
+      "printedPage": 103,
+      "table": "RANGED WEAPONS"
+    },
+    "shield": {
+      "physicalPage": 110,
+      "printedPage": 106,
+      "table": "SHIELDS"
+    },
+    "armor": {
+      "physicalPage": 110,
+      "printedPage": 106,
+      "table": "ARMOR & HELMETS"
+    }
+  },
+  "weapons": [
+    {
+      "id": "unarmed",
+      "name": "Unarmed",
+      "category": "melee",
+      "grip": null,
+      "bonus": null,
+      "damage": 1,
+      "range": "Arm",
+      "costSilver": null,
+      "features": "Blunt",
+      "aliases": [],
+      "special": true
+    },
+    {
+      "id": "knife",
+      "name": "Knife",
+      "category": "melee",
+      "grip": "1H",
+      "bonus": 1,
+      "damage": 1,
+      "range": "Arm",
+      "costSilver": 1,
+      "features": "Light, Pointed",
+      "aliases": [],
+      "special": false
+    },
+    {
+      "id": "dagger",
+      "name": "Dagger",
+      "category": "melee",
+      "grip": "1H",
+      "bonus": 1,
+      "damage": 1,
+      "range": "Arm",
+      "costSilver": 2,
+      "features": "Light, Edged, Pointed",
+      "aliases": [],
+      "special": false
+    },
+    {
+      "id": "falchion",
+      "name": "Falchion",
+      "category": "melee",
+      "grip": "1H",
+      "bonus": 1,
+      "damage": 2,
+      "range": "Arm",
+      "costSilver": 4,
+      "features": "Edged, Pointed",
+      "aliases": [],
+      "special": false
+    },
+    {
+      "id": "shortsword",
+      "name": "Shortsword",
+      "category": "melee",
+      "grip": "1H",
+      "bonus": 2,
+      "damage": 1,
+      "range": "Arm",
+      "costSilver": 6,
+      "features": "Edged, Pointed, Parrying",
+      "aliases": [
+        "Short sword",
+        "Short sword."
+      ],
+      "special": false
+    },
+    {
+      "id": "broadsword",
+      "name": "Broadsword",
+      "category": "melee",
+      "grip": "1H",
+      "bonus": 2,
+      "damage": 2,
+      "range": "Arm",
+      "costSilver": 10,
+      "features": "Edged, Pointed, Parrying",
+      "aliases": [
+        "Broad sword"
+      ],
+      "special": false
+    },
+    {
+      "id": "longsword",
+      "name": "Longsword",
+      "category": "melee",
+      "grip": "1H",
+      "bonus": 2,
+      "damage": 2,
+      "range": "Arm",
+      "costSilver": 18,
+      "features": "Heavy, Edged, Pointed, Parrying",
+      "aliases": [
+        "Long sword"
+      ],
+      "special": false
+    },
+    {
+      "id": "two-handed-sword",
+      "name": "Two-Handed Sword",
+      "category": "melee",
+      "grip": "2H",
+      "bonus": 2,
+      "damage": 3,
+      "range": "Arm",
+      "costSilver": 40,
+      "features": "Heavy, Edged, Pointed, Parrying",
+      "aliases": [
+        "Two handed sword"
+      ],
+      "special": false
+    },
+    {
+      "id": "scimitar",
+      "name": "Scimitar",
+      "category": "melee",
+      "grip": "1H",
+      "bonus": 1,
+      "damage": 2,
+      "range": "Arm",
+      "costSilver": 8,
+      "features": "Edged, Pointed, Hook, Parrying",
+      "aliases": [],
+      "special": false
+    },
+    {
+      "id": "handaxe",
+      "name": "Handaxe",
+      "category": "melee",
+      "grip": "1H",
+      "bonus": 2,
+      "damage": 2,
+      "range": "Arm",
+      "costSilver": 2,
+      "features": "Edged, Hook",
+      "aliases": [
+        "Hand axe"
+      ],
+      "special": false
+    },
+    {
+      "id": "battleaxe",
+      "name": "Battleaxe",
+      "category": "melee",
+      "grip": "1H",
+      "bonus": 2,
+      "damage": 2,
+      "range": "Arm",
+      "costSilver": 6,
+      "features": "Heavy, Edged, Hook",
+      "aliases": [
+        "Battle axe"
+      ],
+      "special": false
+    },
+    {
+      "id": "two-handed-axe",
+      "name": "Two-Handed Axe",
+      "category": "melee",
+      "grip": "2H",
+      "bonus": 2,
+      "damage": 3,
+      "range": "Arm",
+      "costSilver": 24,
+      "features": "Heavy, Edged, Hook",
+      "aliases": [
+        "Two handed axe"
+      ],
+      "special": false
+    },
+    {
+      "id": "mace",
+      "name": "Mace",
+      "category": "melee",
+      "grip": "1H",
+      "bonus": 2,
+      "damage": 1,
+      "range": "Arm",
+      "costSilver": 4,
+      "features": "Blunt",
+      "aliases": [],
+      "special": false
+    },
+    {
+      "id": "morningstar",
+      "name": "Morningstar",
+      "category": "melee",
+      "grip": "1H",
+      "bonus": 2,
+      "damage": 2,
+      "range": "Arm",
+      "costSilver": 8,
+      "features": "Blunt",
+      "aliases": [
+        "Morning star"
+      ],
+      "special": false
+    },
+    {
+      "id": "warhammer",
+      "name": "Warhammer",
+      "category": "melee",
+      "grip": "1H",
+      "bonus": 2,
+      "damage": 2,
+      "range": "Arm",
+      "costSilver": 12,
+      "features": "Blunt, Hook",
+      "aliases": [
+        "War hammer"
+      ],
+      "special": false
+    },
+    {
+      "id": "flail",
+      "name": "Flail",
+      "category": "melee",
+      "grip": "1H",
+      "bonus": 1,
+      "damage": 2,
+      "range": "Near",
+      "costSilver": 16,
+      "features": "Blunt",
+      "aliases": [],
+      "special": false
+    },
+    {
+      "id": "wooden-club",
+      "name": "Wooden Club",
+      "category": "melee",
+      "grip": "1H",
+      "bonus": 1,
+      "damage": 1,
+      "range": "Arm",
+      "costSilver": 1,
+      "features": "Blunt",
+      "aliases": [],
+      "special": false
+    },
+    {
+      "id": "large-wooden-club",
+      "name": "Large Wooden Club",
+      "category": "melee",
+      "grip": "2H",
+      "bonus": 1,
+      "damage": 2,
+      "range": "Arm",
+      "costSilver": 2,
+      "features": "Heavy, Blunt",
+      "aliases": [],
+      "special": false
+    },
+    {
+      "id": "heavy-warhammer",
+      "name": "Heavy Warhammer",
+      "category": "melee",
+      "grip": "2H",
+      "bonus": 2,
+      "damage": 3,
+      "range": "Arm",
+      "costSilver": 22,
+      "features": "Heavy, Blunt, Hook",
+      "aliases": [
+        "Heavy war hammer"
+      ],
+      "special": false
+    },
+    {
+      "id": "staff",
+      "name": "Staff",
+      "category": "melee",
+      "grip": "2H",
+      "bonus": 1,
+      "damage": 1,
+      "range": "Near",
+      "costSilver": 1,
+      "features": "Blunt, Hook, Parrying",
+      "aliases": [],
+      "special": false
+    },
+    {
+      "id": "short-spear",
+      "name": "Short Spear",
+      "category": "melee",
+      "grip": "1H",
+      "bonus": 1,
+      "damage": 1,
+      "range": "Near",
+      "costSilver": 2,
+      "features": "Pointed",
+      "aliases": [],
+      "special": false
+    },
+    {
+      "id": "long-spear",
+      "name": "Long Spear",
+      "category": "melee",
+      "grip": "2H",
+      "bonus": 2,
+      "damage": 1,
+      "range": "Near",
+      "costSilver": 4,
+      "features": "Pointed",
+      "aliases": [],
+      "special": false
+    },
+    {
+      "id": "pike",
+      "name": "Pike",
+      "category": "melee",
+      "grip": "2H",
+      "bonus": 2,
+      "damage": 2,
+      "range": "Near",
+      "costSilver": 12,
+      "features": "Heavy, Pointed",
+      "aliases": [],
+      "special": false
+    },
+    {
+      "id": "halberd",
+      "name": "Halberd",
+      "category": "melee",
+      "grip": "2H",
+      "bonus": 2,
+      "damage": 2,
+      "range": "Near",
+      "costSilver": 30,
+      "features": "Heavy, Pointed, Edged, Hook",
+      "aliases": [],
+      "special": false
+    },
+    {
+      "id": "trident",
+      "name": "Trident",
+      "category": "melee",
+      "grip": "2H",
+      "bonus": 1,
+      "damage": 2,
+      "range": "Near",
+      "costSilver": 6,
+      "features": "Pointed, Hook",
+      "aliases": [],
+      "special": false
+    },
+    {
+      "id": "rock",
+      "name": "Rock",
+      "category": "ranged",
+      "grip": "1H",
+      "bonus": null,
+      "damage": 1,
+      "range": "Near",
+      "costSilver": null,
+      "features": "Light",
+      "aliases": [],
+      "special": false
+    },
+    {
+      "id": "throwing-knife",
+      "name": "Throwing Knife",
+      "category": "ranged",
+      "grip": "1H",
+      "bonus": 1,
+      "damage": 1,
+      "range": "Near",
+      "costSilver": 1,
+      "features": "Light",
+      "aliases": [],
+      "special": false
+    },
+    {
+      "id": "throwing-axe",
+      "name": "Throwing Axe",
+      "category": "ranged",
+      "grip": "1H",
+      "bonus": 1,
+      "damage": 2,
+      "range": "Near",
+      "costSilver": 2,
+      "features": "",
+      "aliases": [],
+      "special": false
+    },
+    {
+      "id": "throwing-spear",
+      "name": "Throwing Spear",
+      "category": "ranged",
+      "grip": "1H",
+      "bonus": 2,
+      "damage": 1,
+      "range": "Short",
+      "costSilver": 2,
+      "features": "",
+      "aliases": [],
+      "special": false
+    },
+    {
+      "id": "sling",
+      "name": "Sling",
+      "category": "ranged",
+      "grip": "1H",
+      "bonus": 1,
+      "damage": 1,
+      "range": "Short",
+      "costSilver": 1,
+      "features": "Light",
+      "aliases": [],
+      "special": false
+    },
+    {
+      "id": "short-bow",
+      "name": "Short Bow",
+      "category": "ranged",
+      "grip": "2H",
+      "bonus": 2,
+      "damage": 1,
+      "range": "Short",
+      "costSilver": 6,
+      "features": "Light",
+      "aliases": [],
+      "special": false
+    },
+    {
+      "id": "longbow",
+      "name": "Longbow",
+      "category": "ranged",
+      "grip": "2H",
+      "bonus": 2,
+      "damage": 1,
+      "range": "Long",
+      "costSilver": 12,
+      "features": "",
+      "aliases": [
+        "Long bow"
+      ],
+      "special": false
+    },
+    {
+      "id": "light-crossbow",
+      "name": "Light Crossbow",
+      "category": "ranged",
+      "grip": "2H",
+      "bonus": 1,
+      "damage": 2,
+      "range": "Long",
+      "costSilver": 24,
+      "features": "Loading is slow action.",
+      "aliases": [],
+      "special": false
+    },
+    {
+      "id": "heavy-crossbow",
+      "name": "Heavy Crossbow",
+      "category": "ranged",
+      "grip": "2H",
+      "bonus": 1,
+      "damage": 3,
+      "range": "Long",
+      "costSilver": 40,
+      "features": "Heavy, Loading is a slow action.",
+      "aliases": [],
+      "special": false
+    }
+  ],
+  "shields": [
+    {
+      "id": "small-shield",
+      "name": "Small Shield",
+      "bonus": 1,
+      "costSilver": 6,
+      "features": "Light",
+      "aliases": []
+    },
+    {
+      "id": "large-shield",
+      "name": "Large Shield",
+      "bonus": 2,
+      "costSilver": 15,
+      "features": "",
+      "aliases": []
+    }
+  ],
+  "armor": [
+    {
+      "id": "leather",
+      "name": "Leather",
+      "rating": 2,
+      "costSilver": 4,
+      "bodyPart": "Body",
+      "features": "Light",
+      "aliases": []
+    },
+    {
+      "id": "studded-leather",
+      "name": "Studded Leather",
+      "rating": 3,
+      "costSilver": 6,
+      "bodyPart": "Body",
+      "features": "",
+      "aliases": []
+    },
+    {
+      "id": "chainmail",
+      "name": "Chainmail",
+      "rating": 6,
+      "costSilver": 24,
+      "bodyPart": "Body",
+      "features": "Heavy item. Armor Rating 3 against arrows and Stabs.",
+      "aliases": []
+    },
+    {
+      "id": "plate-armor",
+      "name": "Plate Armor",
+      "rating": 8,
+      "costSilver": 80,
+      "bodyPart": "Body",
+      "features": "Heavy item. Modifies Move by -2",
+      "aliases": []
+    },
+    {
+      "id": "studded-leather-cap",
+      "name": "Studded Leather Cap",
+      "rating": 1,
+      "costSilver": 3,
+      "bodyPart": "Head",
+      "features": "Light",
+      "aliases": []
+    },
+    {
+      "id": "open-helmet",
+      "name": "Open Helmet",
+      "rating": 2,
+      "costSilver": 8,
+      "bodyPart": "Head",
+      "features": "Light",
+      "aliases": []
+    },
+    {
+      "id": "closed-helmet",
+      "name": "Closed Helmet",
+      "rating": 3,
+      "costSilver": 18,
+      "bodyPart": "Head",
+      "features": "",
+      "aliases": []
+    },
+    {
+      "id": "great-helm",
+      "name": "Great Helm",
+      "rating": 4,
+      "costSilver": 30,
+      "bodyPart": "Head",
+      "features": "Modifies Scout by -2",
+      "aliases": []
+    }
+  ]
+} as const;

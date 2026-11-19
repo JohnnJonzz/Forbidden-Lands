@@ -1,0 +1,2 @@
+import {z} from 'zod';
+export const calibrationSchema=z.object({originX:z.number().finite().min(-100000).max(100000),originY:z.number().finite().min(-100000).max(100000),horizontal:z.number().min(2).max(5000),vertical:z.number().min(2).max(5000),orientation:z.enum(['pointy','flat']),stagger:z.enum(['odd','even']),verified:z.boolean(),landmarks:z.array(z.object({coordinate:z.string().min(1).max(50),x:z.number().finite().min(0),y:z.number().finite().min(0)}).strict()).max(30)}).strict();

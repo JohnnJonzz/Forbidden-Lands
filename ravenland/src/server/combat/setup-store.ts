@@ -1,0 +1,20 @@
+import {createHash} from 'node:crypto';
+import type {EncounterSetup} from './setup';
+import type {CampaignRecord} from '../../lib/types';
+import type {CharacterSheet} from '../../lib/character-sheet';
+import type {SqliteCampaignRepository} from '../sqlite';
+import type {GMTurn} from '../../lib/ai/schema';
+import {AIError} from '../ai/config';
+export interface SetupSnapshot {campaignId:string;location:string;hex:string;campaignRevision:number;latestEncounterId:string|null;actorWeapons:CharacterSheet['weapons'];declaredEquipment:string[];confirmationReason?:string}
+export interface PendingSetup {id:string;campaignId:string;characterId:string;originRequestId:string;status:'pending'|'resumed'|'cancelled'|'superseded';revision:number;proposal:EncounterSetup;snapshot:SetupSnapshot;encounterId:string|null}
+function decode(row:Record<string,unknown>):PendingSetup{return {id:row.id as string,campaignId:row.campaign_id as string,characterId:row.character_id as string,originRequestId:row.origin_request_id as string,status:row.status as PendingSetup['status'],revision:row.revision as number,proposal:JSON.parse(row.proposal_json as string),snapshot:JSON.parse(row.snapshot_json as string),encounterId:row.encounter_id as string|null}}
+export function pendingSetup(repo:SqliteCampaignRepository,campaignId:string,characterId:string){const row=repo.db.prepare("SELECT * FROM combat_setup_proposals WHERE campaign_id=? AND character_id=? AND status='pending'").get(campaignId,characterId);return row?decode(row):null}
+export function latestSetup(repo:SqliteCampaignRepository,campaignId:string,characterId:string){const row=repo.db.prepare('SELECT * FROM combat_setup_proposals WHERE campaign_id=? AND character_id=? ORDER BY created_at DESC,rowid DESC LIMIT 1').get(campaignId,characterId);return row?decode(row):null}
+export function setupById(repo:SqliteCampaignRepository,campaignId:string,id:string){const row=repo.db.prepare('SELECT * FROM combat_setup_proposals WHERE campaign_id=? AND id=?').get(campaignId,id);return row?decode(row):null}
+export function setupSnapshot(repo:SqliteCampaignRepository,record:CampaignRecord,characterId:string,proposal:EncounterSetup):SetupSnapshot{return {campaignId:record.id,location:record.session.campaign.location,hex:record.session.campaign.hex,campaignRevision:record.revision,latestEncounterId:repo.db.prepare('SELECT id FROM combat_encounters WHERE campaign_id=? ORDER BY updated_at DESC,rowid DESC LIMIT 1').get(record.id)?.id as string??null,actorWeapons:record.session.characters.find(c=>c.id===characterId)?.sheet?.weapons??[],declaredEquipment:proposal.declaration.match(/\barmed with\s+[^.!?\n]{1,100}?(?=\s+(?:emerges|steps|and|who|when)\b|[.!?\n]|$)/gi)??[]}}
+export const setupFingerprint=(c:GMTurn)=>createHash('sha256').update(JSON.stringify({kind:c.kind,characterId:c.characterId,action:c.action})).digest('hex');
+export function setupReceipt(repo:SqliteCampaignRepository,c:GMTurn){const row=repo.db.prepare('SELECT * FROM combat_setup_actions WHERE campaign_id=? AND request_id=?').get(c.campaignId,c.requestId);if(row&&row.fingerprint!==setupFingerprint(c))throw new AIError('combat_duplicate','Setup request reused with different parameters.',409);return row?JSON.parse(row.result_json as string):null}
+export function saveSetupReceipt(repo:SqliteCampaignRepository,c:GMTurn,id:string|null,result:unknown){repo.db.prepare('INSERT INTO combat_setup_actions VALUES (?,?,?,?,?,?)').run(c.campaignId,c.requestId,setupFingerprint(c),id,JSON.stringify(result),new Date().toISOString())}
+export function saveSetup(repo:SqliteCampaignRepository,p:PendingSetup){repo.db.prepare('UPDATE combat_setup_proposals SET revision=?,proposal_json=?,snapshot_json=?,updated_at=? WHERE id=? AND campaign_id=? AND status=\'pending\'').run(p.revision,JSON.stringify(p.proposal),JSON.stringify(p.snapshot),new Date().toISOString(),p.id,p.campaignId)}
+
+export function hasSetupAction(repo:SqliteCampaignRepository,c:GMTurn){return !!repo.db.prepare('SELECT 1 FROM combat_setup_actions WHERE campaign_id=? AND request_id=?').get(c.campaignId,c.requestId)}

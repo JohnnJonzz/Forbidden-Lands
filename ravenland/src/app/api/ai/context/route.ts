@@ -1,0 +1,15 @@
+import {gameplayPrincipal} from '@/server/character-access';
+import {publicRetrieval} from '@/server/sourcebooks/retrieval';
+import type {RuleRetrieval} from '@/lib/sourcebooks/schema';
+import {NextResponse} from 'next/server';
+import {z} from 'zod';
+import {getLocalRepository} from '@/server/sqlite';
+import {evidenceSource} from '@/server/ai/evidence';
+import type {ProposalEvidence} from '@/lib/ai/schema';
+import {assembleContext} from '@/server/ai/context';
+import {SqliteMemoryRepository} from '@/server/ai/memory';
+import {isGM} from '@/server/ai/config';
+import {AIError} from '@/server/ai/config';
+import {aiFailure} from '@/server/ai/http';
+export const runtime='nodejs';
+export async function GET(request:Request){try{const p=new URL(request.url).searchParams,id=z.string().uuid().parse(p.get('campaignId'));const requestId=p.get('requestId'),repo=getLocalRepository();let context:unknown;if(requestId){z.string().uuid().parse(requestId);const row=repo.db.prepare('SELECT context_json FROM ai_requests WHERE campaign_id=? AND id=?').get(id,requestId);if(!row?.context_json)throw new AIError('not_found','Saved request context not found',404);context=JSON.parse(row.context_json as string);if(!isGM(request.headers.get('x-ravenland-gm-token'))){const snapshot=context as {retrievalContext?:unknown;actionPreparation?:unknown;completedDiceReferences?:unknown;rollSubmission?:unknown;resourceAttention?:unknown;actionSafeguard?:unknown;attackInterpretation?:unknown;attackDefenseDeclaration?:unknown;rules?:RuleRetrieval;memories?:{id:string}[];evidenceSources?:{sourceType:ProposalEvidence['sourceType'];sourceId:string}[]};delete snapshot.retrievalContext;delete snapshot.actionPreparation;delete snapshot.rollSubmission;delete snapshot.completedDiceReferences;delete snapshot.resourceAttention;delete snapshot.actionSafeguard;delete snapshot.attackInterpretation;delete snapshot.attackDefenseDeclaration;const publicContext=snapshot as typeof snapshot&{party?:{id:string;name:string;kin:string;profession:string}[]};if(publicContext.party)publicContext.party=publicContext.party.map(ch=>({id:ch.id,name:ch.name,kin:ch.kin,profession:ch.profession}));if(snapshot.rules)snapshot.rules=publicRetrieval(repo,id,snapshot.rules);snapshot.memories=snapshot.memories?.filter(m=>!!new SqliteMemoryRepository(repo).get(id,m.id));snapshot.evidenceSources=snapshot.evidenceSources?.filter(s=>!(s.sourceType==='campaign_record'&&s.sourceId.startsWith('character:'))&&!!evidenceSource(repo,id,s.sourceType,s.sourceId))}}else context=assembleContext(repo,id,(p.get('query')??'').slice(0,3000),{characterId:p.get('characterId')??undefined,principal:gameplayPrincipal(request,id,p.get('characterId')??undefined)});return NextResponse.json({context,privateInformation:'GM-only and character-specific memories are excluded from public AI context.'},{headers:{'Cache-Control':'no-store'}})}catch(e){return aiFailure(e)}}

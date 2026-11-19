@@ -1,0 +1,10 @@
+'use client';
+import {useEffect,useState} from 'react';
+import type {CampaignRecord} from '@/lib/types';
+export function SettlementNameSettings({record}:{record:CampaignRecord}){
+ const [canonical,setCanonical]=useState<boolean|null>(null),[name,setName]=useState(''),[error,setError]=useState(''),[busy,setBusy]=useState(false),start=record.session.campaign.startingVillage;
+ useEffect(()=>{if(!start)return;let alive=true;fetch('/api/campaign-lifecycle',{cache:'no-store'}).then(async r=>{const b=await r.json();if(!r.ok)throw Error(b.error);const source=b.villages.find((v:{id:string})=>v.id===start.id);if(alive)setCanonical(source?.canonical??null);}).catch(()=>{});return()=>{alive=false}},[start?.id]);
+ if(!start)return null;if(canonical!==false)return <p className="muted">Starting settlement: {start.name} · {start.hex}{canonical?' · verified canonical name':''}</p>;
+ async function save(){setBusy(true);setError('');try{const r=await fetch('/api/campaign-lifecycle',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({operation:'name_village',campaignId:record.id,revision:record.revision,name:name.trim(),confirmed:true})}),b=await r.json();if(!r.ok)throw Error(b.error);window.location.assign('/campaigns/'+record.id);}catch(e){setError((e as Error).message)}finally{setBusy(false)}}
+ return <section aria-label="Starting settlement identity"><h3>Name the starting settlement</h3><p>Verified village hex: {start.hex}. The map’s generic village marker is a classification. Establish a proper name without moving the party or changing canonical map names.</p><label>Settlement name for this campaign<input aria-label="Settlement name for this campaign" value={name} maxLength={100} placeholder={['Village','Unnamed village'].includes(start.name)?'Enter a proper name':start.name} onChange={e=>setName(e.target.value)}/></label><button className="quiet-button" disabled={busy||!name.trim()} onClick={()=>void save()}>Save settlement name</button>{error&&<p role="alert">{error}</p>}</section>;
+}
