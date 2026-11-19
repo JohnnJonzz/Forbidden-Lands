@@ -2,7 +2,7 @@ import {workflowSchema} from './workflow';
 import {chatCommandSchema} from './chat-schema';
 import {quarterCommandSchema} from './quarter-schema';
 import {z} from 'zod';
-export const activityNames=['Hike','Lead the Way','Keep Watch','Make Camp','Forage','Hunt','Fish','Rest','Sleep','Explore'] as const;
+export const activityNames=['Hike','Lead the Way','Keep Watch','Make Camp','Forage','Hunt','Fish','Rest','Sleep','Other','Explore'] as const;
 const text=z.string().max(5000),id=z.string().min(1).max(100);
 export const modeSchema=z.enum(['On foot','Mounted','Other (manual)']);
 const assignments=z.object({leader:id.nullable(),watch:id.nullable()}).strict();

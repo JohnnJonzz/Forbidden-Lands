@@ -80,7 +80,10 @@
     "test:context-logistics:browser": "node --import tsx tests/context-logistics-browser.cjs",
     "test:logistics:real": "tsx --test tests/logistics.integration.ts",
     "test:journey-workflow": "tsx --test tests/journey-workflow.test.ts",
-    "test:journey-workflow:browser": "node --import tsx tests/journey-workflow-browser.cjs"
+    "test:journey-workflow:browser": "node --import tsx tests/journey-workflow-browser.cjs",
+    "test:expedition": "tsx --test tests/expedition.test.ts",
+    "test:expedition:real": "tsx --test tests/expedition.integration.ts",
+    "test:expedition:browser": "node --import tsx tests/expedition-browser.cjs"
   },
   "dependencies": {
     "exceljs": "^4.4.0",

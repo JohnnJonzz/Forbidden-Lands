@@ -1,3 +1,4 @@
+import type {RoutePlan} from './expedition';
 import {applyChatCommand} from './chat-engine';
 import {chatCommandSchema} from './chat-schema';
 import {applyQuarterCommand} from './quarter-engine';
@@ -40,4 +41,4 @@ export function recordManualClockChange(before:Session,after:Session,at:string,i
  const journey=structuredClone(journeyFor(after));journey.log.push({id,kind:'clock',summary:'Manual campaign clock correction (not journey expenditure)',before:{date:before.campaign.date,quarter:before.campaign.quarter,hex:before.campaign.hex},after:{date:after.campaign.date,quarter:after.campaign.quarter,hex:after.campaign.hex},at});return {...after,journey};
 }
 
-export function applyJourneyCommand(input:Session,command:JourneyCommand,geo:JourneyGeography,now:string):Session {if(command.type.startsWith('quarter-chat-'))return applyChatCommand(input,chatCommandSchema.parse(command),geo,now);if(command.type.startsWith('quarter-'))return applyQuarterCommand(input,quarterCommandSchema.parse(command),geo,now);return applyLegacyJourneyCommand(input,command as Exclude<JourneyCommand,import('./quarter-schema').QuarterCommand|import('./chat-schema').ChatCommand>,geo,now)}
+export function applyJourneyCommand(input:Session,command:JourneyCommand,geo:JourneyGeography,now:string,verifiedPlan?:RoutePlan):Session {if(command.type.startsWith('quarter-chat-'))return applyChatCommand(input,chatCommandSchema.parse(command),geo,now,verifiedPlan);if(command.type.startsWith('quarter-'))return applyQuarterCommand(input,quarterCommandSchema.parse(command),geo,now);return applyLegacyJourneyCommand(input,command as Exclude<JourneyCommand,import('./quarter-schema').QuarterCommand|import('./chat-schema').ChatCommand>,geo,now)}
