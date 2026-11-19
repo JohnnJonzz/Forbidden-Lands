@@ -1,3 +1,4 @@
+import {realCombatRecoveryTests} from './combat-recovery-real';
 import {realGMPreparationTests} from './gm-preparation-real';
 import {realExpeditionTests} from './expedition-real';
 import {realJourneyWorkflowTests} from './journey-workflow-real';
@@ -212,7 +213,7 @@ test('REAL fifth-printing sourcebooks: extraction, persisted FTS and complete re
   });
   await realCharacterIntegrityTests(t,db,id);
   await realLogisticsTests(t,db,id);await realJourneyWorkflowTests(t,db,id);await realExpeditionTests(t,db,id);
-  await realGMPreparationTests(t,db,id);
+  await realGMPreparationTests(t,db,id);await realCombatRecoveryTests(t,db,id);
   await realWorldActionTests(t,db,id);
   await realCombatTests(t,db,id,filename);
   await t.test('MELEE is reviewed independently: STAB and GRAPPLE have distinct procedures',()=>{const stab=library.search({campaignId:id,documentId:ids[0],query:'STAB POINTED'},'player',40),grapple=library.search({campaignId:id,documentId:ids[0],query:'GRAPPLE BREAK FREE'},'player',20);check(stab.some(p=>p.startPage===96&&/STAB:/i.test(p.text)&&/POINTED/i.test(p.text)&&/MELEE/i.test(p.text)),'Actual STAB procedure missing');check(grapple.some(p=>p.startPage===96&&/GRAPPLE:[\s\S]*BREAK\s+FREE/i.test(p.text)),'Distinct GRAPPLE procedure missing');report.checks.push({name:'Separate MELEE rule review',status:'PASS',physicalPages:[96],shootResolverNotApplied:true})});

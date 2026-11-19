@@ -1,3 +1,4 @@
+import {readConsequences} from '../consequences/store';
 import {activationPreparation,linkPreparation} from './preparation';
 import {recoverPending} from './recovery';
 import {assertCurrentRequest} from '../request-epoch';
@@ -89,6 +90,7 @@ export async function combatTurn(repo:SqliteCampaignRepository,c:GMTurn,roll:Ver
   e=activeCombat(repo,c.campaignId);if((e?.revision??null)!==beforeRevision)throw new AIError('combat_conflict','Combat changed while the GM was deciding. Retry with the current encounter.',409);
   assertCurrentRequest(repo,c.campaignId,c.requestId);const record=repo.get(c.campaignId)!;if(record.revision!==campaignRevision)throw new AIError('combat_conflict','Campaign data changed during the GM decision. Retry before rolling.',409);if(e&&command!=='end'&&!command?.startsWith('interrupt ')&&(e.sceneHex!==record.session.campaign.hex||e.sceneLocation!==record.session.campaign.location))throw new AIError('combat_scene','This encounter belongs to a different location. End it before starting combat in the current scene.',409);if(e){syncPlayerConditions(e,record.session);delete e.lifecycleEvidenceIssue;advanceLifecycle(e,record.session,rules.handbook)}const charactersBefore=JSON.stringify(record.session.characters);if(e&&command!=='end')e.mobilityRules=verifiedMobilityRules(rules.handbook);if(e?.pending&&command!=='end')e.pending.rules=verifiedAttackRules(rules.handbook);let narration='',drawnWeapon:string|undefined;
   if(command?.match(/^start\s+/i)){
+   const administrativeHold=readConsequences(repo,c.campaignId).find(v=>v.source.id.startsWith('admin:')&&!['resolved','superseded'].includes(v.status));if(administrativeHold)throw new AIError('combat_administrative_review','Review the deferred administrative uncertainty in Combat recovery before starting another encounter. '+administrativeHold.nextProcedure,409);
    if(e)throw new AIError('combat_active','End the existing encounter before starting another.',409);
    if(ready)validateReadySetup(repo,c,ready,principal);
    const m=command.match(/^start\s+(.+?)\s+at\s+(Arm|Near|Short|Long)(?:\s+for\s+(.+))?$/i);if(!m)throw new AIError('combat_setup','Use /combat start Bandit x2 at Arm (or Near, Short, Long). The range must be established.',400);

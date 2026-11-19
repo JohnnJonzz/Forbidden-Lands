@@ -1,3 +1,4 @@
+import {assertCombatCardNotAborted} from '../combat/administrative-cards';
 import {catalogWeapon} from '../../lib/equipment-catalog';
 import {preRollDefense,type AttackDefenseDeclaration} from './attack-adjudication';
 import {savedAttackWeapon} from './attack-interpretation';
@@ -49,7 +50,7 @@ export function verifiedRollSubmission(repo:SqliteCampaignRepository,record:Camp
  requireCharacterAccess(principal,c.campaignId,c.characterId);
  if(c.requestId!==rollRequestId(c.campaignId,c.rollId!))throw new AIError('roll_request','Use the stable request identifier for this roll.',409);
  const raw=record.session.dice?.find(d=>d.id===c.rollId);if(!raw)throw new AIError('roll_missing','The saved roll is missing from this campaign. Refresh Recent Dice Rolls.',404);
- const parsed=pendingDiceSchema.safeParse(raw);if(!parsed.success)throw new AIError('roll_unverified','The saved roll record is incomplete or invalid.',409);const card=parsed.data;
+ const parsed=pendingDiceSchema.safeParse(raw);if(!parsed.success)throw new AIError('roll_unverified','The saved roll record is incomplete or invalid.',409);const card=parsed.data;assertCombatCardNotAborted(repo,record.id,card,c.requestId);
  if(card.characterId!==c.characterId)throw new AIError('roll_character','This roll belongs to a different character. Submit it with its original rolling character.',409);
  const character=record.session.characters.find(ch=>ch.id===card.characterId);if(!character)throw new AIError('roll_character','The rolling character is no longer in this campaign.',409);
  if(savedRollFingerprint(card)!==c.rollFingerprint)throw new AIError('roll_stale','The roll changed, possibly because it was pushed. Refresh and submit its current final result.',409);

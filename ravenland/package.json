@@ -86,7 +86,11 @@
     "test:expedition:browser": "node --import tsx tests/expedition-browser.cjs",
     "test:gm-progression": "tsx --test tests/gm-progression.test.ts",
     "test:gm-progression:real": "tsx --test tests/gm-preparation.integration.ts",
-    "test:gm-progression:browser": "node --import tsx tests/gm-progression-browser.cjs"
+    "test:gm-progression:browser": "node --import tsx tests/gm-progression-browser.cjs",
+    "test:combat-recovery": "tsx --test tests/combat-recovery.test.ts",
+    "test:combat-recovery:real": "tsx --test tests/combat-recovery.integration.ts",
+    "test:combat-recovery:browser": "node --import tsx tests/combat-recovery-browser.cjs",
+    "combat:inspect": "tsx scripts/inspect-combat-recovery.ts"
   },
   "dependencies": {
     "exceljs": "^4.4.0",

@@ -31,6 +31,7 @@ export function combatHistory(e:CombatEncounter,repo?:SqliteCampaignRepository):
  }
  for(const correction of e.recoveryAudit??[])add(correction.before.round,'recovery:'+correction.attackId+':'+correction.at,'recovery',`Controller correction · attack ${correction.attackId} · ${correction.operation} · ${correction.from} → ${correction.to} · ${correction.reason}. Original declaration retained in audit; no spent action or table draw refunded.`,correction.at);
  for(const a of e.combatants)for(const p of a.brokenProcedures??[])add(e.round,p.id,'broken-procedure',a.name+' · '+p.attribute+' · '+p.cause+' · '+p.stage+' · '+p.note,p.openedAt);
+ if(e.administrativeAbort)add(e.round,e.id+':administrative-abort','administrative',`Administratively Aborted · controller ${e.administrativeAbort.controller} · ${e.administrativeAbort.reason}. Pending action administratively terminated; original attack data and all dice/consequences retained. No fictional outcome.`,e.administrativeAbort.at);
  if(e.status==='ended')add(e.round,e.id+':ended','conclusion',e.outcome?e.outcome.kind+': '+e.outcome.reason:'Encounter concluded. Surviving and Broken opponents remain distinct from confirmed deaths.',e.endedAt??e.startedAt);
  return [...rounds.values()].sort((a,b)=>(a.round??0)-(b.round??0)).map(r=>({round:r.round,entries:r.entries.sort((a,b)=>a.at.localeCompare(b.at)).map(({at:_,...entry})=>entry)}));
 }

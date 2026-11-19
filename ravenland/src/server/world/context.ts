@@ -33,7 +33,7 @@ export function worldScene(repo: SqliteCampaignRepository, campaignId: string) {
   if (!row) return null;
   const e = JSON.parse(row.state_json as string) as CombatEncounter;
   if (
-    e.status !== "ended" ||
+    e.status !== "ended" || e.administrativeAbort ||
     e.sceneHex !== s.campaign.hex ||
     e.sceneLocation !== s.campaign.location
   )
