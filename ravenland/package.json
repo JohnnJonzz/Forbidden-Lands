@@ -78,7 +78,9 @@
     "test:genesis:browser": "node --import tsx tests/genesis-browser.cjs",
     "test:context-logistics": "tsx --test tests/context-logistics.test.ts",
     "test:context-logistics:browser": "node --import tsx tests/context-logistics-browser.cjs",
-    "test:logistics:real": "tsx --test tests/logistics.integration.ts"
+    "test:logistics:real": "tsx --test tests/logistics.integration.ts",
+    "test:journey-workflow": "tsx --test tests/journey-workflow.test.ts",
+    "test:journey-workflow:browser": "node --import tsx tests/journey-workflow-browser.cjs"
   },
   "dependencies": {
     "exceljs": "^4.4.0",
