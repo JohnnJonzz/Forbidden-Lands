@@ -27,7 +27,8 @@ export function executePlayerIntent(repo:SqliteCampaignRepository,record:Campaig
  if(e.combatants.some(a=>a.side==='enemy'&&a.critical?.status==='required'))throw new AIError('combat_adjudication','A required critical injury still needs source-backed adjudication. Use Recheck critical evidence before continuing.',409);
  if(intent.type==='declare_defense'){
   const rules=loadCombatRules(repo,record.id);if(e.pending)e.pending.rules=verifiedAttackRules(rules.handbook);
-  if(!defenseOptions(e,actorId,character).includes(intent.defense)||!e.pending||e.pending.phase!=='declaration')throw new AIError('combat_defense','No matching pre-roll defensive decision is available for this character.',409);
+  if(e.pending?.defenses[actorId]===intent.defense&&e.pending.phase!=='declaration')return {waiting:true,message:combatWorkflow(e,record.session.characters).summary};
+  if(!defenseOptions(e,actorId,character).includes(intent.defense)||!e.pending||e.pending.phase!=='declaration')throw new AIError('combat_defense','This attack is not waiting for a new defensive decision. '+combatWorkflow(e,record.session.characters).summary+' Open Combat → Pending action review for the attack reference and legal recovery steps.',409);
   declareDefense(e,character,intent.defense);rollEnemyAttack(e,die);resolveAttack(e,record.session,die);
   return {waiting:!!e.pending,message:combatWorkflow(e,record.session.characters).summary};
  }

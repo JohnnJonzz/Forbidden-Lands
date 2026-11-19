@@ -1,3 +1,4 @@
+import {reactionIntent} from './reaction-intent';
 import type {GMTurn} from '../../lib/ai/schema';
 import type {SqliteCampaignRepository} from '../sqlite';
 import type {CharacterPrincipal} from '../character-access';
@@ -20,7 +21,7 @@ export async function playerActionTurn(repo:SqliteCampaignRepository,c:GMTurn,pr
  if(c.kind!=='chat'||!e||!c.combatIntent&&(/^\/combat\b/i.test(c.action)||encounterRequest(c.action)))return {handled:false,result:null};
  let dispatched:DispatchResult;
  try{
-  let plan=c.combatIntent;
+  let plan=c.combatIntent??reactionIntent(e,repo.get(c.campaignId)!.session.characters.find(ch=>ch.id===c.characterId)!,c.action)??undefined;
   if(!plan){const receipt=await interpretedActions(repo,c,principal,interpret,onUsage);plan=receipt.plan;
    if(plan.disposition==='conversation')return {handled:true,result:null};
    const live=activeCombat(repo,c.campaignId);

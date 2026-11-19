@@ -14,7 +14,7 @@ export function validateMovement(e:CombatEncounter,actorId:string){
  const actor=e.combatants[e.turn];if(actor.id!==actorId)throw new AIError('combat_turn','Wait for '+actor.name+"'s initiative turn. Your movement has not occurred.",409);
  if(actor.broken||actor.withdrawn||actor.prone)throw new AIError('combat_movement','Stand before running; prone, Broken or withdrawn movement requires its supported procedure.',409);
  if(e.movementCondition&&e.movementCondition!=='clear')throw new AIError('combat_movement','This route is '+e.movementCondition+'. Establish its zone/border or required Move roll before moving. No action was spent.',409);
- if(e.combatants.filter(a=>!a.broken&&!a.withdrawn&&a.side==='enemy').length!==1||e.combatants.filter(a=>!a.broken&&!a.withdrawn&&a.side==='player').length!==1)throw new AIError('combat_movement','Multiple combatants require explicit relative zones before moving. No other combatant was moved.',409);
+ if(e.combatants.filter(a=>!a.broken&&!a.withdrawn&&a.side==='enemy').length!==1||(!(e.sharedPlayerZone&&actor.side==='enemy')&&e.combatants.filter(a=>!a.broken&&!a.withdrawn&&a.side==='player').length!==1))throw new AIError('combat_movement','Multiple combatants require explicit relative zones before moving. No other combatant was moved.',409);
 }
 export function runMovement(e:CombatEncounter,actorId:string,targetId:string,to:CombatRange){
  validateMovement(e,actorId);const actor=e.combatants[e.turn],from=e.range;

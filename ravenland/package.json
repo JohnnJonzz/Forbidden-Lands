@@ -83,7 +83,10 @@
     "test:journey-workflow:browser": "node --import tsx tests/journey-workflow-browser.cjs",
     "test:expedition": "tsx --test tests/expedition.test.ts",
     "test:expedition:real": "tsx --test tests/expedition.integration.ts",
-    "test:expedition:browser": "node --import tsx tests/expedition-browser.cjs"
+    "test:expedition:browser": "node --import tsx tests/expedition-browser.cjs",
+    "test:gm-progression": "tsx --test tests/gm-progression.test.ts",
+    "test:gm-progression:real": "tsx --test tests/gm-preparation.integration.ts",
+    "test:gm-progression:browser": "node --import tsx tests/gm-progression-browser.cjs"
   },
   "dependencies": {
     "exceljs": "^4.4.0",

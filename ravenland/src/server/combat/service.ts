@@ -1,3 +1,5 @@
+import {activationPreparation,linkPreparation} from './preparation';
+import {recoverPending} from './recovery';
 import {assertCurrentRequest} from '../request-epoch';
 import {advanceLifecycle,syncPlayerConditions,lifecycleBlocker,concludeEncounter,conclusionKind} from './lifecycle';
 import {bindCriticalRoll,confirmBrokenCause} from './player-critical';
@@ -52,6 +54,10 @@ export async function combatTurn(repo:SqliteCampaignRepository,c:GMTurn,roll:Ver
  if(decision?.kind==='respond')return {narration:decision.narration,encounter:null,setup:decision.setup,usage:null,replayed:false};
  const ready=decision?.kind==='start'?decision:null,setup=ready?.setup??null;
  if(setup)command='start '+setup.enemies+' at '+setup.range+' for '+setup.participants.join(',');
+ const activation=command?.match(/^activate ([a-f0-9-]{36}) at (Arm|Near|Short|Long) for (.+)$/);
+ if(activation)requireCharacterAccess(principal,c.campaignId,c.characterId);
+ const prepared=activation?activationPreparation(repo,c.campaignId,activation[1],activation[2] as CombatRange,activation[3].replace(/ together$/,'').split(',')):null;
+ if(prepared)command='start '+prepared.preparation.monster+' at '+prepared.preparation.range+' for '+prepared.preparation.participants.join(',');
 
  if(e&&c.kind==='chat'&&!command){
   if(e.pending&&/^(?:(?:I|we)\s+)?(?:(?:choose|declare|will|try to|attempt to)\s+)?(?:dodge|parry|no defen[cs]e|do not defend)(?:\s+(?:his|her|their|the)\s+attack)?[.!]?$/i.test(c.action.trim())){command='defense '+(/dodge/i.test(c.action)?'dodge':/parry/i.test(c.action)?'parry':'none')}
@@ -89,10 +95,12 @@ export async function combatTurn(repo:SqliteCampaignRepository,c:GMTurn,roll:Ver
    const enemies:EnemyTemplate[]=[];for(const part of m[1].split(';')){const match=part.trim().match(/^(generated\s+)?(.+?)(?:\s+x([1-6]))?$/i);if(!match)throw new AIError('combat_setup','Enter an enemy name in each semicolon-separated entry.',400);const template=lookupEnemy(repo,c.campaignId,match[2],!!match[1]);for(let i=0;i<Number(match[3]??1);i++)enemies.push(template)}
    if(setup)applyDeclaredLoadout(enemies,setup.declaration);
    e=createEncounter(c.campaignId,record.session,enemies,(m[2][0].toUpperCase()+m[2].slice(1).toLowerCase()) as CombatRange,die,m[3]?m[3].split(',').map(id=>id.trim()):[c.characterId],verifiedMobilityRules(rules.handbook));e.sources=rules.sources;if(ready)e.setupProposalId=ready.proposalId;if(setup?.scene?.confirmed)e.sceneDescription=setup.scene.description;if(setup?.absentCharacters?.length)e.sceneAbsentCharacters=setup.absentCharacters.map(id=>record.session.characters.find(ch=>ch.id===id)!.name);
+   if(prepared){const current=activationPreparation(repo,c.campaignId,prepared.id,prepared.preparation.range!,prepared.preparation.participants);if(current.revision!==prepared.revision)throw new AIError('preparation_conflict','Preparation changed during activation.',409);linkPreparation(repo,e,current);if(activation?.[3].endsWith(' together'))e.sharedPlayerZone=true}
    if(setup?.initiativeRequest)e.initiativeNotice='A requested first combatant cannot override numbered-card initiative. Initiative was drawn normally; '+e.combatants[0].name+' acts first.';
    narration=(e.initiativeNotice?e.initiativeNotice+' ':'')+'Combat begins. Initiative: '+e.combatants.map(a=>a.initiative+' '+a.name).join(' → ')+'. Round 1. '+e.combatants[0].name+' acts first. '+(enemies.some(a=>a.origin==='generated')?'Generated NPCs are labeled separately from published statistics. ':'')+'Player turns and sheet rolls remain player-controlled.';
   }else if(!e)throw new AIError('combat_missing','No active encounter. Start one with the Combat controls.',409);
   else if(e.status==='ended'){narration=e.outcome?.reason??'Encounter already concluded.';}
+  else if(command?.startsWith('recover ')){const m=command.match(/^recover ([a-f0-9-]{36}) (move|range|supersede) (.{12,1000})$/);if(!m)throw new AIError('combat_recovery','Review the pending attack and record a correction reason.',400);narration=recoverPending(e,m[1],m[2],m[3],principal,record.session);rollEnemyAttack(e,die);narration=resolveAttack(e,record.session,die)||narration;}
   else if(command==='cancel declaration'){if(e.pending||e.actionDraft?.characterId!==c.characterId)throw new AIError('combat_action','Only an uncommitted declaration can be cancelled; an attack with pre-roll decisions cannot be replaced.',409);delete e.actionDraft;narration='The uncommitted declaration is cancelled. No actions or dice were spent.'}
   else if(e.combatants.some(a=>a.side==='enemy'&&a.critical?.status==='required')&&command!=='recheck critical')throw new AIError('combat_adjudication','A required critical injury remains unresolved. Restore its official source evidence, then recheck the critical before continuing.',409);
   else if(command?.startsWith('broken ')){const m=command.match(/^broken ([a-f0-9-]{36}) (push|condition|slash|stab|blunt|horror|other)$/);if(!m)throw new AIError('combat_critical','Choose the recorded Broken procedure and its confirmed cause.',400);confirmBrokenCause(e,record.session,c.characterId,m[1],m[2] as import('../../lib/combat/types').BrokenProcedure['cause'],rules.handbook);narration='Broken cause confirmed; '+combatWorkflow(e,record.session.characters).summary;}

@@ -1,0 +1,12 @@
+import {NextResponse} from 'next/server';
+import {z} from 'zod';
+import {getLocalRepository} from '@/server/sqlite';
+import {gameplayPrincipal,requireCharacterAccess} from '@/server/character-access';
+import {AIError} from '@/server/ai/config';
+import {aiFailure} from '@/server/ai/http';
+import {preparations,prepareThreat,cancelPreparation,reviewPreparationStage} from '@/server/combat/preparation';
+export const runtime='nodejs';
+function authorize(request:Request,campaignId:string,characterId:string){const p=gameplayPrincipal(request,campaignId,characterId);requireCharacterAccess(p,campaignId,characterId);if(p?.mode!=='trusted-local')throw new AIError('preparation_private','Private encounter preparation requires the trusted local GM controller.',403)}
+export async function GET(request:Request){try{const q=new URL(request.url).searchParams,id=z.string().uuid().parse(q.get('campaignId')),actor=z.string().min(1).parse(q.get('characterId'));authorize(request,id,actor);return NextResponse.json({preparations:preparations(getLocalRepository(),id)},{headers:{'Cache-Control':'no-store'}})}catch(e){return aiFailure(e)}}
+const command=z.object({campaignId:z.string().uuid(),characterId:z.string(),id:z.string().uuid().optional(),revision:z.number().int().optional(),reason:z.string().min(12).max(1000),operation:z.enum(['prepare','cancel','foreshadow','reveal']),concept:z.string().min(1).max(1500),monster:z.string().max(100).nullable(),trigger:z.string().min(1).max(1000),motives:z.string().min(1).max(1000),conditions:z.string().min(1).max(1000),range:z.enum(['Arm','Near','Short','Long']).nullable(),participants:z.array(z.string()).max(9)}).strict();
+export async function POST(request:Request){try{const c=command.parse(await request.json());authorize(request,c.campaignId,c.characterId);const repo=getLocalRepository();if(c.operation==='foreshadow'||c.operation==='reveal'){if(!c.id||!c.revision)throw new AIError('preparation_missing','Choose current preparation.',400);reviewPreparationStage(repo,c.campaignId,c.id,c.revision,c.operation,c.reason)}else if(c.operation==='cancel'){if(!c.id||!c.revision)throw new AIError('preparation_missing','Choose current preparation.',400);cancelPreparation(repo,c.campaignId,c.id,c.revision,c.reason)}else prepareThreat(repo,c.campaignId,{...c,evidence:[{kind:'controller ruling',reference:c.reason}]},c.id?{id:c.id,value:c.revision??0,reason:c.reason}:undefined);return NextResponse.json({preparations:preparations(repo,c.campaignId)})}catch(e){return aiFailure(e)}}

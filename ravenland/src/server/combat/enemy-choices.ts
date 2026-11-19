@@ -16,7 +16,7 @@ export function canDraw(e:CombatEncounter,a:Combatant,index:number){const h=hand
 export interface EnemyChoice {id:string;label:string;targetId:string;weaponIndex:number|null;reason?:string}
 export function ordinaryMove(e:CombatEncounter):{to:CombatRange;reason?:string}|null{
  if(!e.mobilityRules||e.movementCondition&&e.movementCondition!=='clear')return null;
- if(e.combatants.filter(a=>!a.broken&&!a.withdrawn&&a.side==='enemy').length!==1||e.combatants.filter(a=>!a.broken&&!a.withdrawn&&a.side==='player').length!==1)return null;
+ if(e.combatants.filter(a=>!a.broken&&!a.withdrawn&&a.side==='enemy').length!==1||(!e.sharedPlayerZone&&e.combatants.filter(a=>!a.broken&&!a.withdrawn&&a.side==='player').length!==1))return null;
  return e.range==='Near'?{to:'Arm'}:e.range==='Short'?{to:'Near'}:null;
 }
 function plan(e:CombatEncounter,a:Combatant,index:number):('draw'|'ready'|'load'|'attack')[]|null{
@@ -30,6 +30,7 @@ function fits(a:Combatant,steps:('draw'|'ready'|'load'|'attack')[]){let fast=a.f
 export function enemyChoices(e:CombatEncounter):EnemyChoice[]{const a=e.combatants[e.turn];if(a.side!=='enemy'||a.broken||a.withdrawn)return [];const target=e.combatants.filter(t=>t.side==='player'&&!t.broken&&!t.withdrawn).sort((x,y)=>(x.current.strength??Infinity)-(y.current.strength??Infinity))[0];if(!target)return [];
  const end=(reason?:string):EnemyChoice[]=>[{id:'end',label:'End turn; preserve remaining actions for reactions',targetId:target.id,weaponIndex:null,reason}];
  if(a.prone)return a.fast||a.slow?[{id:'stand',label:'Stand up',targetId:target.id,weaponIndex:null}]:end();
+ if(a.enemy!.kind==='monster'&&a.fast&&e.range!=='Arm'&&a.enemy!.attacks.every(t=>t.range==='Arm')&&ordinaryMove(e))return [{id:'run',label:'Run toward '+target.name+' to '+ordinaryMove(e)!.to,targetId:target.id,weaponIndex:null}];
  if(a.enemy!.kind==='monster')return a.slow?[{id:'monster',label:'Roll the published monster attack table',targetId:target.id,weaponIndex:null}]:end();
  const candidates=a.enemy!.weapons.map((w,i)=>({w,i,steps:plan(e,a,i)})).filter(c=>c.steps).sort((x,y)=>{const priority=(w:CombatWeapon)=>e.range==='Arm'?(w.skill==='melee'?0:1):(w.skill==='marksmanship'?0:1);return priority(x.w)-priority(y.w)||x.steps!.length-y.steps!.length||x.i-y.i});
  const complete=candidates.find(c=>fits(a,c.steps!));if(complete){const step=complete.steps![0],id=step==='attack'?'weapon':step;return [{id:id+':'+complete.i,label:step==='attack'?(complete.w.skill==='melee'?(/Edged|Blunt/.test(complete.w.features)?'Slash':'Stab'):'Shoot')+' with '+complete.w.name:step+' '+complete.w.name,targetId:target.id,weaponIndex:complete.i}]}
