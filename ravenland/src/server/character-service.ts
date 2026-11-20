@@ -1,3 +1,5 @@
+import {activeCombat} from './combat/store';
+import {animalTemplate,creatureFingerprint} from './creatures/rules';
 import {isDeepStrictEqual} from 'node:util';
 import {verifiedTalentTypes} from './character-talents';
 import {normalizeCharacterSheet} from '../lib/character-data';
@@ -16,6 +18,7 @@ export function saveCharacter(raw:unknown,repo:SqliteCampaignRepository=getLocal
    if(!isDeepStrictEqual(merged[key],before[key])&&!isDeepStrictEqual(merged[key],next[key]))throw new Error('This character field changed in another window. Reload the saved sheet before editing it again.');
    if(next[key]===undefined)delete merged[key];else merged[key]=next[key];
   }
+  const edited=characterSheetSchema.parse(merged);const live=activeCombat(repo,record.id);for(const actor of live?.combatants.filter(a=>a.companion?.ownerId===c.characterId)??[]){const old=current.creatures?.find(v=>v.id===actor.companion!.creatureId),changed=edited.creatures?.find(v=>v.id===actor.companion!.creatureId);if(!old||!changed||creatureFingerprint(old)!==creatureFingerprint(changed)||JSON.stringify({d:old.damage,status:old.status,armorDamage:old.armorDamage})!==JSON.stringify({d:changed.damage,status:changed.status,armorDamage:changed.armorDamage}))throw new Error('This creature is participating in active combat. Resolve its actual damage and status through the combat procedure.');}for(const creature of edited.creatures??[]){const old=current.creatures?.find(c=>c.id===creature.id);if(creature.origin==='official'&&(!old||creatureFingerprint(old)!==creatureFingerprint(creature)||old.origin!==creature.origin)){const canonical=animalTemplate(repo,record.id,creature.templateId??'');if(creatureFingerprint(creature)!==creatureFingerprint({...creature,...canonical}))throw new Error('Official creature statistics must match their source. Make the record custom for a Table GM ruling.');}if(record.session.characters.some(ch=>ch.id!==c.characterId&&ch.sheet?.creatures?.some(v=>v.id===creature.id)))throw new Error('This creature already belongs to another character; link its existing roles rather than duplicating its identity.');}
   record.session.characters[i]=applySheet(record.session.characters[i],verifiedTalentTypes(repo,record.id,characterSheetSchema.parse(merged)));reconcileCombatSheets(repo,record.id,record.session);const updated=repo.update(record.id,record.revision,record.session);db.exec('COMMIT');return updated;
  }catch(e){db.exec('ROLLBACK');throw e}
 }

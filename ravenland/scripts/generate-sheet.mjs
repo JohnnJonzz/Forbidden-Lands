@@ -1,7 +1,9 @@
 import ts from 'typescript';
-import {readFileSync,writeFileSync,mkdirSync} from 'node:fs';
+import {readFileSync,writeFileSync as writeRaw,renameSync,mkdirSync} from 'node:fs';
 import {createHash} from 'node:crypto';
 import {fileURLToPath} from 'node:url';
+// Keep concurrent dev/test readers from seeing partially written generated modules.
+function writeFileSync(path,content){try{if(readFileSync(path,'utf8')===content)return;}catch{}const temporary=path+'.'+process.pid+'.tmp';writeRaw(temporary,content);renameSync(temporary,path);}
 const root=fileURLToPath(new URL('../',import.meta.url));
 let html=readFileSync(root+'../index.html','utf8');
 const carrying=ts.transpile(readFileSync(root+'src/lib/carrying.ts','utf8'),{target:ts.ScriptTarget.ES2020,module:ts.ModuleKind.ES2020}).replace(/^export /gm,'');html=html.replace(/\/\/ BEGIN GENERATED CARRYING[\s\S]*?\/\/ END GENERATED CARRYING/,'// BEGIN GENERATED CARRYING\n'+carrying+'\n// END GENERATED CARRYING');
@@ -15,6 +17,8 @@ writeFileSync(root+'src/lib/equipment-catalog-data.ts','// Generated from equipm
 if(registry.attributes.length!==4||registry.skills.length!==16||new Set(registry.skills.map(s=>s.id)).size!==16||registry.skills.some(s=>s.origin!=='official'||!registry.attributes.some(a=>a.id===s.attribute)))throw Error('Invalid canonical character registry');
 const skillConfig=registry.skills.map(s=>({id:s.id,name:s.name,attr:s.attribute}));
 html=html.replace(/this.skillsConfig = \[[\s\S]*?\];/, 'this.skillsConfig = '+JSON.stringify(skillConfig,null,12)+';');
+const creatureCode=ts.transpile(readFileSync(root+'src/lib/creature-load.ts','utf8'),{target:ts.ScriptTarget.ES2020,module:ts.ModuleKind.ES2020}).replace(/^import.*$/gm,'').replace(/^export /gm,'')+'\n'+readFileSync(root+'scripts/sheet-creatures.js','utf8');
+html=html.replace(/\/\* CREATURE SCRIPT \*\/|\/\/ BEGIN GENERATED CREATURES[\s\S]*?\/\/ END GENERATED CREATURES/,'// BEGIN GENERATED CREATURES\n'+creatureCode+'\n// END GENERATED CREATURES');
 writeFileSync(root+'../index.html',html);
 writeFileSync(root+'src/lib/rules/character-registry-data.ts','// Generated from character-rules.json. Edit the root JSON, not this file.\nexport const characterRegistry = '+JSON.stringify(registry,null,2)+' as const;\n');
 const fields=[...html.match(/this.fieldIds = \[([\s\S]*?)\];/)[1].matchAll(/'([^']+)'/g)].map(match=>match[1]);

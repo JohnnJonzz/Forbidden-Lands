@@ -1,3 +1,7 @@
+import {travelConstraint} from './knowledge';
+import {expeditionFor,movementClass} from '../../lib/journey/expedition';
+import {SqliteMapStore} from '../map/store';
+import {isAdjacent} from '../../lib/map/geometry';
 import { CompendiumStore } from '../compendium/store';
 import type { SqliteCampaignRepository } from '../sqlite';
 import type { CharacterPrincipal } from '../character-access';
@@ -22,6 +26,10 @@ export function conversationalRuling(repo: SqliteCampaignRepository, id: string,
     if (intent.scope === 'journey') {
         if (!state || state.done)
             return 'Declare the journey and its pathfinder and lookout first, so this exception can be scoped to that journey.';
+        const session=repo.get(id)!.session,target=[...intent.text.matchAll(/\b([A-Z]{1,2}\d{2})\b/gi)].map(m=>m[1].toUpperCase()).filter(h=>h!==session.campaign.hex).at(-1)??state.pendingRuling?.targetHex??null;
+        if(!intent.allowance){state.pendingRuling={text:intent.text,targetHex:target,allowance:Math.min(3,(state.entryId?expeditionFor(session,state.entryId).entries.length:0)+1)};saveNarrative(repo,id,state);return target?travelConstraint(repo,id,target)+' For this journey only, do you authorize both extending the submitted route and overriding the difficult-ground allowance to permit '+state.pendingRuling.allowance+' hexes this quarter?':'For this journey only, what total hex allowance are you authorizing, and does it also override any difficult-ground restriction?';}
+        if(target&&target!==state.review.route.at(-1)){const map=new SqliteMapStore(repo);if(!isAdjacent(map.edges(),session.campaign.hex,target))return 'That destination is not adjacent to the actual position. Name a legal connecting leg.';state.review.route=[...(state.entryId?expeditionFor(session,state.entryId).entries.map(e=>e.hex):[]),target];}
+        delete state.pendingRuling;
         if (!intent.allowance || intent.allowance > 3)
             return 'The supported scoped travel allowance is at most three hexes. A larger exception needs a supported travel procedure; it cannot bypass map or roll checks.';
         const rules = travelRules(repo, id), ruling = makeRuling(repo, { campaignId: id, sceneId: 'campaign:' + id, originId: requestId, domain: 'rules_conflict', question: 'Table GM one-journey travel allowance', scope: { key: state.id, fingerprint: rules.fingerprint }, decision: `Allow ${intent.allowance} hexes for this journey only.`, reasoning: intent.text, facts: [`Declared by authenticated player ${principal!.playerId}`, `From ${repo.get(id)!.session.dayTracker?.find(e => e.id === state.entryId)?.from ?? repo.get(id)!.session.campaign.hex} during ${state.date} ${state.quarter}`], sources: rules.sources.map(s => s.chunkId), decisionMaker: { kind: 'human_controller', id: principal!.playerId }, status: 'applied', blockingReason: '', effects: [{ type: 'journey_allowance', entryId: state.id, allowance: intent.allowance }], requestId, receiptId: requestId, risk: 'bounded' });

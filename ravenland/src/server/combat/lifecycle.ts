@@ -20,7 +20,7 @@ export function outstandingBroken(e:CombatEncounter){return e.combatants.flatMap
 // Sheet values remain authoritative. A zero transition is recorded once; healing
 // closes the episode, never deletes the injury. Missing values are not zero.
 export function syncPlayerConditions(e:CombatEncounter,session:Session,push?:{characterId:string;attribute:string}){
- for(const a of e.combatants.filter(a=>a.side==='player')){
+ for(const a of e.combatants.filter(a=>a.side==='player'&&!a.companion)){
   const ch=session.characters.find(c=>c.id===a.characterId);if(!ch){a.withdrawn=true;continue;}
   const attributes=mechanicalCharacter(ch).attributes;
   a.current=Object.fromEntries(Object.entries(attributes).flatMap(([key,v])=>v.current===null?[]:[[key,v.current]]));
@@ -39,12 +39,12 @@ export function lifecycleBlocker(e:CombatEncounter){
  if(e.pending)return 'Finish the recorded '+e.pending.phase.replaceAll('_',' ')+' before concluding the encounter. No attack, defense, Armor or damage record can be discarded.';
  const critical=e.combatants.find(a=>a.critical?.status==='required');if(critical)return critical.name+' still requires the official critical injury procedure.';
  const p=outstandingBroken(e)[0];if(p)return p.actor.name+': '+(p.procedure.stage==='cause'?'confirm the cause of Broken to determine the required injury procedure.':p.procedure.stage==='helmet'?'roll the recorded helmet protection before finalizing this critical injury.':'roll D66 on the character sheet for the required '+p.procedure.cause+' critical injury, then attach and Send.');
- if(e.combatants.some(a=>a.side==='player'&&a.broken)&&!e.brokenRuleSources?.length)return 'The official Broken and recovery evidence is unavailable. Restore the indexed Handbook and recheck before concluding.';
+ if(e.combatants.some(a=>a.side==='player'&&!a.companion&&a.broken)&&!e.brokenRuleSources?.length)return 'The official Broken and recovery evidence is unavailable. Restore the indexed Handbook and recheck before concluding.';
  return null;
 }
 export function conclusionKind(e:CombatEncounter):EncounterOutcome['kind']|null{
- const capable=(side:string)=>e.combatants.some(a=>a.side===side&&!a.broken&&!a.withdrawn&&!a.surrendered);
- if(!capable('player'))return e.combatants.filter(a=>a.side==='player').every(a=>a.withdrawn||a.surrendered)?'separated':'player_defeat';
+ const capable=(side:string)=>e.combatants.some(a=>a.side===side&&!a.companion&&!a.broken&&!a.withdrawn&&!a.surrendered);
+ if(!capable('player'))return e.combatants.filter(a=>a.side==='player'&&!a.companion).every(a=>a.withdrawn||a.surrendered)?'separated':'player_defeat';
  if(!capable('enemy'))return e.combatants.filter(a=>a.side==='enemy').every(a=>a.withdrawn||a.surrendered)?'separated':'opponents_defeated';
  return null;
 }
@@ -53,7 +53,7 @@ export function concludeEncounter(e:CombatEncounter,session:Session,kind:Encount
  const blocker=lifecycleBlocker(e);if(blocker)throw new AIError('combat_conclusion_pending',blocker,409);
  e.status='ended';e.endedAt=new Date().toISOString();delete e.actionDraft;
  e.outcome={kind,concludedAt:e.endedAt,reason,location:e.sceneLocation,hex:e.sceneHex,
- players:e.combatants.filter(a=>a.side==='player').map(a=>({id:a.id,name:a.name,current:{...a.current},broken:a.broken,withdrawn:a.withdrawn,injuries:session.characters.find(c=>c.id===a.id)?.sheet?.['critical-injuries'] as string||null,procedures:structuredClone(a.brokenProcedures??[])})),
+ players:e.combatants.filter(a=>a.side==='player'&&!a.companion).map(a=>({id:a.id,name:a.name,current:{...a.current},broken:a.broken,withdrawn:a.withdrawn,injuries:session.characters.find(c=>c.id===a.id)?.sheet?.['critical-injuries'] as string||null,procedures:structuredClone(a.brokenProcedures??[])})),
  npcs:e.combatants.filter(a=>a.side==='enemy').map(a=>({id:a.id,name:a.name,broken:a.broken,withdrawn:a.withdrawn||!!a.surrendered,critical:structuredClone(a.critical)})),
  events:e.history.slice(-8).flatMap(a=>a.results.map(r=>`${e.combatants.find(c=>c.id===a.actorId)?.name} → ${e.combatants.find(c=>c.id===r.targetId)?.name}: ${r.remaining} uncanceled successes; ${r.afterArmor??'unresolved'} damage after armor. Player damage remains sheet-managed.`)),
  policy:'Frozen encounter outcome, not permission for further actions. Broken is not death. Preserve attribute-specific awareness and player decisions. Injuries and lethal timers persist after combat. Do not assume theft, captivity, rescue, death, recovery or resource changes. Established NPC goals come only from the confirmed scene and approved memories. Narrate attempts and intentions; mechanical changes require authorized application operations.'};

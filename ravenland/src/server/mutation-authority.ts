@@ -34,6 +34,7 @@ const playerPaths = new Set([
   "/api/gm",
   "/api/dice",
   "/api/characters",
+  "/api/creatures",
   "/api/characters/prepare",
   "/api/gm/rolls",
   "/api/combat/prepare",

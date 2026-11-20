@@ -1,5 +1,7 @@
 // Generated from the standalone sheet.
 export const sheetFieldNames = [
+  "backstory",
+  "backstory-visibility",
   "name",
   "kin",
   "profession",

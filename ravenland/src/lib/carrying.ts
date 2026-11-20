@@ -1,6 +1,7 @@
+export const weightUnits:Record<string,number>={Heavy:2,Normal:1,Light:.5,Tiny:0};
 // One pure calculation is compiled into the standalone/embedded sheet and used by services.
 export function carryingTotals(sheet:Record<string,any>,catalog:{weapons:readonly any[]}={weapons:[]}){
- const weights:Record<string,number>={Heavy:2,Normal:1,Light:.5,Tiny:0},issues:string[]=[],seen=new Map<string,number>();
+ const weights=weightUnits,issues:string[]=[],seen=new Map<string,number>();
  const key=(v:string)=>v.trim().toLowerCase().replace(/[‐‑–]/g,'-');let gear=0,weapons=0,armor=0,resources=0,coins=0;
  const gearRows=(sheet.gear??[]).filter((g:any)=>g.item?.trim());
  const add=(id:string|undefined,weight:number)=>{if(id){if(seen.has(id)){if(seen.get(id)!==weight)issues.push('Linked item has inconsistent weight/quantity');return 0;}seen.set(id,weight);}return weight;};

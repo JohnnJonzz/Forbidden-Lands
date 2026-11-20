@@ -9,7 +9,7 @@ import {catalogWeapon} from '../../lib/equipment-catalog';
 import type {DefensePool} from '../../lib/combat/requested-roll';
 export function attackScore(e:CombatEncounter,p:CombatAttack,id:string){const roll=e.rolls.find(r=>r.id===p.attackRolls[id]&&r.actionId===p.id&&r.combatantId===p.actorId&&r.type==='attack');return roll?.result?countSuccesses(roll.result):null}
 export function defenseRecorded(e:CombatEncounter,p:CombatAttack,id:string){return e.rolls.some(r=>r.id===p.defenseRolls[id]&&r.actionId===p.id&&r.combatantId===id&&r.type==='defense'&&!!r.result)}
-export function needsPlayerDefense(e:CombatEncounter,p:CombatAttack,id:string){return e.combatants.some(a=>a.id===id&&a.side==='player')&&(attackScore(e,p,id)??0)>0&&!!p.defenses[id]&&p.defenses[id]!=='none'&&!defenseRecorded(e,p,id)}
+export function needsPlayerDefense(e:CombatEncounter,p:CombatAttack,id:string){return e.combatants.some(a=>a.id===id&&a.side==='player'&&!a.companion)&&(attackScore(e,p,id)??0)>0&&!!p.defenses[id]&&p.defenses[id]!=='none'&&!defenseRecorded(e,p,id)}
 
 export function defensiveSequenceIssue(e:CombatEncounter){
  const p=e.pending;if(!p||!['defense_roll','armor_roll'].includes(p.phase))return null;

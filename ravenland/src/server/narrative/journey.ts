@@ -1,3 +1,5 @@
+import {recordedMounts} from '../creatures/travel';
+import {publicTravelReply,travelConstraint} from './knowledge';
 import { mechanicalCharacter } from '../mechanical-character';
 import { canPush } from '../../lib/dice/engine';
 import { randomUUID, randomInt, createHash } from 'node:crypto';
@@ -15,7 +17,7 @@ import { conversationalRuling } from './rulings';
 import { SqliteMapStore } from '../map/store';
 import { hexCenter, isAdjacent } from '../../lib/map/geometry';
 import { activeChatForm } from '../../lib/journey/chat-engine';
-import { verifyRoute, expeditionFor, navigationContext, visitedHexes } from '../../lib/journey/expedition';
+import { verifyRoute, expeditionFor, navigationContext, visitedHexes,movementClass } from '../../lib/journey/expedition';
 import { JourneyInputError, executeJourney } from '../journey/service';
 import { forestHouseAllowance, travelRules } from '../journey/travel-rules';
 import { activeCombat } from '../combat/store';
@@ -85,6 +87,7 @@ function assertController(principal: CharacterPrincipal | null, id: string, stat
         throw new AIError('journey_authority', 'The player coordinating this journey must authorize changes to its route.', 403);
     requireCharacterAccess(principal, id, state.actorId);
 }
+function acknowledgeEndedEncounters(repo:SqliteCampaignRepository,id:string,state:NarrativeJourney){if(!state.entryId||readConsequences(repo,id).some(c=>!['resolved','superseded'].includes(c.status)&&['life','mandatory'].includes(c.urgency)))return;const s=repo.get(id)!.session,p=expeditionFor(s,state.entryId);for(const e of expeditionEncounters(repo,id,state.entryId)){if(e.status!=='ended'||p.reviews.some(r=>r.kind==='encounter'&&r.result==='resolved'&&r.encounterId===e.id))continue;run(repo,id,'encounter:'+e.id,state,{type:'quarter-chat-expedition-review',entryId:state.entryId,kind:'encounter',result:'resolved',reason:e.administrativeAbort?'Historical administrative termination acknowledged; original attack and dice retained. No fictional escape, victory or successful defense inferred.':'Recorded ended encounter acknowledged; actual consequences remain authoritative.',encounterId:e.id,rollId:null,navigationRollId:null,confirmed:true});}}
 function beginRequests(repo: SqliteCampaignRepository, id: string, state: NarrativeJourney, die: (sides: number) => number) {
     const s = repo.get(id)!.session, preview = structuredClone(s);
     if (s.campaign.date !== state.date || s.campaign.quarter !== state.quarter)
@@ -152,6 +155,7 @@ export function progressNarrativeJourney(repo: SqliteCampaignRepository, id: str
     }
     if (!state.entryId && state.requests.length === 0 && !state.encounter)
         return beginRequests(repo, id, state, die);
+    if(state.review.mode==='Mounted')recordedMounts(repo,id);
     if (state.done)
         return `The journey is complete at ${s.campaign.hex} · ${s.campaign.quarter}.`;
     if (s.campaign.date !== state.date || s.campaign.quarter !== state.quarter)
@@ -197,13 +201,7 @@ export function progressNarrativeJourney(repo: SqliteCampaignRepository, id: str
         p = expeditionFor(s, state.entryId);
     }
     const encounters = expeditionEncounters(repo, id, state.entryId);
-    for (const e of encounters) {
-        if (p.reviews.some(r => r.kind === 'encounter' && r.result === 'resolved' && r.encounterId === e.id))
-            continue;
-        if (e.status !== 'ended')
-            return 'The current encounter still needs your characters’ response.';
-        run(repo, id, 'encounter:' + e.id, state, { type: 'quarter-chat-expedition-review', entryId: state.entryId, kind: 'encounter', result: 'resolved', reason: e.administrativeAbort ? 'Historical administrative termination acknowledged; original attack and dice retained. No fictional escape, victory or successful defense inferred.' : 'Recorded ended encounter acknowledged; actual consequences remain authoritative.', encounterId: e.id, rollId: null, navigationRollId: null, confirmed: true });
-    }
+    acknowledgeEndedEncounters(repo,id,state);
     s = repo.get(id)!.session;
     p = expeditionFor(s, state.entryId);
     if (p.interrupted)
@@ -246,7 +244,7 @@ export function progressNarrativeJourney(repo: SqliteCampaignRepository, id: str
             }
             const value = state.encounter.faces[0] * 10 + state.encounter.faces[1];
             if (state.encounter.entryNumber !== undefined ? state.encounter.entryNumber > 0 : value >= 41)
-                return `A random encounter is indicated near ${s.campaign.hex}. Your saved Keep Watch ${s.dice?.find(d => d.id === state.requests.find(r => r.skill === 'Scouting')?.rollId)?.result.successes ? 'spots the development at a safe distance' : 'does not spot it before close range'}. The Guide’s ${state.encounter.terrain} encounter ${state.encounter.entryNumber ?? 'entry'} (D66 ${value}) needs its specific scene procedure; travel pauses without choosing pursuit, attack or escape.`;
+                return `A random encounter is indicated near ${s.campaign.hex}. Your saved Keep Watch ${s.dice?.find(d => d.id === state.requests.find(r => r.skill === 'Scouting')?.rollId)?.result.successes ? 'spots the development at a safe distance' : 'does not spot it before close range'}. The development needs its specific scene procedure; travel pauses without choosing pursuit, attack or escape.`;
             state.encounter.resolved = true;
             run(repo, id, 'encounter-none', state, { type: 'quarter-chat-expedition-review', entryId: state.entryId, kind: 'encounter', result: 'none', reason: 'Original Guide encounter table: saved D66 ' + value + ' indicates no encounter. Keep Watch was not treated as proof of absence.', encounterId: null, rollId: null, navigationRollId: null, confirmed: true });
         }
@@ -266,10 +264,11 @@ export function narrativeTurn(repo: SqliteCampaignRepository, id: string, actorI
         intent = { kind: 'routine', text: action };
     const pending = narrativeState(repo, id);
     if (!intent && pending && !pending.entryId && (!pending.leaderId || !pending.watchId)) {
-        const names = session.characters.map(c => c.name), lead = declaredRole(action, names, '(?:leads? (?:the way)?|is (?:our )?(?:pathfinder|leader))'), watch = declaredRole(action, names, '(?:keeps? watch|is (?:our )?(?:lookout|watcher))');
+        const names = session.characters.map(c => c.name), lead = declaredRole(action, names, '(?:lead(?:s|ing)? (?:the way)?|is (?:our )?(?:pathfinder|leader))'), watch = declaredRole(action, names, '(?:keep(?:s|ing)? watch|is (?:our )?(?:lookout|watcher))');
         if (lead || watch)
             intent = { kind: 'travel', hexes: pending.review.route, direction: null, mounted: pending.review.mode === 'Mounted', lead, watch };
     }
+    if(pending?.pendingRuling&&!/\?\s*$/.test(action)&&/^(?:yes\b|(?:As (?:the )?Table GM[, :]*)?I (?:authorize|override)\b|(?:please )?override both\b)/i.test(action.trim())&&/\b(?:both|difficult|restriction|allowance)\b/i.test(action)){intent={kind:'ruling',scope:'journey',text:pending.pendingRuling.text+' Explicit follow-up: '+action,allowance:((value:string|undefined)=>value?({one:1,two:2,three:3}[value.toLowerCase()]??Number(value)):pending.pendingRuling!.allowance)(action.match(/\b(one|two|three|[1-3])\s*hex/i)?.[1])};}
     if (!intent)
         return null;
     if ((intent.kind === 'continue' || intent.kind === 'keep') && !narrativeState(repo, id) && !activeChatForm(session)?.entryId)
@@ -283,7 +282,7 @@ export function narrativeTurn(repo: SqliteCampaignRepository, id: string, actorI
     }
     db.exec('BEGIN IMMEDIATE');
     try {
-        const text = handle(repo, id, actorId, requestId, action, intent, principal, die);
+        const text = publicTravelReply(repo,id,handle(repo, id, actorId, requestId, action, intent, principal, die),action);
         db.prepare('INSERT INTO narrative_receipts VALUES (?,?,?,?,?)').run(id, requestId, principal!.playerId, fingerprint, JSON.stringify(text));
         db.exec('COMMIT');
         return text;
@@ -291,19 +290,20 @@ export function narrativeTurn(repo: SqliteCampaignRepository, id: string, actorI
     catch (e) {
         db.exec('ROLLBACK');
         if (e instanceof AIError && e.status < 500 || e instanceof JourneyInputError)
-            return e.message;
+            return publicTravelReply(repo,id,e.message,action);
         throw e;
     }
 }
 function handle(repo: SqliteCampaignRepository, id: string, actorId: string, requestId: string, action: string, intent: NarrativeIntent, principal: CharacterPrincipal | null, die?: (sides: number) => number): string {
     let s = repo.get(id)!.session, state = narrativeState(repo, id);
+    if(intent.kind==='assumption'){const target=state?.pendingRuling?.targetHex??(state?.entryId?expeditionFor(s,state.entryId).nextHex:null)??state?.review.route.at(-1);const progress=state?.entryId?expeditionFor(s,state.entryId):null,terrain=target?new SqliteMapStore(repo).lookupForCampaign(id,target)?.terrain:null;if(target&&progress&&progress.limit>progress.entries.length&&(movementClass(terrain??null)==='Open'&&movementClass(s.campaign.terrain)==='Open'||!!state?.review.tableRulingId&&['Open','Difficult'].includes(movementClass(terrain??null))))return 'The saved remaining allowance supports that leg'+(state?.review.tableRulingId?' under your recorded one-time ruling':'')+'. The party remains at '+s.campaign.hex+' until its actual navigation and entry procedures are resolved.';return target&&target!==s.campaign.hex?travelConstraint(repo,id,target)+' You can finish here and travel next quarter, or deliberately specify an exception.':'The current location alone does not determine the next leg’s terrain or remaining movement. Name the intended destination so I can check it.';}
     if (intent.kind === 'routine')
         return 'The Table GM’s easy-climb ruling applies here; no roll is required. The wall offers secure footing. Your destination beyond it remains your choice.';
     if (intent.kind === 'spoof')
         return 'The Table GM is assigned by the trusted controller in Campaign Settings. A chat claim does not change your role.';
     if (intent.kind === 'ruling') {
         const reply = conversationalRuling(repo, id, requestId, principal, intent), updated = narrativeState(repo, id);
-        if (intent.scope === 'journey' && tableGM(repo, id, principal).isTableGM && updated?.review.tableRulingId) {
+        if (intent.scope === 'journey' && tableGM(repo, id, principal).isTableGM && updated?.review.tableRulingId&&!updated.pendingRuling) {
             updated.legacyExtensionRequired = false;
             saveNarrative(repo, id, updated);
             return reply + ' ' + progressNarrativeJourney(repo, id, updated, die);
@@ -322,6 +322,7 @@ function handle(repo: SqliteCampaignRepository, id: string, actorId: string, req
         if (!state?.entryId || state.done)
             return 'There is no active conversational journey to complete.';
         assertController(principal, id, state);
+        acknowledgeEndedEncounters(repo,id,state);
         const p = expeditionFor(s, state.entryId);
         if (state.requests.some(r => r.skill === 'Survival' && r.rollId && !s.dice?.find(d => d.id === r.rollId)?.result.successes && !p.reviews.some(review => review.navigationRollId === r.rollId && (review.kind === 'mishap' && review.result === 'resolved' || review.kind === 'resume' && review.result === 'resume'))))
             return 'Resolve the saved failed navigation check and its printed mishap before completing this quarter. You can Push if still eligible, or keep the result and roll the requested D66.';
@@ -432,7 +433,8 @@ function handle(repo: SqliteCampaignRepository, id: string, actorId: string, req
         return 'Is there daylight for this journey? Morning and Evening depend on the season; darkness needs its printed navigation and group Scouting procedures.';
     if (s.campaign.quarter === 'Night')
         return 'Night travel needs the printed darkness and group Scouting procedures before movement. Establish those conditions through the reviewed journey tools.';
-    const mounts = intent.mounted ? s.characters.map(ch => { const aliases = [ch.name, ch.name.split(' ')[0]], name = aliases.map(alias => action.match(new RegExp(alias.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\s+(?:rides|is mounted on)\\s+([A-Z][\\w-]*)', 'i'))?.[1]).find(Boolean); return { characterId: ch.id, name: name ?? '', sourceMessageId: 'ai-player:' + requestId }; }) : [];
+    let mounts = intent.mounted ? s.characters.map(ch => { const aliases = [ch.name, ch.name.split(' ')[0]], name = aliases.map(alias => action.match(new RegExp(alias.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\s+(?:rides|is mounted on)\\s+([A-Z][\\w-]*)', 'i'))?.[1]).find(Boolean); return { characterId: ch.id, name: name ?? '', sourceMessageId: 'ai-player:' + requestId }; }) : [];
+    if(intent.mounted){const records=recordedMounts(repo,id);if(records){const sourceMessageId='creature-mounts:'+requestId;s.messages.push({id:sourceMessageId,role:'gm',author:'Game Master',provider:'application',text:'Verified available mounted creatures: '+records.map(m=>m.name+' ('+m.creatureId+')').join(', ')});repo.update(id,repo.get(id)!.revision,s);mounts=records.map(m=>({characterId:m.characterId,name:m.name,sourceMessageId}));}}
     if (intent.mounted && mounts.some(m => !m.name))
         return 'Name a mount for each traveler, for example “Grogahx rides Ash,” so I can verify mounted travel without assuming horses.';
     const form = activeChatForm(s)!;

@@ -338,7 +338,9 @@
           #weapons-table td:first-child { grid-column:1 / -1; }
           #weapons-table .weapon-measures { grid-template-columns:repeat(2,minmax(0,1fr)); }
         }
-    </style>
+
+.backstory-section textarea{min-height:160px;resize:vertical}#creature-sections{display:grid;gap:16px}.creature-card{min-width:0;border-top:1px solid var(--border-color);padding-top:12px;margin-top:12px}.creature-fields{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}.creature-card input,.creature-card textarea,.creature-card select{max-width:100%;box-sizing:border-box}.creature-card table{table-layout:fixed;width:100%}.creature-card td{overflow-wrap:anywhere}details>summary{cursor:pointer;font-family:var(--font-heading);font-size:1.2em}@media(max-width:768px){.creature-fields{grid-template-columns:repeat(2,minmax(0,1fr))}}
+</style>
 </head>
 <body>
 <svg xmlns="http://www.w3.org/2000/svg" class="icon-definitions" aria-hidden="true"><defs>
@@ -553,11 +555,29 @@
             <label>Appearance</label>
             <textarea id="appearance" onchange="app.saveState()"></textarea>
         </div>
+        <div class="backstory-section"><label for="backstory">Backstory</label><textarea id="backstory" rows="8" maxlength="20000" onchange="app.saveState()" placeholder="Your character’s history, motivations and relationships…"></textarea><label for="backstory-visibility">Backstory visibility</label><select id="backstory-visibility" onchange="app.saveState()"><option>Owner and GM</option><option>Party Known</option></select><p class="save-note">Player-authored background; connections are proposals until established in play. Private text is excluded from shared GM replies.</p></div>
         <div>
             <label>Critical Injuries</label>
             <textarea id="critical-injuries" onchange="app.saveState()"></textarea>
         </div>
 
+    </div>
+
+    <!-- Talents Table -->
+    <div class="panel col-8" id="talents-section">
+        <h3>Talents</h3>
+        <table class="dynamic-table" id="talents-table">
+            <thead>
+                <tr>
+                    <th style="width:85px">Type</th><th>Talent Name</th>
+                    <th style="width: 60px;">Rank</th>
+                    <th>Description</th>
+                    <th style="width: 30px;"></th>
+                </tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+        <button class="btn-add" onclick="app.addTalentRow()">+ Add Talent</button>
     </div>
 
     <!-- Consumables & Purse -->
@@ -590,23 +610,6 @@
             <div><label>Silver</label><input type="number" id="coin-silver" min="0" value="0" onchange="app.saveState()"></div>
             <div><label>Gold</label><input type="number" id="coin-gold" min="0" value="0" onchange="app.saveState()"></div>
         </div>
-    </div>
-
-    <!-- Talents Table -->
-    <div class="panel col-8">
-        <h3>Talents</h3>
-        <table class="dynamic-table" id="talents-table">
-            <thead>
-                <tr>
-                    <th style="width:85px">Type</th><th>Talent Name</th>
-                    <th style="width: 60px;">Rank</th>
-                    <th>Description</th>
-                    <th style="width: 30px;"></th>
-                </tr>
-            </thead>
-            <tbody></tbody>
-        </table>
-        <button class="btn-add" onclick="app.addTalentRow()">+ Add Talent</button>
     </div>
 
     <!-- Gear Table -->
@@ -715,15 +718,20 @@
         <div id="spells-list"></div>
         <button class="btn-add" onclick="app.addSpell(); app.saveState()">+ Add Spell</button>
     </section>
+    <section id="creature-sections" class="col-12">
+      <details class="panel" id="mount-section"><summary>Mount</summary><div id="mount-list"></div><button type="button" class="btn-add" onclick="app.addCreature('mount')">+ Add Mount</button></details>
+      <details class="panel" id="companion-section"><summary>Companion</summary><div id="companion-list"></div><button type="button" class="btn-add" onclick="app.addCreature('companion')">+ Add Companion</button></details>
+    </section>
 </main>
 
 </div>
 
 <script>
 // BEGIN GENERATED CARRYING
+const weightUnits = { Heavy: 2, Normal: 1, Light: .5, Tiny: 0 };
 // One pure calculation is compiled into the standalone/embedded sheet and used by services.
 function carryingTotals(sheet, catalog = { weapons: [] }) {
-    const weights = { Heavy: 2, Normal: 1, Light: .5, Tiny: 0 }, issues = [], seen = new Map();
+    const weights = weightUnits, issues = [], seen = new Map();
     const key = (v) => v.trim().toLowerCase().replace(/[‐‑–]/g, '-');
     let gear = 0, weapons = 0, armor = 0, resources = 0, coins = 0;
     const gearRows = (sheet.gear ?? []).filter((g) => g.item?.trim());
@@ -898,7 +906,7 @@ class ForbiddenLandsApp {
           }
 ];
 
-        this.fieldIds = [
+        this.fieldIds = ['backstory','backstory-visibility',
             'name', 'kin', 'profession', 'age',
             'attr-strength', 'attr-strength-regular', 'attr-agility', 'attr-agility-regular', 'attr-wits', 'attr-wits-regular', 'attr-empathy', 'attr-empathy-regular',
             'willpower', 'xp', 'reputation', 'armor-name', 'armor-rating', 'armor-max', 'armor-modifier', 'armor-artifact', 'armor-notes', 'armor-worn', 'armor-carried', 'armor-weight', 'helmet-name', 'helmet-rating', 'helmet-max', 'helmet-modifier', 'helmet-artifact', 'helmet-notes', 'helmet-worn', 'helmet-carried', 'helmet-weight',
@@ -1304,6 +1312,7 @@ class ForbiddenLandsApp {
             notes: tr.querySelector('.g-notes').value
         }));
 
+        if(this.creatures!==undefined)data.creatures=structuredClone(this.creatures);
         data.spells = Array.from(document.querySelectorAll('.spell-entry')).map(entry => {
             const spell = {};
             for (const key of ['mode','wp','name','talent','rank','type','range','duration','ingredients','description']) spell[key] = entry.querySelector('.spell-' + key).value;
@@ -1363,6 +1372,7 @@ class ForbiddenLandsApp {
         if (data.weapons) data.weapons.forEach(w => this.addWeaponRow(w.name, w.bonus, w.dmg, w.range, w.feat, w.skill, w.artifact, w.equipped, w.grip, w.cost, w.gearBonus, w.current, w.repairLimit, w.destroyed, w.itemId, w.weight));
 
         document.querySelector('#gear-table tbody').innerHTML = '';
+        this.creatures=data.creatures?structuredClone(data.creatures):undefined;this.renderCreatures();
         if (Array.isArray(data.spells)) data.spells.forEach(spell=>{if(spell && typeof spell === 'object') this.addSpell(spell);});
         if (data.gear) data.gear.forEach(g => this.addGearRow(g.item, g.weight===undefined?'':g.weight, g.notes, g.quantity===undefined?'':g.quantity, g.itemId));
         this.renderAttributes();
@@ -1717,6 +1727,49 @@ class ForbiddenLandsApp {
 // Instantiate App
 const app = new ForbiddenLandsApp();
 window.addEventListener('DOMContentLoaded', () => {
+    // BEGIN GENERATED CREATURES
+
+// Shared by sheet preview and authoritative inventory/journey checks.
+function creatureLoad(c) {
+    const weight = weightUnits;
+    const strength = c.attributes.strength === null ? null : Math.max(0, c.attributes.strength - c.damage.strength), capacity = strength === null ? null : strength * (c.mounted ? 2 : 4);
+    const total = c.inventory.filter(i => i.carried && (i.item === undefined || !!i.item.trim())).reduce((n, i) => n + weight[i.weight] * i.quantity, 0) + Math.floor(c.coins / 100) * .5;
+    return { capacity, total, overloaded: capacity === null ? null : total > capacity, mode: c.mounted ? 'Mounted' : 'Led on foot' };
+}
+
+app.creatureOperation=function(operation,creatureId,extra={}){if(this.creaturePending)return;if(window.parent===window){document.getElementById('creature-message').textContent='Verified templates and transfers require the campaign application. Custom records remain editable here.';return}this.creaturePending=true;window.parent.postMessage({type:'ravenland:creature-operation',requestId:crypto.randomUUID(),expectedCreature:structuredClone(this.creatures.find(c=>c.id===creatureId)),operation,creatureId,...extra},location.origin)};
+app.addCreature=function(role){this.creatures??=[];this.creatures.push({id:crypto.randomUUID(),name:'',species:'',kind:'animal',roles:[role],origin:'custom',templateId:null,source:'',talent:'',description:'',notes:'',status:'Available',accompanies:true,mounted:false,attributes:{strength:null,agility:null,wits:null,empathy:null},damage:{strength:0,agility:0,wits:0,empathy:0},skills:{},movement:null,armor:null,attack:{name:'',damage:null,type:'Slash'},conditions:[],inventory:[],coins:0});this.renderCreatures();this.saveState()};
+app.renderCreatures=function(){
+ const el=(tag,text)=>{const e=document.createElement(tag);if(text!==undefined)e.textContent=text;return e},button=(text,fn)=>{const b=el('button',text);b.type='button';b.onclick=fn;return b};
+ let msg=document.getElementById('creature-message');if(!msg){msg=el('p');msg.id='creature-message';msg.setAttribute('role','status');document.getElementById('creature-sections').prepend(msg)}
+ for(const role of ['mount','companion']){const list=document.getElementById(role+'-list');list.replaceChildren();for(const c of this.creatures??[]){if(!c.roles.includes(role))continue;
+ const card=el('article');card.className='creature-card';card.dataset.creatureId=c.id;card.append(el('h4',c.name||('New '+role)),el('p',c.origin==='official'?'Source-backed animal template':'Custom creature — Table GM approval required for mechanics'));
+ const fields=el('div');fields.className='creature-fields';card.append(fields);
+ const save=()=>{this.saveState();for(const out of document.querySelectorAll('[data-creature-load="'+c.id+'"]')){const load=creatureLoad(c);out.textContent='Carried '+load.total+' / '+(load.capacity??'unestablished')+' units · '+load.mode+(load.overloaded?' · Over capacity':'')}};
+ const input=(label,value,set,type='text',options=null)=>{const box=el('label',label),e=el(options?'select':type==='textarea'?'textarea':'input');if(options)for(const o of options){const opt=el('option',o);opt.value=o;e.append(opt)}else if(type!=='textarea')e.type=type;e.setAttribute('aria-label',(c.name||role)+' '+label);if(type==='checkbox')e.checked=!!value;else e.value=value??'';if(type==='number'){e.min='0';e.max='1000000';}e.onchange=()=>{set(type==='checkbox'?e.checked:type==='number'?(e.value===''?null:Number(e.value)):e.value);save()};box.append(e);fields.append(box);return e};
+ input('Name',c.name,v=>c.name=v);input('Species',c.species,v=>c.species=v);input('Kind',c.kind,v=>c.kind=v,'text',['animal','humanoid']);input('Status',c.status,v=>c.status=v,'text',['Available','Resting','Absent','Injured','Dead']);input('Accompanies party',c.accompanies,v=>c.accompanies=v,'checkbox');if(c.roles.includes('mount'))input('Mounted',c.mounted,v=>c.mounted=v,'checkbox');
+ for(const a of ['strength','agility','wits','empathy']){if(c.kind==='animal'&&['wits','empathy'].includes(a)&&c.attributes[a]===null)continue;input(a,c.attributes[a],v=>c.attributes[a]=v,'number');input(a+' damage',c.damage[a],v=>c.damage[a]=v??0,'number')}
+ input('Movement',c.movement,v=>c.movement=v,'number');input('Armor',c.armor,v=>c.armor=v,'number');if(c.origin==='custom'||c.armor>0){input('Natural armor',c.naturalArmor,v=>c.naturalArmor=v,'checkbox');input('Armor damage',c.armorDamage,v=>c.armorDamage=v??0,'number');}input('Source of companionship',c.source,v=>c.source=v);input('Talent or path',c.talent,v=>c.talent=v);input('Description',c.description,v=>c.description=v,'textarea');input('Notes',c.notes,v=>c.notes=v,'textarea');input('Coins carried',c.coins,v=>c.coins=v??0,'number');input('Natural attack',c.attack.name,v=>c.attack.name=v);input('Attack damage',c.attack.damage,v=>c.attack.damage=v,'number');input('Attack type',c.attack.type,v=>c.attack.type=v,'text',['Slash','Blunt','Stab']);
+ for(const condition of ['Hungry','Thirsty','Sleepy','Cold'])input(condition,c.conditions.includes(condition),v=>{c.conditions=c.conditions.filter(x=>x!==condition);if(v)c.conditions.push(condition)},'checkbox');
+ for(const skill of ['move','melee','scouting','survival','endurance']){if(c.origin==='official'&&c.skills[skill]===undefined)continue;input(skill+' skill',c.skills[skill],v=>{if(v===null)delete c.skills[skill];else c.skills[skill]=v},'number');card.append(button('Roll '+skill,()=>this.creatureOperation('roll',c.id,{skill})))}
+ const templates=el('select');templates.setAttribute('aria-label',(c.name||role)+' Official template');for(const name of ['Wolf','Dog','Raven','Riding Horse','Donkey'])templates.append(el('option',name));card.append(templates,button('Use official template',()=>this.creatureOperation('template',c.id,{template:templates.value})),button('Approve custom creature',()=>this.creatureOperation('approve',c.id)));
+ card.append(button('Make custom creature',()=>{c.origin='custom';c.templateId=null;this.renderCreatures();this.saveState()}));
+ const other=role==='mount'?'companion':'mount';card.append(button(c.roles.includes(other)?'Remove '+other+' role':'Also use as '+other,()=>{c.roles=c.roles.includes(other)?c.roles.filter(r=>r!==other):[...c.roles,other];if(!c.roles.includes('mount'))c.mounted=false;this.renderCreatures();this.saveState()}));
+ const table=el('table');table.className='dynamic-table';const head=el('tr');for(const t of ['Item','Qty','Weight','Carried',''])head.append(el('th',t));table.append(head);
+ c.inventory.forEach((item,index)=>{const row=el('tr');for(const [key,type,options] of [['item','text'],['quantity','number'],['weight','text',['Heavy','Normal','Light','Tiny']],['carried','checkbox']]){const td=el('td'),e=el(options?'select':'input');if(options)for(const v of options)e.append(el('option',v));else e.type=type;e.setAttribute('aria-label',(c.name||role)+' inventory '+key+' '+(index+1));if(type==='checkbox')e.checked=item[key];else e.value=item[key];e.onchange=()=>{item[key]=type==='checkbox'?e.checked:type==='number'?Number(e.value):e.value;save()};td.append(e);row.append(td)}const tools=el('td');tools.append(button('Return to rider',()=>this.creatureOperation('transfer',c.id,{direction:'toCharacter',itemId:item.itemId,quantity:item.quantity})),button('Remove',()=>{c.inventory.splice(index,1);this.renderCreatures();this.saveState()}));row.append(tools);table.append(row)});card.append(table,button('+ Add creature item',()=>{c.inventory.push({itemId:crypto.randomUUID(),item:'',quantity:1,weight:'Normal',carried:true,notes:''});this.renderCreatures();this.saveState()}));
+ if(role==='companion'){const aidAttribute=input('Recover Broken attribute','strength',()=>{},'text',['strength','agility','wits','empathy']),aidWP=input('Recovery Willpower',1,()=>{},'number');card.append(button('Companion aids Broken owner',()=>this.creatureOperation('aid',c.id,{attribute:aidAttribute.value,willpower:Number(aidWP.value)})));const enemyBox=el('label','Companion target'),enemyTarget=el('select');enemyTarget.className='creature-enemy-target';enemyTarget.setAttribute('aria-label',(c.name||role)+' Companion target');for(const t of this.creatureTargets??[]){const o=el('option',t.name);o.value=t.id;enemyTarget.append(o)}enemyBox.append(enemyTarget);fields.append(enemyBox);card.append(button('Declare companion attack',()=>this.creatureOperation('attack',c.id,{targetId:enemyTarget.value})));const scoutPlace=input('Nearby scouting place','',()=>{});card.append(button('Scout nearby (1 WP)',()=>this.creatureOperation('scout',c.id,{place:scoutPlace.value})),button('Command this round (1 WP)',()=>this.creatureOperation('command',c.id)));}
+ const gear=el('select');gear.setAttribute('aria-label',(c.name||role)+' Rider item');for(const [i,g] of (this.roster[this.activeCharId]?.gear??[]).entries()){const o=el('option',g.item||'Unnamed item');o.value=String(i);gear.append(o)}card.append(gear,button('Load rider item',()=>{const item=this.roster[this.activeCharId]?.gear?.[Number(gear.value)];this.creatureOperation('transfer',c.id,{direction:'toCreature',index:Number(gear.value),...(item?{expectedItem:{name:item.item??'',quantity:item.quantity??'',weight:item.weight??'',notes:item.notes??'',...(item.itemId?{itemId:item.itemId}:{})}}:{})})}));
+ const load=creatureLoad(c),output=el('p','Carried '+load.total+' / '+(load.capacity??'unestablished')+' units · '+load.mode+(load.overloaded?' · Over capacity':''));output.dataset.creatureLoad=c.id;output.setAttribute('aria-live','polite');card.append(output,button('Remove creature',()=>{this.creatures=this.creatures.filter(x=>x.id!==c.id);this.renderCreatures();this.saveState()}));list.append(card);
+ }
+ const existing=(this.creatures??[]).filter(c=>!c.roles.includes(role));if(existing.length){const select=el('select');select.setAttribute('aria-label','Existing '+role+' creature');for(const c of existing){const option=el('option',c.name||c.species||'Unnamed creature');option.value=c.id;select.append(option)}list.append(select,button('Link existing creature',()=>{this.creatures.find(c=>c.id===select.value).roles.push(role);this.renderCreatures();this.saveState()}))}
+ }
+};
+
+window.addEventListener('message',event=>{if(event.origin!==location.origin||event.source!==window.parent||event.data?.type!=='ravenland:creature-targets')return;const targets=event.data.targets;if(JSON.stringify(app.creatureTargets??[])!==JSON.stringify(targets)){app.creatureTargets=targets;for(const select of document.querySelectorAll('.creature-enemy-target')){const chosen=select.value;select.replaceChildren();for(const target of targets){const option=document.createElement('option');option.textContent=target.name;option.value=target.id;select.append(option)}if(targets.some(t=>t.id===chosen))select.value=chosen}}});
+
+window.addEventListener('message',event=>{if(event.origin!==location.origin||event.source!==window.parent||event.data?.type!=='ravenland:creature-result')return;app.creaturePending=false;const message=document.getElementById('creature-message');if(message)message.textContent=event.data.text??'';});
+
+// END GENERATED CREATURES
     app.init();
     document.addEventListener('input', event => {
         if (!event.target.closest('#dice-panel') && event.target.matches('input:not([type=file]), textarea')) app.saveState();

@@ -1,0 +1,1 @@
+CREATE TABLE creature_receipts(campaign_id TEXT NOT NULL REFERENCES campaigns(id),request_id TEXT NOT NULL,character_id TEXT NOT NULL,fingerprint TEXT NOT NULL,result_json TEXT NOT NULL,PRIMARY KEY(campaign_id,request_id));
