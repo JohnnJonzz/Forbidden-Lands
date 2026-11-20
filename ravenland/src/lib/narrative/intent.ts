@@ -13,7 +13,7 @@ export type NarrativeIntent = {
     text: string;
     allowance: number | null;
 } | {
-    kind:'assumption';
+    kind:'assumption'|'activities';
 } | {
     kind: 'routine';
     text: string;
@@ -45,6 +45,7 @@ export function narrativeIntent(text: string, names: string[]): NarrativeIntent 
         const scope=temporary?(/scene|wall|climb/i.test(text)&&!/journey|expedition|hex|travel/i.test(text)?'scene':'journey'):/house rule|from now on|every journey|always/i.test(recurringText)?'house_rule':/journey|expedition|hex|quarter[- ]day/i.test(text)?'journey':/scene|wall|climb|no roll/i.test(text)?'scene':'fact';
         return {kind:'ruling',scope,text,allowance:n?(numbers[n]??Number(n)):null};
     }
+    if(/\b(?:make camp|cook(?: the food)?|forag(?:e|ing)|hunt(?:ing)?|sleep|rest)\b/i.test(text)&&/\b(?:will|we're|we are|stopping|assign|activities|settling)\b/i.test(text)&&!/\b(?:travel to|continue to|head toward|ride to)\b/i.test(text))return {kind:'activities'};
     if(/\b(?:we are|we're|we can|can travel|one more hex)\b/i.test(text)&&/forest|terrain|quarter|hex/i.test(text)&&!/\b(?:want to|continue|travel to|head|toward)\b/i.test(text))return {kind:'assumption'};
     if(/\b(?:wait|stop) (?:here |)until (?:the )?next quarter[- ]day/i.test(text))return {kind:'complete'};
     if (/\b(?:keep (?:[\w’'-]+\s+){0,3}(?:roll|result)|accept (?:the |that )?(?:failure|result)|don.t push)\b/i.test(text))

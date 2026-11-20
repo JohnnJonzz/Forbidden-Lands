@@ -27,7 +27,7 @@ export function PanelContent({onOpenJournal,selectedCharacter,onDice,actorId,rec
  const [name,setName]=useState(session.campaign.name),[objective,setObjective]=useState(session.campaign.objective),[quarter,setQuarter]=useState(session.campaign.quarter);
  const campaignDirty=panel==='Campaign Settings'&&JSON.stringify({name,objective,quarter,description,date,weather,hex,location,terrain,tone,houseRules})!==JSON.stringify({name:session.campaign.name,objective:session.campaign.objective,quarter:session.campaign.quarter,description:session.campaign.description,date:session.campaign.date,weather:session.campaign.weather,hex:session.campaign.hex,location:session.campaign.location,terrain:session.campaign.terrain,tone:session.campaign.settings.tone,houseRules:session.campaign.settings.houseRules});
  usePanelDraftGuard(panel==='Journal'&&!!(note.trim()||title.trim()),'journal entry');usePanelDraftGuard(campaignDirty,'campaign settings');
- if(panel==='Journey Settings') return <JourneySettings record={record} onCommand={onJourney}/>;
+ if(panel==='Journey Settings') return <JourneySettings record={record} onCommand={onJourney} actorId={actorId}/>;
  if(panel==='Quarter-Day Activities') return <p>Quarter-day activities are in the main chat.</p>;
  if(panel==='Rules Library') return <RulesLibrary key={record.id} campaignId={record.id}/>;
  if(panel==='Image Library') return <ImageLibraryPanel campaignId={record.id}/>;

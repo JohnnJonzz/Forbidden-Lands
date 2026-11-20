@@ -93,7 +93,10 @@
     "combat:inspect": "tsx scripts/inspect-combat-recovery.ts",
     "test:narrative-journey": "tsx --test tests/narrative-journey.test.ts",
     "test:narrative-journey:real": "tsx --test tests/narrative-journey.integration.ts",
-    "test:narrative-journey:browser": "node --import tsx tests/narrative-journey-browser.cjs"
+    "test:narrative-journey:browser": "node --import tsx tests/narrative-journey-browser.cjs",
+    "test:quarter-activities": "tsx --test tests/quarter-activities.test.ts",
+    "test:quarter-activities:real": "tsx --test tests/quarter-activities.integration.ts",
+    "test:quarter-activities:browser": "node --import tsx tests/quarter-activities-browser.cjs"
   },
   "dependencies": {
     "exceljs": "^4.4.0",

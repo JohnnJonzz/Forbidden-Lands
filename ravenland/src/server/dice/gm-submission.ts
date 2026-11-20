@@ -54,6 +54,7 @@ export function verifiedRollSubmission(repo:SqliteCampaignRepository,record:Camp
  if(card.characterId!==c.characterId)throw new AIError('roll_character','This roll belongs to a different character. Submit it with its original rolling character.',409);
  const character=record.session.characters.find(ch=>ch.id===card.characterId);if(!character)throw new AIError('roll_character','The rolling character is no longer in this campaign.',409);
  if(savedRollFingerprint(card)!==c.rollFingerprint)throw new AIError('roll_stale','The roll changed, possibly because it was pushed. Refresh and submit its current final result.',409);
+ if(card.activityContext)throw new AIError('roll_activity','This saved roll belongs to its typed activity or daily consumption; it cannot be reused as an independent attack or another activity.',409);
  if(card.status==='Ready'||card.result.requestId)throw new AIError('roll_activity','Release this legacy activity-bound roll before submitting it independently to the GM.',409);
  verify(card);
  const prior=repo.db.prepare('SELECT context_json FROM ai_requests WHERE campaign_id=? AND id=?').get(record.id,c.requestId),saved=prior?.context_json?JSON.parse(prior.context_json as string).rollSubmission:null;

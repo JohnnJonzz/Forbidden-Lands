@@ -19,7 +19,7 @@ export const chatCommandSchema=z.discriminatedUnion('type',[
  z.object({...env,type:z.literal('quarter-chat-prepare'),intentId:z.string().uuid(),destination:z.string().min(1).max(50),confirmed:z.literal(true)}).strict(),
  z.object({...env,type:z.literal('quarter-chat-request')}).strict(),
  z.object({...env,type:z.literal('quarter-chat-draft'),formId:id,draft:chatDraftSchema}).strict(),
- z.object({...env,type:z.literal('quarter-chat-submit'),navigationNotRequired:z.literal(true).optional(),watchNotRequired:z.literal(true).optional(),formId:id,actorId:id,draft:chatDraftSchema}).strict(),
+ z.object({...env,type:z.literal('quarter-chat-submit'),routineActivities:z.literal(true).optional(),navigationNotRequired:z.literal(true).optional(),watchNotRequired:z.literal(true).optional(),formId:id,actorId:id,draft:chatDraftSchema}).strict(),
  z.object({...env,type:z.enum(['quarter-chat-question','quarter-chat-response','quarter-chat-narrative']),entryId:z.string().uuid(),text:text.trim().min(1)}).strict(),
  z.object({...env,type:z.literal('quarter-chat-propose'),entryId:z.string().uuid(),resolution:resolutionSchema}).strict(),
  z.object({...env,type:z.literal('quarter-chat-complete'),entryId:z.string().uuid(),actorId:id,resolution:resolutionSchema,confirmed:z.literal(true)}).strict()
