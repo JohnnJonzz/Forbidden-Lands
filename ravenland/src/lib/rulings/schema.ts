@@ -13,6 +13,8 @@ export const rulingDomains = [
   "consequence_review",
 ] as const;
 export const effectSchema = z.discriminatedUnion("type", [
+ z.object({type:z.literal("travel_house_rule"),ruleId:z.string().uuid(),revision:z.number().int().positive(),allowance:z.number().int().min(1).max(3),terrain:z.literal("Forest"),mode:z.literal("On foot")}).strict(),
+ z.object({type:z.literal("journey_allowance"),entryId:z.string().uuid(),allowance:z.number().int().min(1).max(3)}).strict(),
  z.object({type:z.literal("weapon_repair"),characterId:ref,weaponIndex:z.number().int().nonnegative(),rollId:ref,before:z.number().int().nonnegative(),after:z.number().int().nonnegative(),repairLimit:z.number().int().nonnegative()}).strict(),
   z
     .object({

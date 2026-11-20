@@ -1,3 +1,4 @@
+import {narrativeTurn} from '../narrative/journey';
 import {administrativeRecoveryGuidance} from '../combat/administrative-recovery';
 import {proactivePreparation,privatePreparationContext,preparedEncounterGuidance} from '../combat/preparation';
 import {guardSceneProgress} from './scene-intent';
@@ -60,7 +61,7 @@ interface RequestRow {id:string;kind:string;fingerprint:string;status:string;att
 const playerId=(id:string)=>'ai-player:'+id,gmId=(id:string)=>'ai-gm:'+id;
 export function recentAIRequests(repo:SqliteCampaignRepository,campaignId:string){return (repo.db.prepare('SELECT id,kind,status,payload,error_code AS errorCode,updated_at AS updatedAt FROM ai_requests WHERE campaign_id=? ORDER BY updated_at DESC LIMIT 15').all(campaignId)).map(row=>({...row,payload:JSON.parse(row.payload as string)}))}
 export class AIService {
- constructor(readonly repo:SqliteCampaignRepository=getLocalRepository(),readonly provider:GMProvider=new OpenAIProvider(),readonly principal:CharacterPrincipal|null=null){}
+ constructor(readonly repo:SqliteCampaignRepository=getLocalRepository(),readonly provider:GMProvider=new OpenAIProvider(),readonly principal:CharacterPrincipal|null=null,readonly narrativeDie?: (sides:number)=>number){}
  private reply(row:RequestRow):AIReply {const raw=JSON.parse(row.response_json!);return {...raw.reply,replayed:true}}
  private claim(c:GMTurn){assertCurrentRequest(this.repo,c.campaignId,c.requestId);const db=this.repo.db,fingerprint=createHash('sha256').update(JSON.stringify(c.kind==='quarter'?{kind:c.kind,entryId:c.entryId}:{kind:c.kind,action:c.action,characterId:c.characterId,entryId:c.entryId,...(c.kind==='roll'?{rollId:c.rollId,rollFingerprint:c.rollFingerprint}:{})})).digest('hex');db.exec('BEGIN IMMEDIATE');try{
   let record:ReturnType<SqliteCampaignRepository['get']>;try{record=this.repo.get(c.campaignId)}catch(error){if(c.kind==='roll'&&error instanceof ZodError)throw new AIError('roll_unverified','The saved campaign or dice record could not be validated. No result was submitted.',409);throw error}if(!record)throw new AIError('not_found','Campaign not found',404);const roll=c.kind==='roll'?verifiedRollSubmission(this.repo,record,c,this.principal):null,config=aiConfig(this.repo,c.campaignId);
@@ -88,6 +89,10 @@ export class AIService {
  const actor=c.kind==='chat'?this.repo.get(c.campaignId)?.session.characters.find(ch=>ch.id===c.characterId):undefined,preparing=c.kind==='chat'&&!combatRouting(this.repo,c)&&(planRetrieval(c.action,'chat',actor?.name).intent==='gameplay_adjudication'||!!declaredAction(c.action,actor?.name));if(preparing)diagnostics.stage('retrieval');
  const preparation=preparing?prepareAction(this.repo,{campaignId:c.campaignId,characterId:c.characterId,declaration:c.action},this.principal):null;if(preparing)diagnostics.stage('claim');
  claim=this.claim(c);diagnostics.data.attempt=claim.attempt;if(claim.cached){diagnostics.data.outcome='replayed';emit({type:'done',reply:claim.cached});return claim.cached}
+ if(c.kind==='chat'){
+ const narration=narrativeTurn(this.repo,c.campaignId,c.characterId,c.requestId,c.action,this.principal,this.narrativeDie);
+ if(narration!==null){const db=this.repo.db;db.exec('BEGIN IMMEDIATE');try{const lease=db.prepare('SELECT attempts,status FROM ai_requests WHERE campaign_id=? AND id=?').get(c.campaignId,c.requestId);if(lease?.attempts!==claim.attempt||lease.status!=='running')throw new AIError('superseded','This response was superseded. Reload the saved conversation.',409);const current=this.repo.get(c.campaignId)!;if(!current.session.messages.some(m=>m.id===gmId(c.requestId))){current.session.messages.push({id:gmId(c.requestId),role:'gm',author:'Game Master',text:narration,provider:'application',aiRequestId:c.requestId});this.repo.update(current.id,current.revision,current.session);}const reply:AIReply={requestId:c.requestId,provider:'application',narration,actions:[],selectedImageId:null,partyProposals:0};db.prepare("UPDATE ai_requests SET status='completed',response_json=?,error_code=NULL,updated_at=? WHERE campaign_id=? AND id=?").run(JSON.stringify({reply,output:{narration,memoryProposals:[],actions:[],selectedImageId:null}}),new Date().toISOString(),c.campaignId,c.requestId);db.exec('COMMIT');diagnostics.data.outcome='completed';emit({type:'text',text:narration});emit({type:'done',reply});return reply;}catch(error){db.exec('ROLLBACK');throw error;}}
+ }
  diagnostics.stage('retrieval');
  if(c.kind==='chat')proactivePreparation(this.repo,c.campaignId,c.action);
  const consequenceResult=claim.roll&&consequenceRollIntended(claim.roll)?executeConsequenceRoll(this.repo,c.campaignId,c.requestId,claim.roll,this.principal):null;
