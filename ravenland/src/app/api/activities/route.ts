@@ -1,3 +1,4 @@
+import {deliverTransition} from '@/server/transitions/service';
 import { NextResponse } from 'next/server';
 import { getLocalRepository } from '@/server/sqlite';
 import { gameplayPrincipal, requireCharacterAccess } from '@/server/character-access';
@@ -26,6 +27,7 @@ export async function POST(request: Request) {
         return denied;
     try {
         const c = activityCommand.parse(await mapBody(request)), repo = getLocalRepository(), principal = gameplayPrincipal(request, c.campaignId, c.actorId), result = executeActivity(repo, c, principal);
+        if(c.operation==='complete'){await deliverTransition(repo,c.campaignId);result.record=repo.get(c.campaignId)!;}
         return NextResponse.json({ ...result, record: privateCharacterRecord(request, result.record) });
     }
     catch (e) {

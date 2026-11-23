@@ -1,3 +1,4 @@
+import {weatherModifier} from '../../lib/weather-context';
 import {recordedMounts} from '../creatures/travel';
 import {publicTravelReply,travelConstraint} from './knowledge';
 import { mechanicalCharacter } from '../mechanical-character';
@@ -109,6 +110,8 @@ function beginRequests(repo: SqliteCampaignRepository, id: string, state: Narrat
         state.review.modifierReason = 'Printed Pathfinder rank 1, in daylight; no equipment bonus assumed.';
         state.sourceIds.push(citation(page).chunkId);
     }
+    state.review.navigationModifier=(talent?1:0)+weatherModifier(s,'Lead the Way');
+    if(weatherModifier(s,'Lead the Way'))state.review.modifierReason+=' Ravenland v2.0 campaign weather modifier '+weatherModifier(s,'Lead the Way')+'.';
     const house = forestHouseAllowance(repo, id, state.review, geography(repo, id), s.campaign.hex);
     if (house)
         state.review.mixedReview = { allowance: house, reason: 'Explicit recurring Table GM Forest travel rule applied only to its terrain/mode scope.' };

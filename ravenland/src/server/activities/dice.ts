@@ -1,3 +1,4 @@
+import {weatherModifier} from '../../lib/weather-context';
 import { mechanicalCharacter } from '../mechanical-character';
 import { rank } from './state';
 import { terrainModifiers, preyTable } from './rules';
@@ -31,7 +32,7 @@ export function effectiveRequest(s: Session, r: ActivityRequest): ActivityReques
         throw Error('Resolve this character’s Broken recovery before an ordinary activity roll.');
     let modifier = r.modifier, artifactAllowed = r.artifactAllowed, gear = r.gear;
     if (r.context.step === 'camp') {
-        modifier = rank(s, ch.id, 'Quartermaster') >= 1 ? 1 : 0;
+        modifier = (rank(s, ch.id, 'Quartermaster') >= 1 ? 1 : 0)+weatherModifier(s,'Make Camp');
         artifactAllowed = rank(s, ch.id, 'Quartermaster') >= 3;
     }
     if (r.context.step === 'forage' && s.activityState?.settings.season) {

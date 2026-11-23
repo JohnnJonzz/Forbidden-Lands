@@ -254,9 +254,10 @@ export function executeActivity(repo: SqliteCampaignRepository, raw: unknown, pr
                 throw Error('Choose the current submitted activity quarter.');
             for (const x of entry.activities)
                 own(x.characterId);
+            const previousSession=structuredClone(s);
             const prepared = prepareCompletion(repo, record.id, s, entry.entryId);
             const updated = repo.update(record.id, record.revision, s, { activitiesValidated: true, workflowValidated: true });
-            const result = executeJourney({ type: 'quarter-chat-complete', campaignId: record.id, revision: updated.revision, actionId: c.requestId, entryId: entry.entryId, actorId: c.actorId, resolution: prepared, confirmed: true }, repo, { routineCompletion: true });
+            const result = executeJourney({ type: 'quarter-chat-complete', campaignId: record.id, revision: updated.revision, actionId: c.requestId, entryId: entry.entryId, actorId: c.actorId, resolution: prepared, confirmed: true }, repo, { routineCompletion: true,previousSession });
             entry.completed = true;
             db.prepare('UPDATE journey_actions SET fingerprint=? WHERE campaign_id=? AND action_id=?').run(hash, record.id, c.requestId);
             db.exec('COMMIT');

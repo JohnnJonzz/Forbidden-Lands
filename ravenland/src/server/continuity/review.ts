@@ -10,7 +10,7 @@ export function historicalReview(repo: SqliteCampaignRepository, id: string, ent
     if (!entry || !assignment || !['Make Camp', 'Forage'].includes(assignment.activity))
         throw Error('Choose the original Make Camp or Forage assignment.');
     const completed = !!completionFor(s, entryId) || entry.status === 'Completed', native = s.activityState?.entries.find(e => e.entryId === entryId)?.activities.find(a => a.assignmentId === assignmentId), form = s.chatJourney?.forms.find(f => f.entryId === entryId), rollIds = native?.rollIds ?? (assignment.rollId ? [assignment.rollId] : []), cards = rollIds.map(r => s.dice?.find(c => c.id === r)).filter(c => !!c && !c.metadata.utility), card = cards.find(c => c!.result.skill.toLowerCase() === 'survival') ?? null, uncertainties: string[] = [], errors: string[] = [];
-    const elapsed = dateDistance(entry.date, s.campaign.date);
+    const elapsed = dateDistance(entry.date, s.campaign.date,s.environment?.calendar);
     if (elapsed === null || elapsed < 0 || elapsed === 0 && ['Morning', 'Day', 'Evening', 'Night'].indexOf(entry.quarter) > ['Morning', 'Day', 'Evening', 'Night'].indexOf(s.campaign.quarter))
         errors.push('The source event is not earlier than the current in-world time.');
     if (!completed)

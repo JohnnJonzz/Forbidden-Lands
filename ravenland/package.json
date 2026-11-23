@@ -94,6 +94,8 @@
     "test:narrative-journey": "tsx --test tests/narrative-journey.test.ts",
     "test:narrative-journey:real": "tsx --test tests/narrative-journey.integration.ts",
     "test:narrative-journey:browser": "node --import tsx tests/narrative-journey-browser.cjs",
+    "test:morning-transition": "tsx --test tests/weather-transition.test.ts tests/quarter-activities.integration.ts",
+    "test:morning-transition:browser": "node --import tsx tests/morning-transition-browser.cjs",
     "test:camp-continuity": "tsx --test tests/quarter-activities.integration.ts",
     "test:camp-continuity:browser": "node --import tsx tests/camp-continuity-browser.cjs",
     "test:quarter-activities": "tsx --test tests/quarter-activities.test.ts",

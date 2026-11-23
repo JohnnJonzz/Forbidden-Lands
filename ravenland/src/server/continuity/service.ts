@@ -82,7 +82,7 @@ export function executeContinuity(repo: SqliteCampaignRepository, raw: unknown, 
                 throw Error('Each daily need can be allocated only once.');
             if (c.consumers.some(x => !s.characters.some(ch => ch.id === x.characterId)))
                 throw Error('Choose actual party members.');
-            const date = c.date ?? s.campaign.date, quarter = c.quarter ?? s.campaign.quarter, dayDelta = dateDistance(date, s.campaign.date), quarters = ['Morning', 'Day', 'Evening', 'Night'];
+            const date = c.date ?? s.campaign.date, quarter = c.quarter ?? s.campaign.quarter, dayDelta = dateDistance(date, s.campaign.date,s.environment?.calendar), quarters = ['Morning', 'Day', 'Evening', 'Night'];
             if (dayDelta === null || dayDelta < 0 || dayDelta === 0 && quarters.indexOf(quarter) > quarters.indexOf(s.campaign.quarter))
                 throw Error('Choose a known in-world date/quarter that has already occurred.');
             if (!c.earlier && (date !== s.campaign.date || quarter !== s.campaign.quarter))
@@ -103,7 +103,7 @@ export function executeContinuity(repo: SqliteCampaignRepository, raw: unknown, 
                         if (source.inventory.reduce((n, p) => n + p.quantity, 0) + used > source.yield)
                             throw Error('Recorded stock and prior meals exceed the original supported yield. Review the inventory discrepancy before confirming consumption.');
                     }
-                    const sourceAge = dateDistance(source.date, date);
+                    const sourceAge = dateDistance(source.date, date,s.environment?.calendar);
                     if (sourceAge === null || sourceAge < 0 || sourceAge === 0 && quarters.indexOf(quarter) < quarters.indexOf(source.quarter))
                         throw Error('The claimed meal predates the original Foraging source.');
                     if (['already-deducted', 'ruling'].includes(c.method) && !fresh({ ...s, campaign: { ...s.campaign, date, quarter } }, { itemId: 'historical-source', ownerId: source.characterId, kind: 'Vegetables', date: source.date, quarter: source.quarter, chefRank: 0, hazard: null }))

@@ -1,3 +1,6 @@
+import type {Calendar} from '../../lib/environment';
+import {weatherModifier} from '../../lib/weather-context';
+import {fantasyDayDistance} from '../../lib/calendar';
 import {occupiedCamp} from '../../lib/campsites';
 import {refreshSleep} from '../continuity/camps';
 import { randomUUID } from 'node:crypto';
@@ -50,7 +53,7 @@ export function startActivities(repo: SqliteCampaignRepository, id: string, s: S
     st.entries.push({ entryId, date: entry.date, quarter: entry.quarter, hex: entry.from, terrain, completed: false, activities });
     for (const a of activities) {
         if (a.activity === 'Make Camp') {
-            a.request = newRequest(s, entryId, a, 'camp', 'Survival', rank(s, a.characterId, 'Quartermaster') >= 1 ? 1 : 0);
+            a.request = newRequest(s, entryId, a, 'camp', 'Survival', (rank(s, a.characterId, 'Quartermaster') >= 1 ? 1 : 0)+weatherModifier(s,'Make Camp'));
             a.status = 'Awaiting roll';
         }
         else if (a.activity === 'Forage') {
@@ -88,7 +91,8 @@ export function startActivities(repo: SqliteCampaignRepository, id: string, s: S
     refreshSleep(s);
     ensureNeeds(s);
 }
-export function dateDistance(before: string, after: string): number | null {
+export function dateDistance(before: string, after: string,calendar?:Calendar|null): number | null {
+ const named=fantasyDayDistance(before,after,calendar);if(named!==null)return named;
     const parse = (d: string) => { const m = /^(.*?) \(\+(\d+) days?\)$/.exec(d); return { root: m?.[1] ?? d, offset: Number(m?.[2] ?? 0) }; }, a = parse(before), b = parse(after);
     if (a.root === b.root)
         return b.offset - a.offset;
@@ -100,7 +104,7 @@ export function dateDistance(before: string, after: string): number | null {
 export function fresh(s: Session, p: ActivityState['provisions'][number]) {
     if (['Food', 'Water', 'Pelts'].includes(p.kind))
         return true;
-    const d = dateDistance(p.date, s.campaign.date);
+    const d = dateDistance(p.date, s.campaign.date,s.environment?.calendar);
     if (d === null)
         return false;
     const q = ['Morning', 'Day', 'Evening', 'Night'], elapsed = d * 4 + q.indexOf(s.campaign.quarter) - q.indexOf(p.quarter);

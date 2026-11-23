@@ -1,3 +1,4 @@
+import {fantasyDayDistance} from './calendar';
 import {continuityEventSchema} from './continuity';
 import { z } from 'zod';
 import type { Session, Quarter } from './types';
@@ -30,6 +31,7 @@ export function dueNeeds(s: Session) {
         return false;
     const quarters: Quarter[] = ['Morning', 'Day', 'Evening', 'Night'];
     if (s.campaign.date !== st.settings.effectiveDate) {
+        const distance=fantasyDayDistance(st.settings.effectiveDate,s.campaign.date,s.environment?.calendar);if(distance!==null)return distance>0?quarters.indexOf(s.campaign.quarter)>=quarters.indexOf(st.settings.checkpoint):distance===0&&quarters.indexOf(s.campaign.quarter)>=Math.max(quarters.indexOf(st.settings.checkpoint),quarters.indexOf(st.settings.effectiveQuarter));
         const root = (d: string) => d.replace(/ \(\+\d+ days?\)$/, '');
         if (root(s.campaign.date) === root(st.settings.effectiveDate)) {
             const off = (d: string) => Number(d.match(/\(\+(\d+) days?\)$/)?.[1] ?? 0);
