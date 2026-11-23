@@ -1,3 +1,5 @@
+import {occupiedCamp} from '../../lib/campsites';
+import {refreshSleep} from '../continuity/camps';
 import { randomUUID } from 'node:crypto';
 import { currentRoutine, dueNeeds, type ActivityState, type ActivityRequest, type RoutineActivity } from '../../lib/activities';
 import type { Session } from '../../lib/types';
@@ -64,7 +66,7 @@ export function startActivities(repo: SqliteCampaignRepository, id: string, s: S
         else if (['Rest', 'Sleep'].includes(a.activity)) {
             a.status = 'Resolved';
             a.summary = 'Assigned ' + a.activity + '; uninterrupted eligibility and recovery are checked at completion, no free skill roll.';
-            if (a.activity === 'Sleep' && !activities.some(x => x.activity === 'Make Camp') && !st.entries.filter(e => e.hex === s.campaign.hex).flatMap(e => e.activities).some(x => x.activity === 'Make Camp' && x.status === 'Resolved')) {
+            if (a.activity === 'Sleep' && !activities.some(x => x.activity === 'Make Camp') && !occupiedCamp(s)) {
                 a.stage = 'bare-sleep';
                 a.request = newRequest(s, entryId, a, 'bare-sleep', 'Survival');
                 a.status = 'Awaiting roll';
@@ -83,6 +85,7 @@ export function startActivities(repo: SqliteCampaignRepository, id: string, s: S
             a.summary = a.activity + ' requires its source-specific procedure; no generic success or yield has been assumed.';
         }
     }
+    refreshSleep(s);
     ensureNeeds(s);
 }
 export function dateDistance(before: string, after: string): number | null {

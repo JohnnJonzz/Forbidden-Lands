@@ -1,3 +1,4 @@
+import {projectCamp} from '../continuity/camps';
 import { randomInt } from 'node:crypto';
 import type { Session } from '../../lib/types';
 import type { RoutineActivity } from '../../lib/activities';
@@ -85,7 +86,7 @@ export function resolveActivityRoll(repo: SqliteCampaignRepository, id: string, 
         }
         else {
             const n = success * (rank(s, a.characterId, 'Gatherer') >= 3 ? 2 : 1);
-            addProvisions(s, a.characterId, 'Vegetables', n);
+            const itemId=addProvisions(s, a.characterId, 'Vegetables', n);const provision=s.activityState!.provisions.find(p=>p.itemId===itemId)!;Object.assign(provision,{originEntryId:entryId,originAssignmentId:a.assignmentId,originRollId:card.id});
             a.yield = n;
             finish(a, 'Gathered ' + n + ' fresh Vegetables. Edible raw within one day; no automatic Food resource-die increase.');
         }
@@ -93,12 +94,12 @@ export function resolveActivityRoll(repo: SqliteCampaignRepository, id: string, 
     else if (step === 'camp') {
         if (success > 0) {
             a.choice = 'sheltered';
-            finish(a, 'Established a sheltered, comfortable camp. Sleep and recovery await quarter completion.');
+            finish(a, 'Established a sheltered, comfortable camp. Sleep and recovery await quarter completion.');projectCamp(repo,id,s,entryId,a,card.id);
         }
         else {
             const n = randomInt(1, 7) * 10 + randomInt(1, 7);
             repo.db.prepare('INSERT INTO activity_private VALUES (?,?,?) ON CONFLICT(campaign_id,assignment_id) DO NOTHING').run(id, a.assignmentId, JSON.stringify({ mishap: n, applied: false }));
-            review(a, 'A less pleasant camp was made. Its hidden mishap awaits the Table GM’s timing and review.');
+            review(a, 'A less pleasant camp was made. Its hidden mishap awaits the Table GM’s timing and review.');projectCamp(repo,id,s,entryId,a,card.id);
         }
     }
     else if (step === 'hunt-search') {

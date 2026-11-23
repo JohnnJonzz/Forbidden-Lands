@@ -1,3 +1,5 @@
+import {occupiedCamp,usableCamp} from '../../lib/campsites';
+import {syncCampResult} from '../continuity/camps';
 import { nextDate, quarters } from '../../lib/journey/clock';
 import { z } from 'zod';
 import { randomUUID, createHash } from 'node:crypto';
@@ -48,6 +50,9 @@ export function executeActivity(repo: SqliteCampaignRepository, raw: unknown, pr
             if (principal?.mode === 'trusted-local' && principal.playerId === 'trusted-local' && principal.grants.some(g => g.campaignId === record.id))
                 return;
             requireCharacterAccess(principal, record.id, id);
+        };
+        const auditPortion = (kind:'ordinary_consumption'|'ordinary_transfer', p:typeof st.provisions[number], recipientId:string, detail:string) => {
+            (st.continuityEvents??=[]).push({id:c.requestId,kind,actorId:principal!.playerId,date:s.campaign.date,quarter:s.campaign.quarter,recordedAt:new Date().toISOString(),sourceEntryId:p.originEntryId??null,sourceAssignmentId:p.originAssignmentId??null,sourceItemId:p.itemId,sourceRollId:p.originRollId??null,sourceOwnerId:c.sourceId??c.actorId,awarded:0,deducted:kind==='ordinary_consumption'?1:0,allocations:kind==='ordinary_consumption'?[{characterId:recipientId,resource:c.target??'food',amount:1,date:s.campaign.date,provenance:'verified_portion'}]:[],reason:detail});
         };
         if (c.operation === 'configure') {
             requireGM();
@@ -131,6 +136,7 @@ export function executeActivity(repo: SqliteCampaignRepository, raw: unknown, pr
                 else
                     st.provisions.push({ ...provision, itemId, ownerId: recipientId });
                 text = 'Transferred ' + quantity + ' ' + provision.kind + ' to ' + recipient.name + '. Receiving supplies does not force consumption or satisfy a daily need.';
+                auditPortion('ordinary_transfer',provision,recipientId,text);
             }
             else if (c.operation === 'stock') {
                 const p = st.provisions.find(p => p.itemId === c.itemId && p.ownerId === sourceId), sheet = sheetFor(source), item = sheet.gear?.find(g => g.itemId === c.itemId), quantity = c.quantity ?? 1, key = ('res-' + resource) as 'res-food', dice = ['None', 'D6', 'D8', 'D10', 'D12'], current = dice.indexOf(String(sheet[key] ?? 'None'));
@@ -210,6 +216,7 @@ export function executeActivity(repo: SqliteCampaignRepository, raw: unknown, pr
                 n.itemId = provision.itemId;
                 n.receiptId = c.requestId;
                 n.explanation = 'One ' + provision.kind + ' from ' + source.name + ' was consumed by ' + recipient.name + '.';
+                auditPortion('ordinary_consumption',provision,recipientId,n.explanation);
                 text = n.explanation;
             }
             else {
@@ -418,6 +425,7 @@ export function executeActivity(repo: SqliteCampaignRepository, raw: unknown, pr
                 finish(a, 'Table GM reviewed: ' + c.reason);
                 text = a.summary;
             }
+            if(a.activity==='Make Camp')syncCampResult(repo,record.id,s,a);
         }
         s.journal.push({ id: c.requestId + ':activity', title: 'Activity: ' + c.operation, text });
         const updated = repo.update(record.id, record.revision, s, { activitiesValidated: true, workflowValidated: true });
@@ -447,7 +455,7 @@ export function prepareCompletion(repo: SqliteCampaignRepository, id: string, s:
     if (interrupted && entry.activities.some(a => ['Rest', 'Sleep'].includes(a.activity) && !a.interrupted))
         throw Error('An encounter began during this activity quarter. Review and mark affected Rest/Sleep interrupted before claiming recovery.');
     const changes: string[] = [];
-    const camp = entry.activities.find(a => a.activity === 'Make Camp'), historical = s.activityState!.entries.filter(e => e.hex === s.campaign.hex).flatMap(e => e.activities).filter(a => a.activity === 'Make Camp' && a.status === 'Resolved').at(-1), shelter = camp ?? historical;
+    const currentCamp=occupiedCamp(s),shelter=currentCamp?{choice:currentCamp.effects.includes('no_sleep')?'no-sleep':currentCamp.shelter==='sheltered'?'sheltered':'less-pleasant'}:null;if(currentCamp&&!usableCamp(s)&&entry.activities.some(a=>a.activity==='Sleep'&&!a.interrupted))throw Error('Resolve the shared campsite’s shelter complication before completing Sleep.');
     for (const a of entry.activities) {
         const ch = s.characters.find(ch => ch.id === a.characterId)!, sheet = sheetFor(ch), sleep = a.activity === 'Sleep', rest = sleep || a.activity === 'Rest' || a.activity === 'Forage' && rank(s, ch.id, 'Gatherer') >= 2 || a.activity === 'Hunt' && rank(s, ch.id, 'Master of the Hunt') >= 2;
         if (!rest || a.interrupted)
