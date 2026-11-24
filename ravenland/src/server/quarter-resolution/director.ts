@@ -38,6 +38,8 @@ const checkSchema = z
       "opposed_review",
     ]),
     reason: z.string(),
+    resolutionId:z.string().uuid().optional(),
+    resolutionKind:z.enum(["declined_contact","table_gm_review"]).optional(),
     overrideId: z.string().uuid().nullable(),
     createdAt: z.string(),
   })

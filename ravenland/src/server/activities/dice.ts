@@ -64,7 +64,7 @@ export function effectiveRequest(s: Session, r: ActivityRequest): ActivityReques
 export function matchingActivityRequest(s: Session, c: Extract<DiceCommand, {
     type: 'create';
 }>): ActivityRequest | null {
-    if (c.expectedCombatContext || c.expectedProcedureContext || c.expectedNarrativeRequestId || c.expectedJourneyContext) {
+    if (c.expectedQuarterRequestId || c.expectedCombatContext || c.expectedProcedureContext || c.expectedNarrativeRequestId || c.expectedJourneyContext) {
         if (c.expectedActivityContext)
             throw Error('A roll cannot belong to two distinct procedures.');
         return null;

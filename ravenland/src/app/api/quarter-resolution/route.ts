@@ -1,3 +1,4 @@
+import { inspectQuarterRecovery } from "@/server/quarter-resolution/recovery";
 import { NextResponse } from "next/server";
 import { getLocalRepository } from "@/server/sqlite";
 import {
@@ -27,6 +28,12 @@ export async function GET(request: Request) {
       {
         ...resolutionView(repo, id, entryId, tableGM(repo, id, p).isTableGM),
         isTableGM: tableGM(repo, id, p).isTableGM,
+        campaignRevision: repo.get(id)?.revision,
+        recovery:
+          tableGM(repo, id, p).isTableGM &&
+          repo.get(id)?.session.dayTracker?.some((e) => e.id === entryId)
+            ? inspectQuarterRecovery(repo, id, entryId)
+            : null,
       },
       { headers: { "Cache-Control": "no-store" } },
     );

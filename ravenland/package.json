@@ -107,7 +107,10 @@
     "test:calendar:browser": "node --import tsx tests/calendar-browser.cjs",
     "test:quarter-orchestration": "tsx --test tests/quarter-orchestration.test.ts",
     "test:quarter-orchestration:real": "tsx --test tests/quarter-orchestration.integration.ts",
-    "test:quarter-orchestration:browser": "node --import tsx tests/quarter-orchestration-browser.cjs"
+    "test:quarter-orchestration:browser": "node --import tsx tests/quarter-orchestration-browser.cjs",
+    "test:stationary-quarter": "tsx --test tests/stationary-quarter.test.ts",
+    "test:stationary-quarter:real": "tsx --test tests/stationary-quarter.integration.ts",
+    "test:stationary-quarter:browser": "node --import tsx tests/stationary-quarter-browser.cjs"
   },
   "dependencies": {
     "exceljs": "^4.4.0",

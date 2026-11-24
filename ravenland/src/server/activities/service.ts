@@ -1,3 +1,5 @@
+import {checkFor} from '../quarter-resolution/director';
+import {mishapBlockers} from '../quarter-resolution/recovery';
 import {activitySeason,campaignSeason} from '../../lib/campaign-calendar';
 import {sameDay} from '../../lib/calendar';
 import {occupiedCamp,usableCamp} from '../../lib/campsites';
@@ -449,7 +451,7 @@ export function prepareCompletion(repo: SqliteCampaignRepository, id: string, s:
     if (!entry || entry.completed)
         throw Error('Choose the current uncompleted activity quarter.');
     ensureNeeds(s);
-    const reasons = activityBlockers(s, entryId);
+    const reasons = [...activityBlockers(s, entryId),...mishapBlockers(s,entryId)];const director=checkFor(repo,id,s,entryId);if(director&&['pending','review','scene'].includes(director.status))reasons.push('The saved encounter/check is still '+director.status+'. Resolve its actual detection and avoidance or reviewed outcome in Quarter-Day Activities before completion.');
     if (activeCombat(repo, id))
         reasons.push('The party is still resolving an encounter.');
     if (reasons.length)

@@ -1,3 +1,6 @@
+import {eligibleWatchCards} from "./watch-evidence";
+import {avoidEncounter} from "./avoidance";
+import {mishapBlockers,reviewForagingMishap} from "./recovery";
 import { canPush } from "../../lib/dice/engine";
 import { resolveActivityRoll } from "../activities/resolution";
 import { z } from "zod";
@@ -51,11 +54,17 @@ export const quarterResolutionCommand = z
       "waive",
       "resolve-scene",
       "introduce",
+      "avoid",
+      "review-mishap",
     ]),
     options: assistedSubmissionSchema.optional(),
     rollId: z.string().uuid().optional(),
     reason: z.string().trim().max(1600).optional(),
     success: z.boolean().optional(),
+    choice:z.enum(["let-pass"]).optional(),
+    assignmentId:z.string().optional(),
+    injuryId:z.string().uuid().optional(),
+    previewHash:z.string().optional(),
     confirmed: z.literal(true).optional(),
   })
   .strict();
@@ -97,6 +106,7 @@ export function resolutionView(
               ? c.publicIntro
               : "",
           detection: c.detection,
+          canLetPass:c.entryNumber===3&&c.detection==="safe_distance",
           reason: c.reason,
         }
       : null,
@@ -112,7 +122,7 @@ export function executeQuarterResolution(
   const c = quarterResolutionCommand.parse(raw),
     db = repo.db;
   requireCharacterAccess(p, c.campaignId, c.actorId);
-  if (["start", "continue", "complete"].includes(c.operation))
+  if (["start", "continue", "complete", "avoid"].includes(c.operation))
     controller(repo, c.campaignId, c.entryId, c.actorId, p);
   else if (
     ["forest", "keep", "select"].includes(c.operation) &&
@@ -190,7 +200,7 @@ export function executeQuarterResolution(
     } else {
       const entry = s.dayTracker!.find((e) => e.id === c.entryId)!;
       if (
-        ["skip", "waive", "ruling", "resolve-scene", "introduce"].includes(
+        ["skip", "waive", "ruling", "resolve-scene", "introduce", "review-mishap"].includes(
           c.operation,
         )
       ) {
@@ -225,6 +235,11 @@ export function executeQuarterResolution(
             "This card does not belong to the pending navigation or Watch assignment.",
           );
       }
+      if(c.operation==='review-mishap'){
+        if(!tableGM(repo,r.id,p).isTableGM||!c.confirmed||!c.reason||!c.assignmentId||!c.previewHash)throw Error('A fresh authenticated Table GM recovery preview, assignment, reason and confirmation are required.');
+        reviewForagingMishap(repo,r.id,s,entry.id,c.assignmentId,c.previewHash,c.requestId,c.reason,c.injuryId);repo.update(r.id,r.revision,s,{activitiesValidated:true});
+      }
+      if(c.operation==='avoid')avoidEncounter(repo,r.id,s,entry.id,c.requestId,c.choice);
       const keptWatch =
         c.operation === "keep" &&
         c.rollId === f.selected.watch &&
@@ -365,7 +380,7 @@ export function executeQuarterResolution(
             throw Error(
               "Resolve the actual introduced scene, with its recorded outcome.",
             );
-          check.status = "resolved";
+          check.status = "resolved";check.resolutionKind="table_gm_review";check.resolutionId=c.requestId;
         }
         if (c.operation === "introduce") {
           if (check.status !== "review")
@@ -636,41 +651,7 @@ function run(
         );
         return;
       }
-      const watcher = entry.assignments.find(
-          (a) => a.activity === "Keep Watch",
-        ),
-        wm =
-          watcher &&
-          mechanicalCharacter(
-            s.characters.find((c) => c.id === watcher.characterId)!,
-          );
-      const watches =
-        watcher && wm
-          ? (s.dice ?? []).filter(
-              (d) =>
-                d.characterId === watcher.characterId &&
-                (!f.selected.watch || f.selected.watch === d.id) &&
-                d.result.skill === "Scouting" &&
-                d.metadata.attribute === "wits" &&
-                !d.metadata.utility &&
-                !d.journeyContext &&
-                !d.combatContext &&
-                !d.activityContext &&
-                !d.narrativeRequestId &&
-                !d.procedureContext &&
-                (d.id === watcher.rollId ||
-                  d.id === f.selected.watch ||
-                  (d.status === "Pending" &&
-                    d.createdAt >=
-                      s.chatJourney!.forms.find((f) => f.entryId === entry.id)!
-                        .requestedAt)) &&
-                d.original.attribute.length === wm.attributes.wits.current &&
-                d.original.skillDice.length === wm.skills["skill-scouting"] &&
-                !d.original.negativeSkill &&
-                !d.original.gear.length &&
-                !d.original.artifacts.length,
-            )
-          : [];
+      const watches=eligibleWatchCards(s,entry.id,f);
       if (watches.length === 1) f.selected.watch = watches[0].id;
       const check = performCheck(
         repo,
@@ -762,6 +743,7 @@ function run(
           continue;
         }
       }
+      const corrections=mishapBlockers(s,entry.id);if(corrections.length){hold('Awaiting Table GM ruling',corrections.join(' '));return;}
       const routine = currentRoutine(s);
       if (routine?.entryId === entry.id) {
         const waiting = routine.activities.find((a) => a.status !== "Resolved");

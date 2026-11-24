@@ -19,18 +19,56 @@ export function QuarterResolutionPanel({
     [busy, setBusy] = useState(false),
     [reason, setReason] = useState(""),
     [confirm, setConfirm] = useState(""),
+    [recoveryAssignment, setRecoveryAssignment] = useState(""),
+    [existingInjury, setExistingInjury] = useState(""),
     retry = useRef<{ key: string; id: string } | null>(null);
-  const load = () =>
-    fetch(
-      "/api/quarter-resolution?" +
-        new URLSearchParams({ campaignId: record.id, entryId, actorId }),
-      { cache: "no-store" },
-    )
-      .then((r) => r.json())
-      .then(setV)
-      .catch(() => {});
+  const notifiedRevision = useRef(0),
+    loadingRef = useRef(false);
+  const readSequence = useRef(0),
+    [loading, setLoading] = useState(false);
+  async function load() {
+    const sequence = ++readSequence.current;
+    loadingRef.current = true;
+    setLoading(true);
+    try {
+      const response = await fetch(
+          "/api/quarter-resolution?" +
+            new URLSearchParams({ campaignId: record.id, entryId, actorId }),
+          { cache: "no-store" },
+        ),
+        value = await response.json();
+      if (sequence === readSequence.current) {
+        setV(value);
+        if (
+          value.campaignRevision > record.revision &&
+          value.campaignRevision > notifiedRevision.current
+        ) {
+          notifiedRevision.current = value.campaignRevision;
+          window.dispatchEvent(new Event("ravenland:campaign-refresh"));
+        }
+      }
+    } catch {
+    } finally {
+      if (sequence === readSequence.current) {
+        loadingRef.current = false;
+        setLoading(false);
+      }
+    }
+  }
   useEffect(() => {
     load();
+    const refresh = () => {
+      if (document.visibilityState === "visible" && !loadingRef.current)
+        void load();
+    };
+    const timer = window.setInterval(refresh, 3000);
+    window.addEventListener("focus", refresh);
+    return () => {
+      window.clearInterval(timer);
+      window.removeEventListener("focus", refresh);
+      readSequence.current++;
+      loadingRef.current = false;
+    };
   }, [record.id, record.revision, entryId, actorId]);
   async function run(operation: string, extra: object = {}) {
     const key = JSON.stringify({ operation, extra });
@@ -39,6 +77,23 @@ export function QuarterResolutionPanel({
     setBusy(true);
     setError("");
     try {
+      let reviewed = extra as Record<string, unknown>;
+      if (operation === "review-mishap") {
+        const check = await fetch(
+            "/api/quarter-resolution?" +
+              new URLSearchParams({ campaignId: record.id, entryId, actorId }),
+            { cache: "no-store" },
+          ),
+          fresh = await check.json();
+        if (!check.ok) throw Error(fresh.error);
+        if (fresh.recovery?.previewHash !== reviewed.previewHash) {
+          setV(fresh);
+          throw Error(
+            "The saved mechanical requirements changed. Review the refreshed recovery preview before confirming.",
+          );
+        }
+        reviewed = { ...reviewed, revision: fresh.recovery.revision };
+      }
       const response = await fetch("/api/quarter-resolution", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -49,12 +104,19 @@ export function QuarterResolutionPanel({
             revision: record.revision,
             requestId: retry.current.id,
             operation,
-            ...extra,
+            ...reviewed,
           }),
         }),
         value = await response.json();
       if (!response.ok) throw Error(value.error);
       retry.current = null;
+      if (operation === "review-mishap") {
+        setRecoveryAssignment("");
+        setExistingInjury("");
+      }
+      readSequence.current++;
+      loadingRef.current = false;
+      setLoading(false);
       setV(value);
       setConfirm("");
       window.dispatchEvent(new Event("ravenland:campaign-refresh"));
@@ -102,6 +164,116 @@ export function QuarterResolutionPanel({
   if (!v) return <p role="status">Loading saved quarter-day status…</p>;
   return (
     <section aria-label="Quarter-day resolution">
+      {v?.isTableGM && v.recovery && (
+        <details className="quarter-recovery">
+          <summary>Inspect and recover current quarter</summary>
+          <p>
+            This read-only preview lists saved evidence and exact obligations. A
+            correction requires a fresh confirmed Table GM review.
+          </p>
+          <button className="quiet-button" onClick={() => load()}>
+            {loading
+              ? "Refreshing recovery inspection…"
+              : "Refresh recovery inspection"}
+          </button>
+          <p>
+            {v.recovery.clock.quarter} · {v.recovery.clock.hex} ·{" "}
+            {v.recovery.clock.weather}
+          </p>
+          {v.recovery.obligations.map((item: string, i: number) => (
+            <p key={i}>{item}</p>
+          ))}
+          {v.recovery.foraging.map((a: any) => (
+            <div key={a.assignmentId}>
+              <p>
+                Saved Foraging mishap: {a.mishap ?? "Unverified"} ·{" "}
+                {a.mishapRollId ?? "No bound D6"}
+              </p>
+              {a.moves.map((d: any) => (
+                <p key={d.id}>
+                  Move {d.id}: {d.successes} successes ·{" "}
+                  {d.pushed ? "Pushed" : "Not pushed"} · saved attribute damage{" "}
+                  {d.attributeDamage} · saved WP {d.willpower}. {d.assessment}
+                </p>
+              ))}
+              {a.correctionRequired && (
+                <button
+                  className="quiet-button"
+                  onClick={() => {
+                    setRecoveryAssignment(a.assignmentId);
+                    setExistingInjury("");
+                  }}
+                >
+                  Review sprained-ankle correction
+                </button>
+              )}
+            </div>
+          ))}
+          {v.recovery.scouting.map((d: any) => (
+            <p key={d.id}>
+              Saved Scouting {d.id}: {d.successes} successes · {d.status}
+            </p>
+          ))}
+          {recoveryAssignment && (
+            <div role="group" aria-label="Reviewed Foraging correction">
+              <p>
+                The original Handbook result 3 requires the fixed blunt 25–26
+                critical: RUN becomes a slow action during healing. Move is not
+                its defense. Original dice, Push effects and previous narration
+                remain preserved. A new injury needs its own D6 healing
+                duration.
+              </p>
+              <label>
+                Existing injury to link (optional)
+                <select
+                  value={existingInjury}
+                  onChange={(e) => setExistingInjury(e.target.value)}
+                >
+                  <option value="">Record the source-backed injury</option>
+                  {record.session.characters
+                    .find(
+                      (c) =>
+                        c.id ===
+                        v.recovery.foraging.find(
+                          (a: any) => a.assignmentId === recoveryAssignment,
+                        )?.characterId,
+                    )
+                    ?.sheet?.injuries?.filter((i) => i.status === "active")
+                    .map((i) => (
+                      <option key={i.id} value={i.id}>
+                        {i.name}
+                      </option>
+                    ))}
+                </select>
+              </label>
+              <label>
+                Correction review reason
+                <textarea
+                  value={reason}
+                  onChange={(e) => setReason(e.target.value)}
+                  maxLength={1600}
+                />
+              </label>
+              <button
+                className="gold-button"
+                disabled={loading || busy || !reason.trim()}
+                onClick={() =>
+                  run("review-mishap", {
+                    assignmentId: recoveryAssignment,
+                    previewHash: v.recovery.previewHash,
+                    revision: v.recovery.revision,
+                    confirmed: true,
+                    reason,
+                    ...(existingInjury ? { injuryId: existingInjury } : {}),
+                  })
+                }
+              >
+                Confirm reviewed mishap correction
+              </button>
+            </div>
+          )}
+        </details>
+      )}
       <fieldset disabled={busy}>
         {flow ? (
           <>
@@ -166,6 +338,14 @@ export function QuarterResolutionPanel({
                 >
                   Continue saved resolution
                 </button>
+                {v.encounter?.status === "scene" && v.encounter?.canLetPass && (
+                  <button
+                    className="quiet-button"
+                    onClick={() => run("avoid", { choice: "let-pass" })}
+                  >
+                    Let the distant procession pass without contact
+                  </button>
+                )}
                 {flow.status === "Mechanically complete" && (
                   <button
                     className="gold-button"

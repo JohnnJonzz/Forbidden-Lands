@@ -1,3 +1,4 @@
+import {injuryMarker,sprainedAnkleRule} from '../quarter-resolution/recovery';
 import {outcomeFor} from '../../lib/quarter-resolution';
 import {projectCamp} from '../continuity/camps';
 import { randomInt } from 'node:crypto';
@@ -68,7 +69,12 @@ export function resolveActivityRoll(repo: SqliteCampaignRepository, id: string, 
     card.status = 'Submitted';
     card.submittedAt = new Date().toISOString();
     a.request = null;
-    if (step === 'forage') {
+    if(step==='forage-injury-duration'){
+        sprainedAnkleRule(repo,id);if(utility?.kind!=='Procedure'||utility.faces.length!==1)throw Error('Use the requested saved D6 healing duration.');
+        const injury=s.characters.find(c=>c.id===a.characterId)?.sheet?.injuries?.find(i=>i.source.includes(injuryMarker(entryId,a.assignmentId)));if(!injury)throw Error('Review and record the actual fixed critical injury before its healing duration.');
+        injury.duration=String(utility.faces[0]);injury.unit='days';finish(a,'Reviewed sprained-ankle critical recorded; saved healing duration '+utility.faces[0]+' days. RUN remains a slow action during healing. No snake defense or automatic cure was assumed.');
+    }
+    else if (step === 'forage') {
         if (success === 0) {
             a.stage = 'forage-mishap';
             a.request = newRequest(s, entryId, a, 'forage-mishap', 'D6', 0, 'D6');
@@ -192,6 +198,7 @@ export function resolveActivityRoll(repo: SqliteCampaignRepository, id: string, 
             a.status = 'Awaiting roll';
             a.summary = 'The trap caused 1 Strength damage. Make the printed Move roll to escape.';
         }
+        else if(step==='forage-mishap'&&n===3){a.stage='forage-injury-review';review(a,'Foraging mishap D6=3 is a sprained ankle, equivalent to blunt critical 25–26. Open Quarter-Day recovery inspection to review and record the injury and D6 healing duration. A Move roll or snake narration cannot resolve this result.');}
         else if (step === 'forage-mishap' && n === 6)
             finish(a, 'A persistent animal follows the forager. Its future trouble remains a GM-described complication; no food, damage or attack was invented.');
         else if (step === 'forage-mishap' && n === 1) {
