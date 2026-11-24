@@ -1,3 +1,4 @@
+import {sameDay} from '../../lib/calendar';
 import { createHash } from 'node:crypto';
 import { continuityCommandSchema, type ContinuityEvent } from '../../lib/continuity';
 import { occupiedCamp } from '../../lib/campsites';
@@ -85,11 +86,11 @@ export function executeContinuity(repo: SqliteCampaignRepository, raw: unknown, 
             const date = c.date ?? s.campaign.date, quarter = c.quarter ?? s.campaign.quarter, dayDelta = dateDistance(date, s.campaign.date,s.environment?.calendar), quarters = ['Morning', 'Day', 'Evening', 'Night'];
             if (dayDelta === null || dayDelta < 0 || dayDelta === 0 && quarters.indexOf(quarter) > quarters.indexOf(s.campaign.quarter))
                 throw Error('Choose a known in-world date/quarter that has already occurred.');
-            if (!c.earlier && (date !== s.campaign.date || quarter !== s.campaign.quarter))
+            if (!c.earlier && (!sameDay(date,s.campaign.date,s.environment?.calendar) || quarter !== s.campaign.quarter))
                 throw Error('Confirm that this meal occurred earlier before selecting a past date or quarter.');
             if (c.reason.length < 20)
                 throw Error('Record the source and the historical bookkeeping being corrected.');
-            const pending = c.consumers.filter(x => !st.needs.some(n => n.date === date && n.characterId === x.characterId && n.resource === x.resource && n.status === 'Satisfied'));
+            const pending = c.consumers.filter(x => !st.needs.some(n => sameDay(n.date,date,s.environment?.calendar) && n.characterId === x.characterId && n.resource === x.resource && n.status === 'Satisfied'));
             if (pending.length === 0) {
                 text = 'These needs are already satisfied; no inventory award, deduction or resource roll was repeated.';
             }
@@ -203,7 +204,7 @@ export function executeContinuity(repo: SqliteCampaignRepository, raw: unknown, 
                     }
                 }
                 for (const target of pending) {
-                    let need = st.needs.find(n => n.date === date && n.characterId === target.characterId && n.resource === target.resource);
+                    let need = st.needs.find(n => sameDay(n.date,date,s.environment?.calendar) && n.characterId === target.characterId && n.resource === target.resource);
                     if (need?.request?.rollId || need?.rollId)
                         throw Error('A saved consumption roll is already linked; resolve that exact procedure first.');
                     if (!need) {
@@ -213,7 +214,7 @@ export function executeContinuity(repo: SqliteCampaignRepository, raw: unknown, 
                     const provenance = c.method === 'ruling' ? 'gm_historical_ruling' : c.method === 'already-deducted' ? 'confirmed_prior_deduction' : 'verified_portion';
                     Object.assign(need, { status: 'Satisfied', sourceId: event.sourceOwnerId, itemId: event.sourceItemId, request: null, rollId: null, receiptId: 'continuity:' + c.requestId, explanation: c.method === 'ruling' ? 'Satisfied by explicit Table GM consumption ruling; no saved roll or acquisition is implied. ' + c.reason : 'One eligible portion from ' + (source ? source.characterName + '’s ' + source.quarter + ' Foraging' : 'the reviewed inventory') + '; ' + (c.method === 'already-deducted' ? 'prior deduction confirmed by Table GM testimony; nothing deducted again.' : 'actual inventory deduction recorded now.') });
                     event.allocations.push({ characterId: target.characterId, resource: target.resource, amount: 1, date, provenance });
-                    if (date === s.campaign.date) {
+                    if (sameDay(date,s.campaign.date,s.environment?.calendar)) {
                         const ch = s.characters.find(ch => ch.id === target.characterId)!, sheet = sheetFor(ch);
                         sheet[target.resource === 'food' ? 'cond-hungry' : 'cond-thirsty'] = false;
                         s.characters = s.characters.map(x => x.id === ch.id ? applySheet(ch, sheet) : x);

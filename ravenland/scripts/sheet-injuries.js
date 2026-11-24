@@ -8,10 +8,12 @@ app.renderInjuryProgress=function(){
  for(const injury of this.injuries??[]){
   const card=document.getElementById('injury-'+injury.id);if(!card)continue;
   card.querySelector('summary').textContent=injury.name||'Unnamed injury';
+  for(const input of card.querySelectorAll('input,select'))if(['Sustained date','Sustained quarter','Established healing duration','Healing unit'].includes(input.getAttribute('aria-label')))input.disabled=!!this.injuryClock?.unified;
   const progress=injuryProgress(injury,this.injuryClock);
-  const date=injury.sustainedDate?'Sustained '+injury.sustainedDate+' '+(injury.sustainedQuarter||'quarter unknown')+' · ':progress==='Date unknown'?'':'Date unknown · ';
+  const date=injury.sustainedDate?'Sustained '+displayDate(injury.sustainedDate,this.injuryClock?.calendar)+' '+(injury.sustainedQuarter||'quarter unknown')+' · ':progress==='Date unknown'?'':'Date unknown · ';
   card.querySelector('.injury-progress').textContent=date+progress;
  }
+ let hint=document.getElementById('injury-calendar-note');if(!hint){hint=document.createElement('p');hint.id='injury-calendar-note';hint.className='save-note';document.getElementById('injury-records').before(hint)}hint.textContent=this.injuryClock?.unified?'Dates and durations follow the unified calendar. The Table GM can correct them in Journey Settings → Correct Current Campaign State → Injury timeline metadata.':'';
  document.getElementById('injury-legacy-status').textContent=document.getElementById('critical-injuries').value.trim()?'Existing notes retained · Date unknown unless recorded below.':'';
 };
 app.renderInjuries=function(){
@@ -22,7 +24,7 @@ app.renderInjuries=function(){
   const field=(key,label,options)=>{
    const wrapper=document.createElement('label');wrapper.textContent=label;
    const input=document.createElement(options?'select':key==='source'||key==='treatment'?'textarea':'input');
-   input.setAttribute('aria-label',label);if(options)for(const [value,text] of options){const option=document.createElement('option');option.value=value;option.textContent=text;input.append(option)}
+   input.setAttribute('aria-label',label);if(app.injuryClock?.unified&&['sustainedDate','sustainedQuarter','duration','unit'].includes(key)){input.disabled=true;input.title='Use Journey Settings → Correct Current Campaign State → Injury timeline metadata for a reviewed correction.';}if(options)for(const [value,text] of options){const option=document.createElement('option');option.value=value;option.textContent=text;input.append(option)}
    if(key==='permanent'){input.type='checkbox';input.checked=injury[key]}else input.value=injury[key];
    if(key==='duration'){input.inputMode='decimal';input.placeholder='Unknown until established'}
    if(key==='sustainedDate')input.placeholder='e.g. 13th Springrise, 1165';

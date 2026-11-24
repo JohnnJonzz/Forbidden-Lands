@@ -1,4 +1,5 @@
 'use client';
+import {campaignSeason} from '@/lib/campaign-calendar';
 import {EnvironmentReview} from './environment-review';
 import {displayDate} from '@/lib/calendar';
 import {CampReview,ConsumptionReview} from './continuity-review';
@@ -62,7 +63,7 @@ export function DailyNeeds({ record, actorId }: {
 export function DailySettings({ record, actorId: actingId }: {
     record: CampaignRecord;
     actorId?: string;
-}) { const actorId = actingId ?? record.session.characters[0].id, { run, busy, error } = useActivityCommand(record, actorId), [checkpoint, setCheckpoint] = useState(record.session.activityState?.settings.checkpoint ?? 'Night'), [season, setSeason] = useState(record.session.activityState?.settings.season ?? ''); return <fieldset><legend>Daily Food &amp; Water</legend><label>Daily consumption checkpoint<select value={checkpoint} onChange={e => setCheckpoint(e.target.value as typeof checkpoint)}>{['Morning', 'Day', 'Evening', 'Night'].map(q => <option key={q}>{q}</option>)}</select></label><label>Current in-world season<select value={season} onChange={e => setSeason(e.target.value as typeof season)}><option value="">Confirm season for Foraging</option>{['Spring', 'Summer', 'Autumn', 'Winter'].map(q => <option key={q}>{q}</option>)}</select></label><p>The checkpoint prompts once per in-world day. Eating earlier is allowed. Changing it does not charge earlier dates or repeat satisfied needs.</p><button type="button" className="quiet-button" disabled={busy} onClick={() => run({ operation: 'configure', checkpoint, ...(season ? { season: season as 'Autumn' } : {}) })}>Save daily settings</button>{error && <p role="alert">{error}</p>}</fieldset>; }
+}) { const actorId = actingId ?? record.session.characters[0].id, { run, busy, error } = useActivityCommand(record, actorId), [checkpoint, setCheckpoint] = useState(record.session.activityState?.settings.checkpoint ?? 'Night'); return <fieldset><legend>Daily Food &amp; Water</legend><label>Daily consumption checkpoint<select value={checkpoint} onChange={e => setCheckpoint(e.target.value as typeof checkpoint)}>{['Morning', 'Day', 'Evening', 'Night'].map(q => <option key={q}>{q}</option>)}</select></label><p>Foraging / Hunting season: {campaignSeason(record.session)??'Review the campaign calendar'} (from the campaign date).</p><p>The checkpoint prompts once per in-world day. Eating earlier is allowed. Changing it does not charge earlier dates or repeat satisfied needs.</p><button type="button" className="quiet-button" disabled={busy} onClick={() => run({ operation: 'configure', checkpoint })}>Save daily settings</button>{error && <p role="alert">{error}</p>}</fieldset>; }
 export function RoutineQuarter({ record, entryId, actorId }: {
     record: CampaignRecord;
     entryId: string;

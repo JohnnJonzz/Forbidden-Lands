@@ -22,7 +22,9 @@ catch (e) {
 } }
 export async function POST(request: Request) { const denied = mutationDenial(request); if (denied)
     return denied; try {
-    const c = environmentCommand.parse(await mapBody(request)), principal = gameplayPrincipal(request, c.campaignId, c.actorId), repo = getLocalRepository(), result = executeEnvironment(repo, c, principal);
+    const c = environmentCommand.parse(await mapBody(request)), principal = gameplayPrincipal(request, c.campaignId, c.actorId), repo = getLocalRepository();
+    if(['configure-calendar','correct-date'].includes(c.operation))throw Error('Calendar changes require the previewed Correct Current Campaign State / Campaign Settings calendar workflow.');
+    const result = executeEnvironment(repo, c, principal);
     await deliverTransition(repo, c.campaignId, undefined, c.operation === 'retry-narration');
     return NextResponse.json({ ...result, record: privateCharacterRecord(request, repo.get(c.campaignId)!) });
 }

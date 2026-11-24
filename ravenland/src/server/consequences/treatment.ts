@@ -1,3 +1,4 @@
+import {sameDay} from '../../lib/calendar';
 import {holdFor} from '../rulings/store';
 import {worldEvents} from '../world/context';
 import {readConsequences} from './store';
@@ -16,7 +17,7 @@ export function treatmentPool(repo:SqliteCampaignRepository,c:Consequence,healer
  if(activeCombat(repo,c.campaignId))throw new AIError('consequence_treatment','Treatment during active initiative requires combat adjudication. It cannot bypass the player-action dispatcher or pending attacks.',409);
  if(c.state.deadline.clockReviewRequired)throw new AIError('consequence_treatment','Reconcile the actual elapsed time before treatment; no time was assumed.',409);
  const hold=holdFor(repo,c.campaignId,c.id);if(hold)throw new AIError('consequence_ruling_hold','Resolve the scoped treatment ruling first: '+hold.question,409);
- const healer=session.characters.find(c=>c.id===healerId),npc=source.encounter.combatants.find(a=>a.side==='enemy'&&a.id===healerId),combatant=source.encounter.combatants.find(a=>a.id===healerId),recordedAccess=c.state.sceneAccess,clock=session.campaign,access=recordedAccess&&recordedAccess.hex===clock.hex&&recordedAccess.location===clock.location&&recordedAccess.date===clock.date&&recordedAccess.quarter===clock.quarter?recordedAccess:null;
+ const healer=session.characters.find(c=>c.id===healerId),npc=source.encounter.combatants.find(a=>a.side==='enemy'&&a.id===healerId),combatant=source.encounter.combatants.find(a=>a.id===healerId),recordedAccess=c.state.sceneAccess,clock=session.campaign,access=recordedAccess&&recordedAccess.hex===clock.hex&&recordedAccess.location===clock.location&&sameDay(recordedAccess.date,clock.date,session.environment?.calendar)&&recordedAccess.quarter===clock.quarter?recordedAccess:null;
  if(!healer&&!npc)throw new AIError('consequence_healer','Choose an actual recorded healer; no new NPC or statistics were invented.',409);
  if(c.state.attempts.some(a=>a.healerId===healerId&&a.status!=='cancelled'))throw new AIError('consequence_attempt','That person already has an attempt reserved or recorded for this injury. Each person may try only once.',409);
  const sameScene=source.encounter.sceneHex===session.campaign.hex&&source.encounter.sceneLocation===session.campaign.location;

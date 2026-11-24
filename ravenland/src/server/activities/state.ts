@@ -1,3 +1,4 @@
+import {sameDay} from '../../lib/calendar';
 import type {Calendar} from '../../lib/environment';
 import {weatherModifier} from '../../lib/weather-context';
 import {fantasyDayDistance} from '../../lib/calendar';
@@ -20,14 +21,14 @@ export function ensureNeeds(s: Session) {
         return;
     for (const c of s.characters)
         for (const resource of ['food', 'water'] as const)
-            if (!st.needs.some(n => n.date === s.campaign.date && n.characterId === c.id && n.resource === resource))
+            if (!st.needs.some(n => sameDay(n.date,s.campaign.date,s.environment?.calendar) && n.characterId === c.id && n.resource === resource))
                 st.needs.push({ date: s.campaign.date, characterId: c.id, resource, status: 'Pending', sourceId: null, itemId: null, request: null, rollId: null, receiptId: null, explanation: 'Daily ' + resource + ' is due. Choose provisions, a carried resource die, sharing, or explicitly resolve a missing supply.' });
 }
 export function promptNeeds(s: Session, eventId: string) {
     if (!s.activityState)
         return;
     ensureNeeds(s);
-    if (dueNeeds(s) && s.activityState.needs.some(n => n.date === s.campaign.date && n.status === 'Pending') && !s.messages.some(m => m.id === eventId + ':daily-needs'))
+    if (dueNeeds(s) && s.activityState.needs.some(n => sameDay(n.date,s.campaign.date,s.environment?.calendar) && n.status === 'Pending') && !s.messages.some(m => m.id === eventId + ':daily-needs'))
         s.messages.push({ id: eventId + ':daily-needs', role: 'gm', author: 'Game Master', provider: 'application', text: s.campaign.quarter + ' has begun. How is everyone handling food and water today? You may use fresh provisions, carried resource dice, or explicitly share supplies. The Daily Needs summary shows what remains.' });
 }
 export function newRequest(s: Session, entryId: string, a: RoutineActivity, step: string, skill: string, modifier = 0, utility: 'D6' | 'D66' | null = null, gear = 0): ActivityRequest {
@@ -128,7 +129,7 @@ export function activityBlockers(s: Session, entryId: string) {
     if (dueNeeds(s))
         for (const c of s.characters)
             for (const resource of ['food', 'water']) {
-                const n = s.activityState?.needs.find(n => n.date === s.campaign.date && n.characterId === c.id && n.resource === resource);
+                const n = s.activityState?.needs.find(n => sameDay(n.date,s.campaign.date,s.environment?.calendar) && n.characterId === c.id && n.resource === resource);
                 if (!n || !['Satisfied', 'Unmet'].includes(n.status))
                     reasons.push(c.name + '’s ' + resource + ' requirement has not been handled.');
             }
@@ -137,5 +138,5 @@ export function activityBlockers(s: Session, entryId: string) {
 export function dailyBlockers(s: Session) {
     if (!s.activityState || !dueNeeds(s))
         return [];
-    return s.characters.flatMap(ch => ['food', 'water'].flatMap(resource => { const n = s.activityState?.needs.find(n => n.date === s.campaign.date && n.characterId === ch.id && n.resource === resource); return n && ['Satisfied', 'Unmet'].includes(n.status) ? [] : [ch.name + '’s ' + resource + ' requirement has not been handled.']; }));
+    return s.characters.flatMap(ch => ['food', 'water'].flatMap(resource => { const n = s.activityState?.needs.find(n => sameDay(n.date,s.campaign.date,s.environment?.calendar) && n.characterId === ch.id && n.resource === resource); return n && ['Satisfied', 'Unmet'].includes(n.status) ? [] : [ch.name + '’s ' + resource + ' requirement has not been handled.']; }));
 }

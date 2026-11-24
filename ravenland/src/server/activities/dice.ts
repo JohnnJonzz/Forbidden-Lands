@@ -1,3 +1,5 @@
+import {activitySeason,campaignSeason} from '../../lib/campaign-calendar';
+import {sameDay} from '../../lib/calendar';
 import {weatherModifier} from '../../lib/weather-context';
 import { mechanicalCharacter } from '../mechanical-character';
 import { rank } from './state';
@@ -12,7 +14,7 @@ import type { SqliteCampaignRepository } from '../sqlite';
 import { currentRoutine } from '../../lib/activities';
 import { canPush } from '../../lib/dice/engine';
 import { resolveActivityRoll, resolveDailyRoll } from './resolution';
-export function requestsFor(s: Session, characterId: string, fresh = true) { const requests = (currentRoutine(s)?.activities ?? []).flatMap(a => a.request && !a.request.rollId ? [a.request] : []); requests.push(...(s.activityState?.needs ?? []).flatMap(n => n.date === s.campaign.date && n.request && !n.request.rollId ? [n.request] : [])); return requests.filter(r => r.characterId === characterId).map(r => fresh ? effectiveRequest(s, r) : r); }
+export function requestsFor(s: Session, characterId: string, fresh = true) { const requests = (currentRoutine(s)?.activities ?? []).flatMap(a => a.request && !a.request.rollId ? [a.request] : []); requests.push(...(s.activityState?.needs ?? []).flatMap(n => sameDay(n.date,s.campaign.date,s.environment?.calendar) && n.request && !n.request.rollId ? [n.request] : [])); return requests.filter(r => r.characterId === characterId).map(r => fresh ? effectiveRequest(s, r) : r); }
 export function effectiveRequest(s: Session, r: ActivityRequest): ActivityRequest {
     const ch = s.characters.find(ch => ch.id === r.characterId);
     if (!ch)
@@ -35,11 +37,11 @@ export function effectiveRequest(s: Session, r: ActivityRequest): ActivityReques
         modifier = (rank(s, ch.id, 'Quartermaster') >= 1 ? 1 : 0)+weatherModifier(s,'Make Camp');
         artifactAllowed = rank(s, ch.id, 'Quartermaster') >= 3;
     }
-    if (r.context.step === 'forage' && s.activityState?.settings.season) {
+    if (r.context.step === 'forage' && activitySeason(s)) {
         const terrain = currentRoutine(s)!.terrain, tm = terrainModifiers[terrain]?.forage;
         if (tm === null || tm === undefined)
             throw Error('The recorded terrain does not support Foraging.');
-        modifier = tm + { Spring: -1, Summer: 0, Autumn: 1, Winter: -2 }[s.activityState.settings.season] + (rank(s, ch.id, 'Gatherer') >= 1 ? 1 : 0);
+        modifier = tm + { Spring: -1, Summer: 0, Autumn: 1, Winter: -2 }[activitySeason(s)!] + (rank(s, ch.id, 'Gatherer') >= 1 ? 1 : 0);
     }
     if (r.context.step === 'hunt-search') {
         const tm = terrainModifiers[currentRoutine(s)!.terrain]?.hunt;
@@ -137,7 +139,7 @@ export function prepareUnrequestedConsumption(repo: SqliteCampaignRepository, id
     if (!s.activityState || c.expectedActivityContext || u?.kind !== 'Resource' || !['food', 'water'].includes(u.resource))
         return;
     const resource = u.resource as 'food' | 'water';
-    let n = s.activityState.needs.find(n => n.date === s.campaign.date && n.characterId === c.roll.characterId && n.resource === resource);
+    let n = s.activityState.needs.find(n => sameDay(n.date,s.campaign.date,s.environment?.calendar) && n.characterId === c.roll.characterId && n.resource === resource);
     if (n?.status === 'Satisfied' || n?.status === 'Unmet' || n?.request)
         return;
     const request = { context: { entryId: 'daily:' + s.campaign.date, assignmentId: c.roll.characterId + ':' + resource, requestId: randomUUID(), date: s.campaign.date, quarter: s.campaign.quarter, step: 'consume-' + resource }, characterId: c.roll.characterId, skill: resource, attribute: null, base: 0, skillDice: 0, modifier: 0, gear: 0, dice: 1, artifactAllowed: false, utility: 'Resource' as const, resource, sides: u.sides, evidence: activityRules(repo, id).sources, rollId: null };

@@ -1,3 +1,4 @@
+import {sameDay} from './calendar';
 import {fantasyDayDistance} from './calendar';
 import {continuityEventSchema} from './continuity';
 import { z } from 'zod';
@@ -24,7 +25,7 @@ export const activityStateSchema = z.object({ continuityEvents:z.array(continuit
 export type ActivityState = z.infer<typeof activityStateSchema>;
 export const routineSkill = (activity: string) => ['Make Camp', 'Forage', 'Hunt', 'Fish'].includes(activity) ? 'Survival' : activity === 'Keep Watch' ? 'Scouting' : null;
 export const supportedActivities = ['Make Camp', 'Keep Watch', 'Forage', 'Hunt', 'Cook', 'Rest', 'Sleep', 'Other', 'Fish', 'Explore'];
-export function currentRoutine(s: Session) { return s.activityState?.entries.find(e => !e.completed && e.date === s.campaign.date && e.quarter === s.campaign.quarter) ?? null; }
+export function currentRoutine(s: Session) { return s.activityState?.entries.find(e => !e.completed && sameDay(e.date,s.campaign.date,s.environment?.calendar) && e.quarter === s.campaign.quarter) ?? null; }
 export function dueNeeds(s: Session) {
     const st = s.activityState;
     if (!st)
@@ -43,4 +44,4 @@ export function dueNeeds(s: Session) {
     }
     return quarters.indexOf(s.campaign.quarter) >= Math.max(quarters.indexOf(st.settings.checkpoint), quarters.indexOf(st.settings.effectiveQuarter));
 }
-export function needsSummary(s: Session) { return s.characters.map(ch => { const status = (resource: 'food' | 'water') => s.activityState?.needs.find(n => n.date === s.campaign.date && n.characterId === ch.id && n.resource === resource) ?? { status: dueNeeds(s) ? 'Pending' : 'Not yet due', explanation: 'Daily checkpoint ' + (s.activityState?.settings.checkpoint ?? 'Night') }; return { characterId: ch.id, name: ch.name, food: status('food'), water: status('water') }; }); }
+export function needsSummary(s: Session) { return s.characters.map(ch => { const status = (resource: 'food' | 'water') => s.activityState?.needs.find(n => sameDay(n.date,s.campaign.date,s.environment?.calendar) && n.characterId === ch.id && n.resource === resource) ?? { status: dueNeeds(s) ? 'Pending' : 'Not yet due', explanation: 'Daily checkpoint ' + (s.activityState?.settings.checkpoint ?? 'Night') }; return { characterId: ch.id, name: ch.name, food: status('food'), water: status('water') }; }); }

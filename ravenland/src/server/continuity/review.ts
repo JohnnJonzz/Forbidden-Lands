@@ -1,3 +1,4 @@
+import {sameDay} from '../../lib/calendar';
 import type { Session } from '../../lib/types';
 import type { SqliteCampaignRepository } from '../sqlite';
 import { countSuccesses } from '../../lib/dice/engine';
@@ -71,9 +72,9 @@ export function historicalReview(repo: SqliteCampaignRepository, id: string, ent
         if (native && success && ![success, 2 * success].includes(native.yield))
             errors.push('The recorded yield conflicts with the supported success/talent calculation.');
     }
-    const provisions = (s.activityState?.provisions ?? []).filter(p => p.kind === 'Vegetables' && (p.originAssignmentId === assignmentId || !p.originAssignmentId && p.ownerId === assignment.characterId && p.date === entry.date && p.quarter === entry.quarter));
+    const provisions = (s.activityState?.provisions ?? []).filter(p => p.kind === 'Vegetables' && (p.originAssignmentId === assignmentId || !p.originAssignmentId && p.ownerId === assignment.characterId && sameDay(p.date,entry.date,s.environment?.calendar) && p.quarter === entry.quarter));
     const inventory = provisions.map(p => ({ itemId: p.itemId, ownerId: p.ownerId, quantity: Number(s.characters.find(c => c.id === p.ownerId)?.sheet?.gear?.find(g => g.itemId === p.itemId)?.quantity ?? 0), fresh: fresh(s, p), hazard: !!p.hazard }));
-    const ambiguousTransfers = (s.activityState?.provisions ?? []).filter(p => p.kind === 'Vegetables' && !p.originAssignmentId && p.ownerId !== assignment.characterId && p.date === entry.date && p.quarter === entry.quarter).map(p => ({ ownerId: p.ownerId, itemId: p.itemId, quantity: s.characters.find(ch => ch.id === p.ownerId)?.sheet?.gear?.find(g => g.itemId === p.itemId)?.quantity ?? '0' }));
+    const ambiguousTransfers = (s.activityState?.provisions ?? []).filter(p => p.kind === 'Vegetables' && !p.originAssignmentId && p.ownerId !== assignment.characterId && sameDay(p.date,entry.date,s.environment?.calendar) && p.quarter === entry.quarter).map(p => ({ ownerId: p.ownerId, itemId: p.itemId, quantity: s.characters.find(ch => ch.id === p.ownerId)?.sheet?.gear?.find(g => g.itemId === p.itemId)?.quantity ?? '0' }));
     const rawUnattributed = s.characters.flatMap(ch => (ch.sheet?.gear ?? []).filter(g => /vegetables/i.test(g.item ?? '') && !s.activityState?.provisions.some(p => p.itemId === g.itemId)).map(g => ({ ownerId: ch.id, itemId: g.itemId ?? null, quantity: g.quantity })));
     return { entryId, assignmentId, characterId: assignment.characterId, characterName: assignment.characterName, activity: assignment.activity, date: entry.date, quarter: entry.quarter, hex: entry.from, location: form?.location ?? null, completed, classification: errors.length ? 'conflicting' : card && !scopedOverride ? 'verified_saved_result' : 'manual_incomplete', rollId: card?.id ?? null, successes: success, yield: yieldCount, errors, uncertainties, sources: campRules(repo, id), scopedOverride, inventory, unattributedInventory: [...rawUnattributed, ...ambiguousTransfers] };
 }

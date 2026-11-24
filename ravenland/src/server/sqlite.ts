@@ -1,3 +1,4 @@
+import {momentDistance} from '../lib/campaign-calendar';
 import {departCamps} from '../lib/campsites';
 import {observeClockChange} from './time/service';
 import {reindexExistingCuratedRules} from './compendium/indexer';
@@ -30,11 +31,20 @@ export class SqliteCampaignRepository implements CampaignRepository {
  current(){const active=this.db.prepare("SELECT value FROM application_meta WHERE key='active_campaign'").get() as {value:string}|undefined;const current=active?this.get(active.value):null;if(current)return current;const existing=this.list()[0];return existing?this.select(existing.id):(()=>{throw new Error('No campaigns yet. Choose a verified village and characters to create a campaign.');})()}
  createWithinTransaction(session:Session){return this.create(session)}
  create(session:Session){const data=sessionSchema.parse(session);this.normalizeExploration(data);const id=randomUUID(),now=new Date().toISOString(),own=!this.db.isTransaction;for(const camp of data.campsites??[]){const sourceCampaign=camp.campaignId;camp.campaignId=id;camp.id=randomUUID();camp.revision++;camp.audit.push({eventId:'copy:'+id,kind:'campaign_copy',date:data.campaign.date,quarter:data.campaign.quarter,reason:'Independent imported/test campaign snapshot from '+sourceCampaign+'. Original source history is preserved.'});}if(own)this.db.exec('BEGIN IMMEDIATE');try{this.db.prepare('INSERT INTO campaigns VALUES (?,1,?,?,?)').run(id,JSON.stringify(data),now,now);for(const character of data.characters){if(character.portraitId)this.db.prepare('INSERT OR IGNORE INTO campaign_images(campaign_id,image_id,name,category) SELECT ?,image_id,name,category FROM campaign_images WHERE image_id=? LIMIT 1').run(id,character.portraitId)}const record=this.select(id);if(own)this.db.exec('COMMIT');return record}catch(e){if(own)this.db.exec('ROLLBACK');throw e}}
- update(id:string,revision:number,session:Session,options?:{environmentValidated?:boolean;activitiesValidated?:boolean;workflowValidated?:boolean;explorationValidated?:boolean;locationsValidated?:boolean;elapsedQuarters?:number;timeEventId?:string}){
+ update(id:string,revision:number,session:Session,options?:{calendarValidated?:boolean;environmentValidated?:boolean;activitiesValidated?:boolean;workflowValidated?:boolean;explorationValidated?:boolean;locationsValidated?:boolean;elapsedQuarters?:number;timeEventId?:string}){
   const data=sessionSchema.parse(session),previous=this.get(id);
   if(data.campsites?.some(c=>c.campaignId!==id))throw new ConflictError('Campsite campaign association does not match this campaign.');
   if(previous&&data.campaign.hex!==previous.session.campaign.hex&&!this.db.prepare('SELECT 1 FROM geography_hexes WHERE coordinate=?').get(data.campaign.hex))throw new ConflictError('Unknown canonical hex on the configured map.');
   if(!previous||previous.revision!==revision)throw new ConflictError('This campaign changed in another tab. Export your local changes, then reload the campaign.');
+  if(!options?.calendarValidated&&JSON.stringify(data.campaign.startingConditions)!==JSON.stringify(previous.session.campaign.startingConditions))throw new ConflictError('Starting conditions must use the reviewed calendar settings service.');
+  if(!options?.calendarValidated&&JSON.stringify(data.calendarState)!==JSON.stringify(previous.session.calendarState))throw new ConflictError('Elapsed campaign time must use the verified calendar adapter.');
+  if(previous.session.calendarState&&!options?.calendarValidated){
+   const changed=data.campaign.date!==previous.session.campaign.date||data.campaign.quarter!==previous.session.campaign.quarter;
+   if(changed&&!options?.workflowValidated)throw new ConflictError('Use normal gameplay or Correct Current Campaign State to change the clock.');
+   const elapsed=changed?(options?.elapsedQuarters??momentDistance(previous.session.campaign,data.campaign,data.environment?.calendar)):0;
+   if(elapsed===null||elapsed<0)throw new ConflictError('Elapsed time cannot be inferred. Review the calendar before advancing.');
+   data.calendarState={...previous.session.calendarState,elapsedQuarters:previous.session.calendarState.elapsedQuarters+elapsed};
+  }
   if(!options?.explorationValidated&&JSON.stringify(data.exploration)!==JSON.stringify(previous.session.exploration))throw new ConflictError('Exploration edits must use the map exploration service');
   if(!options?.locationsValidated&&JSON.stringify(data.locations)!==JSON.stringify(previous.session.locations))throw new ConflictError('Location edits must use the discovery service');
   for(const l of previous.session.locations??[]){const entry=previous.session.journal.find(e=>e.id===l.journalEntryId);if(entry&&JSON.stringify(data.journal.find(e=>e.id===entry.id))!==JSON.stringify(entry))throw new ConflictError('Linked discovery journal history must be preserved')}
@@ -58,7 +68,7 @@ export class SqliteCampaignRepository implements CampaignRepository {
   const own=!this.db.isTransaction;if(own)this.db.exec('BEGIN IMMEDIATE');try{
   const result=this.db.prepare('UPDATE campaigns SET public_state=?,revision=revision+1,updated_at=? WHERE id=? AND revision=?').run(JSON.stringify(data),new Date().toISOString(),id,revision);
   if(!result.changes)throw new ConflictError('This campaign changed in another tab. Export your local changes, then reload the campaign.');
-  observeClockChange(this,id,previous.session.campaign,data.campaign,options?.timeEventId??'revision:'+(revision+1),options?.elapsedQuarters);
+  if(!options?.calendarValidated)observeClockChange(this,id,previous.session.campaign,data.campaign,options?.timeEventId??'revision:'+(revision+1),options?.elapsedQuarters);
   if(own)this.db.exec('COMMIT');return this.get(id)!;
   }catch(error){if(own)this.db.exec('ROLLBACK');throw error;}
  }

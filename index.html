@@ -1790,8 +1790,10 @@ window.addEventListener('message',event=>{if(event.origin!==location.origin||eve
     // BEGIN GENERATED INJURIES
 const ordinal = (n) => n + ([11, 12, 13].includes(n % 100) ? 'th' : { 1: 'st', 2: 'nd', 3: 'rd' }[n % 10] ?? 'th');
 function namedDate(value) { const m = /^(\d+)(?:st|nd|rd|th)( of)? ([^,]+), (\d+)(?: \(\+(\d+) days?\))?$/.exec(value); return m ? { day: Number(m[1]), of: m[2] ?? '', phase: m[3], year: Number(m[4]), offset: Number(m[5] ?? 0) } : null; }
+function calendarLabel(value, calendar) { const d = namedDate(value); if (!d)
+    return value; const alias = calendar?.labelAliases?.find(a => a.from.toLowerCase() === d.phase.toLowerCase() && a.year === d.year); return alias ? `${ordinal(d.day)}${d.of} ${alias.to}, ${d.year}${d.offset ? ` (+${d.offset} days)` : ''}` : value; }
 function resolveNamedDate(value, calendar, extra = 0) {
-    const d = namedDate(value);
+    const d = namedDate(calendarLabel(value, calendar));
     if (!d)
         return null;
     let day = d.day + d.offset + extra, phase = d.phase, year = d.year;
@@ -1814,7 +1816,7 @@ function resolveNamedDate(value, calendar, extra = 0) {
 }
 function displayDate(value, calendar) { return resolveNamedDate(value, calendar) ?? value; }
 function fantasyDayDistance(before, after, calendar) {
-    const a = namedDate(before), b = namedDate(after);
+    const a = namedDate(calendarLabel(before, calendar)), b = namedDate(calendarLabel(after, calendar));
     if (!a || !b)
         return null;
     if (a.phase.toLowerCase() === b.phase.toLowerCase() && a.year === b.year)
@@ -1832,6 +1834,7 @@ function dateKey(value, calendar) {
     const resolved = displayDate(value, calendar), parsed = namedDate(resolved);
     return parsed ? `${parsed.year}:${parsed.phase.toLowerCase()}:${parsed.day + parsed.offset}` : resolved;
 }
+function sameDay(a, b, calendar) { return dateKey(a, calendar) === dateKey(b, calendar); }
 
 
 const injuryQuarters = ['Morning', 'Day', 'Evening', 'Night'];
@@ -1847,14 +1850,20 @@ function injuryProgress(injury, clock) {
         return 'Healing time requires review';
     if (!clock)
         return 'Campaign clock unavailable';
-    const valid = (date) => { const d = namedDate(date); if (!d || d.day < 1)
+    const valid = (date) => { const d = namedDate(displayDate(date, clock.calendar)); if (!d || d.day < 1)
         return false; const phase = clock.calendar?.phases.find(p => p.name.toLowerCase() === d.phase.toLowerCase()); return d.day <= (phase?.days ?? 45); };
     if (!valid(injury.sustainedDate) || !valid(clock.date))
         return 'Calendar requires review';
     const days = fantasyDayDistance(injury.sustainedDate, clock.date, clock.calendar);
     if (days === null)
         return 'Calendar requires review';
-    const elapsed = days * 4 + injuryQuarters.indexOf(clock.quarter) - injuryQuarters.indexOf(injury.sustainedQuarter);
+    let elapsed = days * 4 + injuryQuarters.indexOf(clock.quarter) - injuryQuarters.indexOf(injury.sustainedQuarter);
+    if (clock.elapsedQuarters !== undefined && clock.anchorDate && clock.anchorQuarter) {
+        const start = fantasyDayDistance(injury.sustainedDate, clock.anchorDate, clock.calendar);
+        if (start === null)
+            return 'Calendar requires review';
+        elapsed = clock.elapsedQuarters + start * 4 + injuryQuarters.indexOf(clock.anchorQuarter) - injuryQuarters.indexOf(injury.sustainedQuarter);
+    }
     if (elapsed < 0)
         return 'Clock precedes injury · review required';
     const total = duration * (injury.unit === 'days' ? 4 : injury.unit === 'hours' ? 1 / 6 : 1);
@@ -1867,6 +1876,7 @@ function injuryProgress(injury, clock) {
     const date = Number.isInteger(dueQuarters) ? resolveNamedDate(injury.sustainedDate, clock.calendar, Math.floor(dueQuarters / 4)) : null;
     return `${text} remaining${date ? ' · due ' + date + ' ' + injuryQuarters[dueQuarters % 4] : ''}`;
 }
+function injuryClockFor(s) { return { date: s.campaign.date, quarter: s.campaign.quarter, calendar: s.environment?.calendar, unified: !!s.calendarState, ...s.calendarState }; }
 
 app.addInjuryRecord=function(){
  this.injuries??=[];if(this.injuries.length>=100)return;
@@ -1878,10 +1888,12 @@ app.renderInjuryProgress=function(){
  for(const injury of this.injuries??[]){
   const card=document.getElementById('injury-'+injury.id);if(!card)continue;
   card.querySelector('summary').textContent=injury.name||'Unnamed injury';
+  for(const input of card.querySelectorAll('input,select'))if(['Sustained date','Sustained quarter','Established healing duration','Healing unit'].includes(input.getAttribute('aria-label')))input.disabled=!!this.injuryClock?.unified;
   const progress=injuryProgress(injury,this.injuryClock);
-  const date=injury.sustainedDate?'Sustained '+injury.sustainedDate+' '+(injury.sustainedQuarter||'quarter unknown')+' · ':progress==='Date unknown'?'':'Date unknown · ';
+  const date=injury.sustainedDate?'Sustained '+displayDate(injury.sustainedDate,this.injuryClock?.calendar)+' '+(injury.sustainedQuarter||'quarter unknown')+' · ':progress==='Date unknown'?'':'Date unknown · ';
   card.querySelector('.injury-progress').textContent=date+progress;
  }
+ let hint=document.getElementById('injury-calendar-note');if(!hint){hint=document.createElement('p');hint.id='injury-calendar-note';hint.className='save-note';document.getElementById('injury-records').before(hint)}hint.textContent=this.injuryClock?.unified?'Dates and durations follow the unified calendar. The Table GM can correct them in Journey Settings → Correct Current Campaign State → Injury timeline metadata.':'';
  document.getElementById('injury-legacy-status').textContent=document.getElementById('critical-injuries').value.trim()?'Existing notes retained · Date unknown unless recorded below.':'';
 };
 app.renderInjuries=function(){
@@ -1892,7 +1904,7 @@ app.renderInjuries=function(){
   const field=(key,label,options)=>{
    const wrapper=document.createElement('label');wrapper.textContent=label;
    const input=document.createElement(options?'select':key==='source'||key==='treatment'?'textarea':'input');
-   input.setAttribute('aria-label',label);if(options)for(const [value,text] of options){const option=document.createElement('option');option.value=value;option.textContent=text;input.append(option)}
+   input.setAttribute('aria-label',label);if(app.injuryClock?.unified&&['sustainedDate','sustainedQuarter','duration','unit'].includes(key)){input.disabled=true;input.title='Use Journey Settings → Correct Current Campaign State → Injury timeline metadata for a reviewed correction.';}if(options)for(const [value,text] of options){const option=document.createElement('option');option.value=value;option.textContent=text;input.append(option)}
    if(key==='permanent'){input.type='checkbox';input.checked=injury[key]}else input.value=injury[key];
    if(key==='duration'){input.inputMode='decimal';input.placeholder='Unknown until established'}
    if(key==='sustainedDate')input.placeholder='e.g. 13th Springrise, 1165';

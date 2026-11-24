@@ -51,3 +51,6 @@ test('private dated records are visible only to owner and GM, independent of pub
   assert.deepEqual(privateCharacterRecord(owner,another).session.characters.at(-1)?.sheet?.injuries,[injury]);
  }finally{repo.close();if(previousPath===undefined)delete process.env.RAVENLAND_DB_PATH;else process.env.RAVENLAND_DB_PATH=previousPath;if(previousGrants===undefined)delete process.env.RAVENLAND_PLAYER_GRANTS;else process.env.RAVENLAND_PLAYER_GRANTS=previousGrants;}
 });
+test('unified elapsed-quarter identity governs recovery even when display dates are rebased',()=>{
+ assert.match(injuryProgress(injury,{date:'19th Springrise, 1165',quarter:'Morning',anchorDate:'13th Springrise, 1165',anchorQuarter:'Morning',elapsedQuarters:5,unified:true}),/4.75 days remaining/);
+});

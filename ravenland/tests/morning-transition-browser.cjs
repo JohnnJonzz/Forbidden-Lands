@@ -32,6 +32,7 @@ const { chromium } = require('playwright'), assert = require('node:assert/strict
         session.characters.forEach((c, i) => { c.name = ['Grogahx', 'Edrus', 'Elyanna', 'Rose Underbough'][i]; c.profession = i === 0 ? 'Druid' : c.profession; c.sheet = { name: c.name, kin: c.kin, profession: c.profession, ...Object.fromEntries(['strength', 'agility', 'wits', 'empathy'].flatMap(a => [[`attr-${a}`, '3'], [`attr-${a}-regular`, '3']])), pride: 'I protect my friends', 'dark-secret': 'A synthetic old regret', relationships: 'Four companions on the trail', gear: i === 0 ? [{ item: 'Supplies', weight: 'Normal', quantity: '3', itemId: randomUUID() }] : [], weapons: [], talents: i === 0 ? [{ name: 'Path of the Beast', rank: '3', type: 'P', desc: '' }] : [], 'skill-survival': '1', 'skill-scouting': '1', 'skill-marksmanship': '1', 'skill-healing': '1', willpower: '3', 'res-food': 'D8', 'res-water': 'D8', 'res-arrows': 'None', 'res-torches': 'None', 'coin-gold': '0', 'coin-silver': '0', 'coin-copper': '0' }; });
         session.characters[1].sheet.backstory = 'I was raised by the village smith and seek the lost eastern forge.';
         session.characters[1].sheet['backstory-visibility'] = 'Party Known';
+        const {stateFor}=await load('src/server/activities/state.ts');stateFor(session).settings.season='Autumn';
         campaign = repo.create(session);
         const library = new SourcebookLibrary(repo, new FileSourcebookStorage(path.join(folder, 'books')));
         for (const [name, title] of [['Forbidden_Lands_Players_Handbook_5th_printing.pdf', 'Forbidden Lands Players Handbook'], ['Forbidden_Lands_Gamemasters_Guide_5th_printing.r.pdf', 'Forbidden Lands Gamemasters Guide']]) {
@@ -54,11 +55,6 @@ const { chromium } = require('playwright'), assert = require('node:assert/strict
         page.setDefaultTimeout(30000);
         await page.goto(url + '/campaigns/' + campaign.id);
         await page.addStyleTag({ content: 'nextjs-portal{display:none!important}' });
-        await page.getByRole('button', { name: 'Journey Settings', exact: true }).click();
-        await page.getByLabel('Current in-world season').selectOption('Autumn');
-        await page.getByRole('button', { name: 'Save daily settings', exact: true }).click();
-        await until(async () => (await current()).session.activityState?.settings.season === 'Autumn');
-        await page.getByRole('button', { name: 'Close panel', exact: true }).click();
         await page.getByRole('button', { name: 'Quarter-Day Activities', exact: true }).click();
         const form = page.locator('.quarter-chat-form');
         const activities = form.getByLabel('Activity', { exact: true });

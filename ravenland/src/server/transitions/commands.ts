@@ -1,3 +1,4 @@
+import {calendarPhase} from '../../lib/campaign-calendar';
 import { quarterFor } from '../../lib/journey/quarter-engine';
 import { phaseSchema, inFlower, resetOverrides } from '../../lib/weather-hex';
 import { WEATHER_SOURCE_SHA256 } from '../../lib/weather-hex-data';
@@ -36,6 +37,12 @@ export function executeEnvironment(repo: SqliteCampaignRepository, raw: unknown,
         if (r.revision !== c.revision)
             throw Error('The campaign changed. Refresh the environment review.');
         const s = r.session, e = environment(s), at = new Date().toISOString();
+        if(s.calendarState&&['correct-date','configure-calendar'].includes(c.operation))throw Error('Use the previewed Correct Current Campaign State workflow for calendar changes.');
+        if(['activate-hex-flower','adjust-hex-flower'].includes(c.operation)){
+          const phase=calendarPhase(s);
+          if(s.calendarState&&!phase)throw Error('Correct the legacy calendar label before activating weather.');
+          if(phase){if(c.phase&&c.phase!==phase)throw Error('Weather phase must match the authoritative campaign calendar.');c.phase=phase;}
+        }
         if (c.operation === 'activate-hex-flower') {
             if (!c.phase || !c.authorizeDailyAdvancement)
                 throw Error('Choose the actual seasonal phase and explicitly authorize daily weather advancement at Morning.');
@@ -48,7 +55,7 @@ export function executeEnvironment(repo: SqliteCampaignRepository, raw: unknown,
             e.protocolRevision++;
             s.quarterDays = quarterFor(s);
             s.quarterDays.settings.weatherMode = 'AI Game Master';
-            if (s.activityState)
+            if (s.activityState && !s.calendarState)
                 s.activityState.settings.season = c.phase.startsWith('spring') ? 'Spring' : c.phase.startsWith('summer') ? 'Summer' : c.phase.startsWith('fall') ? 'Autumn' : 'Winter';
             if (c.approveReplacement) {
                 realizeWeather(s, 'weather:' + c.requestId, principal!.playerId);
@@ -63,7 +70,7 @@ export function executeEnvironment(repo: SqliteCampaignRepository, raw: unknown,
                 throw Error('Explicitly approve replacing the current weather result; original weather records remain preserved.');
             if (c.phase && c.phase !== h.phase) {
                 h.phase = c.phase;
-                if (s.activityState)
+                if (s.activityState && !s.calendarState)
                     s.activityState.settings.season = c.phase.startsWith('spring') ? 'Spring' : c.phase.startsWith('summer') ? 'Summer' : c.phase.startsWith('fall') ? 'Autumn' : 'Winter';
                 h.x = 0;
                 h.y = 0;

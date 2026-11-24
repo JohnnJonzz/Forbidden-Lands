@@ -1,3 +1,4 @@
+import {randomUUID} from 'node:crypto';
 import type {BrokenProcedure,CombatEncounter} from '../../lib/combat/types';
 import type {Session,Character} from '../../lib/types';
 import type {SourcePassage} from '../../lib/sourcebooks/schema';
@@ -16,7 +17,9 @@ export function injuryRow(pages:SourcePassage[],table:string,value:number){
  }
  return null;
 }
-function recordInjury(ch:Character,p:BrokenProcedure){const marker='[Combat injury '+p.id+']';ch.sheet??={};const old=String(ch.sheet['critical-injuries']??'');if(!old.includes(marker))ch.sheet['critical-injuries']=(old?old+'\n\n':'')+marker+' '+p.note;}
+function recordInjury(ch:Character,p:BrokenProcedure,session:Session){const marker='[Combat injury '+p.id+']';ch.sheet??={};const old=String(ch.sheet['critical-injuries']??'');if(!old.includes(marker))ch.sheet['critical-injuries']=(old?old+'\n\n':'')+marker+' '+p.note;
+ if(!ch.sheet.injuries?.some(i=>i.source.includes(marker))&&(ch.sheet.injuries?.length??0)<100){ch.sheet.injuries??=[];ch.sheet.injuries.push({id:randomUUID(),name:'Critical injury · '+p.cause+(p.value?' D66 '+p.value:''),sustainedDate:session.campaign.date,sustainedQuarter:session.campaign.quarter,duration:'',unit:'review',permanent:false,status:'active',source:marker+' '+p.sources.map(s=>s.title+' p. '+s.page).join('; '),treatment:'',recordedAt:new Date().toISOString()});}
+}
 export function confirmBrokenCause(e:CombatEncounter,session:Session,characterId:string,procedureId:string,cause:BrokenProcedure['cause'],pages:SourcePassage[]){
  const entry=outstandingBroken(e).find(x=>x.actor.id===characterId&&x.procedure.id===procedureId),ch=session.characters.find(c=>c.id===characterId);
  if(e.pending)throw new AIError('combat_pending','Finish the recorded attack, defense and Armor before confirming its injury procedure.',409);
@@ -27,7 +30,7 @@ export function confirmBrokenCause(e:CombatEncounter,session:Session,characterId
  if(cause==='push'||cause==='condition'){p.stage='resolved';p.note+=' Confirmed '+cause+' damage: no critical injury. This confirmation did not apply damage or recovery.';return;}
  if(cause==='other'){
   const source=pages.find(p=>{const text=p.text.replace(/-\s+/g,'').replace(/\s+/g,' ');return /CRITICAL INJURIES.*OTHERS/.test(text)&&/Non[–−-]typical.*Damage.*Yes.*D6 days/i.test(text)&&/unconscious until you die or are HEALED/i.test(text)});if(!source)throw new AIError('combat_evidence','The official Other Forms of Damage procedure is unavailable.',409);
-  p.sources.push(citation(source));p.stage='resolved';p.note='Non-typical damage: unconscious until HEALED or death, according to the official Others table (physical PDF p. '+source.startPage+'). Lethal D6-day deadline: roll and track manually; no deadline result, recovery or death was invented.';recordInjury(ch,p);return;
+  p.sources.push(citation(source));p.stage='resolved';p.note='Non-typical damage: unconscious until HEALED or death, according to the official Others table (physical PDF p. '+source.startPage+'). Lethal D6-day deadline: roll and track manually; no deadline result, recovery or death was invented.';recordInjury(ch,p,session);return;
  }
  p.stage='roll';p.openedAt=new Date().toISOString();p.note+=' Awaiting the actual '+cause+' D66 critical roll.';
 }
@@ -47,6 +50,6 @@ export function bindCriticalRoll(e:CombatEncounter,packet:VerifiedRollSubmission
   if((packet.successes??0)>0){const row=injuryRow(pages,'blunt',11);if(!row)throw new AIError('combat_evidence','The replacement 11–12 blunt-force injury is unavailable.',409);p.note='Helmet protection succeeded: '+row.text+' (physical PDF p. '+row.page.startPage+'). Helmet Armor Rating reduced to zero by the official rule.';ch.sheet!['helmet-rating']='0';p.sources.push(citation(row.page));}
   p.stage='resolved';e.rolls.push({id:packet.rollId,round:e.round,combatantId:ch.id,actionId:p.id,type:'armor',pool:{base:0,skill:0,gear:packet.result.gear.length},result:packet.result,table:null,pushed:false,createdAt:packet.createdAt,source:p.sources});
  }else throw new AIError('combat_critical','Confirm the Broken cause before rolling.',409);
- e.consumedPlayerRolls.push(packet.rollId);if(p.stage==='resolved')recordInjury(ch,p);
+ e.consumedPlayerRolls.push(packet.rollId);if(p.stage==='resolved')recordInjury(ch,p,session);
  return ch.name+': '+p.note+(p.stage==='helmet'?' Roll the worn helmet’s Gear Dice before finalizing the injury.':'');
 }

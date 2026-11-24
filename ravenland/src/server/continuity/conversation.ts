@@ -1,3 +1,4 @@
+import {sameDay} from '../../lib/calendar';
 import type { SqliteCampaignRepository } from '../sqlite';
 import type { CharacterPrincipal } from '../character-access';
 import { tableGM } from '../narrative/authority';
@@ -28,7 +29,7 @@ export function continuityConversation(repo: SqliteCampaignRepository, id: strin
     const consumers = r.session.characters.filter(ch => nameMatches(ch.id));
     if (consumers.length < 1)
         return 'Name each consumer or use Resolve consumption on their Daily Needs status.';
-    const sources = reviews.filter(x => x.activity === 'Forage' && x.hex === r.session.campaign.hex && x.date === r.session.campaign.date);
+    const sources = reviews.filter(x => x.activity === 'Forage' && x.hex === r.session.campaign.hex && sameDay(x.date,r.session.campaign.date,r.session.environment?.calendar));
     if (sources.length !== 1)
         return 'Open Resolve consumption and choose the original Foraging event. The source is not unambiguous.';
     const source = sources[0], stock = source.inventory.filter(p => p.quantity > 0);

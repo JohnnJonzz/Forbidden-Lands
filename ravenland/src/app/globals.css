@@ -127,3 +127,5 @@ button.party-member{width:100%;padding:4px 0;border:0;background:transparent;tex
 .compact-campaign-name{display:block;font:16px var(--serif);line-height:1.4;margin-top:8px;overflow-wrap:anywhere}.sidebar .world-data{gap:18px}.sidebar>.sidebar-rule{margin:19px 0}.environment-review{padding:10px 0;border-top:1px solid #ffffff18;font-size:.82rem}.environment-review summary{cursor:pointer}.environment-review label{display:block;margin:8px 0}.environment-review input,.environment-review textarea,.environment-review select{display:block;width:100%;box-sizing:border-box;max-width:100%}.environment-review button{margin:5px 0}.world-data strong{overflow-wrap:anywhere}
 
 .environment-review input[type=checkbox]{display:inline-block;width:auto;margin-right:.4rem;vertical-align:middle}
+
+.calendar-settings { overflow-wrap: anywhere; }

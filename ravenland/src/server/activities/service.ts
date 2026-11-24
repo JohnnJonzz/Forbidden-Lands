@@ -1,3 +1,5 @@
+import {activitySeason,campaignSeason} from '../../lib/campaign-calendar';
+import {sameDay} from '../../lib/calendar';
 import {occupiedCamp,usableCamp} from '../../lib/campsites';
 import {syncCampResult} from '../continuity/camps';
 import { nextDate, quarters } from '../../lib/journey/clock';
@@ -59,10 +61,11 @@ export function executeActivity(repo: SqliteCampaignRepository, raw: unknown, pr
             if (c.checkpoint) {
                 st.settings.checkpoint = c.checkpoint;
                 const passed = quarters.indexOf(c.checkpoint) < quarters.indexOf(s.campaign.quarter);
-                st.settings.effectiveDate = passed ? nextDate(s.campaign.date) : s.campaign.date;
+                st.settings.effectiveDate = passed ? nextDate(s.campaign.date,s.environment?.calendar) : s.campaign.date;
                 st.settings.effectiveQuarter = passed ? c.checkpoint : s.campaign.quarter;
             }
-            if (c.season && st.settings.season !== c.season) {
+            if(c.season&&s.calendarState&&c.season!==campaignSeason(s))throw Error('Season is derived from the authoritative campaign calendar.');
+            if (c.season && !s.calendarState && st.settings.season !== c.season) {
                 st.settings.season = c.season;
                 for (const a of entry?.activities ?? [])
                     if (a.activity === 'Forage' && a.request && !a.request.rollId) {
@@ -91,7 +94,7 @@ export function executeActivity(repo: SqliteCampaignRepository, raw: unknown, pr
                 own(recipientId);
             if (!s.characters.some(ch => ch.id === recipientId))
                 throw Error('Choose an actual recipient.');
-            let n = st.needs.find(n => n.date === s.campaign.date && n.characterId === recipientId && n.resource === resource);
+            let n = st.needs.find(n => sameDay(n.date,s.campaign.date,s.environment?.calendar) && n.characterId === recipientId && n.resource === resource);
             if (!n) {
                 n = { date: s.campaign.date, characterId: recipientId, resource, status: 'Pending', sourceId: null, itemId: null, request: null, rollId: null, receiptId: null, explanation: 'Not yet consumed.' };
                 st.needs.push(n);
@@ -162,10 +165,10 @@ export function executeActivity(repo: SqliteCampaignRepository, raw: unknown, pr
                 n.status = 'Unmet';
                 n.receiptId = c.requestId;
                 n.explanation = 'Explicitly resolved without ' + resource + ': ' + c.reason + '. The official condition applies; existing damage/critical obligations remain.';
-                const previous = st.needs.filter(v => v.characterId === recipientId && v.resource === resource && v.date !== s.campaign.date).sort((a, b) => -(dateDistance(a.date, b.date) ?? 0));
+                const previous = st.needs.filter(v => v.characterId === recipientId && v.resource === resource && !sameDay(v.date,s.campaign.date,s.environment?.calendar)).sort((a, b) => -(dateDistance(a.date, b.date,s.environment?.calendar) ?? 0));
                 let consecutive = 0, priorDate = s.campaign.date;
                 for (const prior of previous.toReversed()) {
-                    if (prior.status !== 'Unmet' || dateDistance(prior.date, priorDate) !== 1)
+                    if (prior.status !== 'Unmet' || dateDistance(prior.date, priorDate,s.environment?.calendar) !== 1)
                         break;
                     consecutive++;
                     priorDate = prior.date;
@@ -276,10 +279,10 @@ export function executeActivity(repo: SqliteCampaignRepository, raw: unknown, pr
                     const tm = terrainModifiers[entry.terrain]?.forage;
                     if (tm === null || tm === undefined)
                         throw Error('Foraging is unavailable in this authoritative terrain.');
-                    if (!st.settings.season)
+                    if (!activitySeason(s))
                         throw Error('Confirm the in-world season in Journey Settings; the computer calendar is not used.');
                     a.target = c.target ?? 'food';
-                    a.request = newRequest(s, entry.entryId, a, 'forage', 'Survival', tm + { Spring: -1, Summer: 0, Autumn: 1, Winter: -2 }[st.settings.season] + (rank(s, a.characterId, 'Gatherer') >= 1 ? 1 : 0));
+                    a.request = newRequest(s, entry.entryId, a, 'forage', 'Survival', tm + { Spring: -1, Summer: 0, Autumn: 1, Winter: -2 }[activitySeason(s)!] + (rank(s, a.characterId, 'Gatherer') >= 1 ? 1 : 0));
                     a.stage = 'forage';
                     a.status = 'Awaiting roll';
                     a.summary = 'Forage for ' + a.target + '; Survival includes terrain, season and verified Gatherer rank.';
@@ -496,7 +499,7 @@ export function prepareCompletion(repo: SqliteCampaignRepository, id: string, s:
             }
         s.characters = s.characters.map(c => c.id === ch.id ? applySheet(c, sheet) : c);
     }
-    if(entry.quarter==='Night'){const records=s.activityState!.entries.filter(e=>e.date===entry.date&&(e.completed||e.entryId===entryId));if(new Set(records.map(e=>e.quarter)).size===4){for(const ch of s.characters){const slept=records.some(e=>e.activities.some(a=>a.characterId===ch.id&&a.activity==='Sleep'&&!a.interrupted&&a.choice!=='no-sleep'&&!e.activities.some(c=>c.activity==='Make Camp'&&c.choice==='no-sleep')));if(!slept){const sheet=sheetFor(ch);sheet['cond-sleepy']=true;s.characters=s.characters.map(c=>c.id===ch.id?applySheet(c,sheet):c);changes.push(ch.name+' becomes Sleepy after a fully recorded day without Sleep.');}}}}
+    if(entry.quarter==='Night'){const records=s.activityState!.entries.filter(e=>sameDay(e.date,entry.date,s.environment?.calendar)&&(e.completed||e.entryId===entryId));if(new Set(records.map(e=>e.quarter)).size===4){for(const ch of s.characters){const slept=records.some(e=>e.activities.some(a=>a.characterId===ch.id&&a.activity==='Sleep'&&!a.interrupted&&a.choice!=='no-sleep'&&!e.activities.some(c=>c.activity==='Make Camp'&&c.choice==='no-sleep')));if(!slept){const sheet=sheetFor(ch);sheet['cond-sleepy']=true;s.characters=s.characters.map(c=>c.id===ch.id?applySheet(c,sheet):c);changes.push(ch.name+' becomes Sleepy after a fully recorded day without Sleep.');}}}}
     entry.completed = true;
     return { endingHex: s.campaign.hex, quarterDays: 1 as const, nextWeather: s.campaign.weather, adjudication: entry.activities.map(a => (s.characters.find(c => c.id === a.characterId)?.name ?? a.characterId) + ' — ' + a.activity + ': ' + a.summary).join('\n') + '\n' + changes.join('\n'), narrative: entry.activities.map(a => {
             const name = s.characters.find(ch => ch.id === a.characterId)?.name ?? a.characterId;

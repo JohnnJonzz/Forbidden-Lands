@@ -19,7 +19,7 @@ import {useEffect,useRef,useState} from 'react';
 import {PortraitDialog} from './portrait-dialog';
 import {imageUrl} from '@/lib/images';
 import type {Character,Session} from '@/lib/types';
-import type {InjuryClock} from '@/lib/injury-timeline';
+import {injuryClockFor,type InjuryClock} from '@/lib/injury-timeline';
 import {rollSchema} from '@/lib/journey/quarter-schema';
 import {metadataSchema} from '@/lib/dice/schema';
 import {characterSheetSchema,sheetFor,type CharacterSheet} from '@/lib/character-sheet';
@@ -80,7 +80,7 @@ export function SheetEmbed({character,mode,onChange,campaignId,dice=[],onDice}:{
  useEffect(()=>{
   if(!campaignId||mode!=='sheet')return;
   let alive=true,sequence=0;
-  const refresh=async()=>{const seq=++sequence;try{const response=await fetch('/api/campaigns?id='+encodeURIComponent(campaignId),{cache:'no-store'});if(!response.ok)return;const body=await response.json(),session=body.record?.session as Session|undefined;if(!alive||seq!==sequence||!session)return;injuryClock.current={date:session.campaign.date,quarter:session.campaign.quarter,calendar:session.environment?.calendar};syncInjuryClock();}catch{/* Keep the last verified clock during reconnect. */}};
+  const refresh=async()=>{const seq=++sequence;try{const response=await fetch('/api/campaigns?id='+encodeURIComponent(campaignId),{cache:'no-store'});if(!response.ok)return;const body=await response.json(),session=body.record?.session as Session|undefined;if(!alive||seq!==sequence||!session)return;injuryClock.current=injuryClockFor(session);syncInjuryClock();}catch{/* Keep the last verified clock during reconnect. */}};
   void refresh();const timer=setInterval(()=>void refresh(),3000);
   window.addEventListener('ravenland:campaign-refresh',refresh);window.addEventListener('ravenland:ai-refresh',refresh);
   return()=>{alive=false;clearInterval(timer);window.removeEventListener('ravenland:campaign-refresh',refresh);window.removeEventListener('ravenland:ai-refresh',refresh)};

@@ -1,9 +1,10 @@
+import {calendarPhase} from '../../lib/campaign-calendar';
 import { createHash, randomInt } from 'node:crypto';
 import type { Session } from '../../lib/types';
 import type { Environment, WeatherResult } from '../../lib/environment';
 import { journeyFor } from '../../lib/journey/engine';
 import { displayDate,dateKey } from '../../lib/calendar';
-import { realizeHex, stepHex } from '../../lib/weather-hex';
+import { realizeHex, stepHex, inFlower, resetOverrides } from '../../lib/weather-hex';
 export const stable = (s: string) => createHash('sha256').update(s).digest('hex').slice(0, 32);
 export function environment(s: Session): Environment { return s.environment ??= { calendar: null, hexFlower: null, protocolRevision: 0, weather: [], currentWeatherId: null, weatherStatus: 'pending', review: 'Weather has not been established.', audit: [] }; }
 export function currentWeather(s: Session) { return s.environment?.weatherStatus === 'pending' ? null : s.environment?.weather.find(w => w.id === s.environment?.currentWeatherId) ?? null; }
@@ -29,7 +30,7 @@ export function establishWeather(s: Session, transitionId: string, die: (n: numb
     const period = displayDate(s.campaign.date, e.calendar), id = 'weather:' + stable('hex-flower-2:' + dateKey(s.campaign.date,e.calendar));
     if (dateKey(h.lastAdvancedDate ?? '',e.calendar)===dateKey(s.campaign.date,e.calendar) && prior && !(prior.cadence === 'quarter' && prior.quarter !== s.campaign.quarter))
         return saveWeather(s, prior);
-    const existing = e.weather.find(w => w.id === id);
+    const existing = e.weather.find(w => w.id === id || w.provenance==='reviewed_campaign_protocol'&&dateKey(w.date,e.calendar)===dateKey(s.campaign.date,e.calendar));
     if (existing)
         return saveWeather(s, existing);
     if (dateKey(h.lastAdvancedDate ?? '',e.calendar)===dateKey(s.campaign.date,e.calendar))
@@ -43,6 +44,12 @@ export function establishWeather(s: Session, transitionId: string, die: (n: numb
         return null;
     }
     const next = structuredClone(h);
+    const phase=calendarPhase(s);
+    if(s.calendarState&&!phase){e.weatherStatus='pending';e.review='The calendar phase requires review before daily weather can advance.';return null;}
+    if(phase&&phase!==next.phase){
+      if(!inFlower(phase,next.x,next.y)){e.weatherStatus='pending';e.review='The seasonal flower does not contain the saved position. The Table GM must review its position; no weather was rerolled.';return null;}
+      next.phase=phase;resetOverrides(next);next.lastNavigation=null;
+    }
     stepHex(next, die);
     next.lastAdvancedDate = period;
     e.hexFlower = next;

@@ -1,3 +1,4 @@
+import {sameDay} from '../../lib/calendar';
 import {weatherModifier} from '../../lib/weather-context';
 import {recordedMounts} from '../creatures/travel';
 import {publicTravelReply,travelConstraint} from './knowledge';
@@ -91,7 +92,7 @@ function assertController(principal: CharacterPrincipal | null, id: string, stat
 function acknowledgeEndedEncounters(repo:SqliteCampaignRepository,id:string,state:NarrativeJourney){if(!state.entryId||readConsequences(repo,id).some(c=>!['resolved','superseded'].includes(c.status)&&['life','mandatory'].includes(c.urgency)))return;const s=repo.get(id)!.session,p=expeditionFor(s,state.entryId);for(const e of expeditionEncounters(repo,id,state.entryId)){if(e.status!=='ended'||p.reviews.some(r=>r.kind==='encounter'&&r.result==='resolved'&&r.encounterId===e.id))continue;run(repo,id,'encounter:'+e.id,state,{type:'quarter-chat-expedition-review',entryId:state.entryId,kind:'encounter',result:'resolved',reason:e.administrativeAbort?'Historical administrative termination acknowledged; original attack and dice retained. No fictional escape, victory or successful defense inferred.':'Recorded ended encounter acknowledged; actual consequences remain authoritative.',encounterId:e.id,rollId:null,navigationRollId:null,confirmed:true});}}
 function beginRequests(repo: SqliteCampaignRepository, id: string, state: NarrativeJourney, die: (sides: number) => number) {
     const s = repo.get(id)!.session, preview = structuredClone(s);
-    if (s.campaign.date !== state.date || s.campaign.quarter !== state.quarter)
+    if (!sameDay(s.campaign.date,state.date,s.environment?.calendar) || s.campaign.quarter !== state.quarter)
         throw new AIError('journey_stale', 'This declared journey belongs to a different quarter. Review it before requesting new dice.', 409);
     if (!state.leaderId || !state.watchId) {
         saveNarrative(repo, id, state);
@@ -161,7 +162,7 @@ export function progressNarrativeJourney(repo: SqliteCampaignRepository, id: str
     if(state.review.mode==='Mounted')recordedMounts(repo,id);
     if (state.done)
         return `The journey is complete at ${s.campaign.hex} · ${s.campaign.quarter}.`;
-    if (s.campaign.date !== state.date || s.campaign.quarter !== state.quarter)
+    if (!sameDay(s.campaign.date,state.date,s.environment?.calendar) || s.campaign.quarter !== state.quarter)
         throw new AIError('journey_stale', 'The journey belongs to an earlier quarter. Review its remaining obligations before starting another.', 409);
     const combat = activeCombat(repo, id);
     if (combat)
