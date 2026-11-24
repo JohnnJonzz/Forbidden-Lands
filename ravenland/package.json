@@ -100,7 +100,8 @@
     "test:camp-continuity:browser": "node --import tsx tests/camp-continuity-browser.cjs",
     "test:quarter-activities": "tsx --test tests/quarter-activities.test.ts",
     "test:quarter-activities:real": "tsx --test tests/quarter-activities.integration.ts",
-    "test:quarter-activities:browser": "node --import tsx tests/quarter-activities-browser.cjs"
+    "test:quarter-activities:browser": "node --import tsx tests/quarter-activities-browser.cjs",
+    "test:sheet-layout": "node tests/sheet-layout-browser.cjs"
   },
   "dependencies": {
     "exceljs": "^4.4.0",

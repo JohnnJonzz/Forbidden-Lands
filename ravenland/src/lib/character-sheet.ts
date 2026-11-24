@@ -1,3 +1,4 @@
+import {injuryRecordSchema} from './injury-schema';
 import {creatureSchema} from './creatures';
 import {normalizeCharacterSheet} from './character-data';
 import {z} from 'zod';
@@ -10,6 +11,7 @@ const text=z.string().max(20000);
 const row=(keys:string[])=>z.object(Object.fromEntries(keys.map(key=>[key,text.optional()]))).strict();
 const scalars=Object.fromEntries(fieldNames.map(key=>[key,key.startsWith('cond-')||key.endsWith('-worn')?z.boolean().optional():text.optional()])) as {[K in SheetField]:z.ZodOptional<z.ZodString|z.ZodBoolean>};
 export const characterSheetSchema=z.object({...scalars,
+ injuries:z.array(injuryRecordSchema).max(100).refine(rows=>new Set(rows.map(r=>r.id)).size===rows.length,'Injury identities must be unique').optional(),
  backstory:z.string().max(20000).optional(),
  'backstory-visibility':z.enum(['Owner and GM','Party Known']).optional(),
  creatures:z.array(creatureSchema).max(20).refine(c=>new Set(c.map(v=>v.id)).size===c.length,'Creature identities must be unique').optional(),

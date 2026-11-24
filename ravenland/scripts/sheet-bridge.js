@@ -92,6 +92,7 @@
   if(!preserve&&!savedRoll&&!pendingSave)pushState(false,'Roll dice to check whether a push is available.');
   loading=false;notify('ravenland:sheet-loaded',{characterId});reportHeight();
  });
+ window.addEventListener('message',event=>{if(event.origin!==location.origin||event.source!==window.parent||event.data?.type!=='ravenland:injury-clock'||event.data.characterId!==characterId)return;app.injuryClock=event.data.clock;app.renderInjuryProgress()});
  let resizeScheduled=false;
  function reportHeight(){if(resizeScheduled)return;resizeScheduled=true;requestAnimationFrame(()=>{resizeScheduled=false;if(characterId)notify('ravenland:sheet-height',{characterId,height:Math.ceil(document.body.getBoundingClientRect().height)})})}
  new ResizeObserver(reportHeight).observe(document.body);

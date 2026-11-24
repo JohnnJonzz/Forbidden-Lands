@@ -19,6 +19,8 @@ const skillConfig=registry.skills.map(s=>({id:s.id,name:s.name,attr:s.attribute}
 html=html.replace(/this.skillsConfig = \[[\s\S]*?\];/, 'this.skillsConfig = '+JSON.stringify(skillConfig,null,12)+';');
 const creatureCode=ts.transpile(readFileSync(root+'src/lib/creature-load.ts','utf8'),{target:ts.ScriptTarget.ES2020,module:ts.ModuleKind.ES2020}).replace(/^import.*$/gm,'').replace(/^export /gm,'')+'\n'+readFileSync(root+'scripts/sheet-creatures.js','utf8');
 html=html.replace(/\/\* CREATURE SCRIPT \*\/|\/\/ BEGIN GENERATED CREATURES[\s\S]*?\/\/ END GENERATED CREATURES/,'// BEGIN GENERATED CREATURES\n'+creatureCode+'\n// END GENERATED CREATURES');
+const injuryCode=['src/lib/calendar.ts','src/lib/injury-timeline.ts'].map(path=>ts.transpile(readFileSync(root+path,'utf8'),{target:ts.ScriptTarget.ES2020,module:ts.ModuleKind.ES2020}).replace(/^import.*$/gm,'').replace(/^export /gm,'')).join('\n')+'\n'+readFileSync(root+'scripts/sheet-injuries.js','utf8');
+html=html.replace(/\/\* INJURY SCRIPT \*\/|\/\/ BEGIN GENERATED INJURIES[\s\S]*?\/\/ END GENERATED INJURIES/,'// BEGIN GENERATED INJURIES\n'+injuryCode+'\n// END GENERATED INJURIES');
 writeFileSync(root+'../index.html',html);
 writeFileSync(root+'src/lib/rules/character-registry-data.ts','// Generated from character-rules.json. Edit the root JSON, not this file.\nexport const characterRegistry = '+JSON.stringify(registry,null,2)+' as const;\n');
 const fields=[...html.match(/this.fieldIds = \[([\s\S]*?)\];/)[1].matchAll(/'([^']+)'/g)].map(match=>match[1]);

@@ -67,7 +67,8 @@
             max-width: 1100px;
             margin: 0 auto;
             display: grid;
-            grid-template-columns: repeat(12, 1fr);
+            grid-template-columns: repeat(12, minmax(0, 1fr));
+            align-items: start;
             gap: 15px;
         }
 
@@ -174,6 +175,11 @@
             margin-bottom: 8px;
         }
 
+        .injury-record { border-top: 1px solid var(--border-color); padding-top: 8px; margin-top: 10px; min-width: 0; }
+        .injury-record summary { cursor: pointer; overflow-wrap: anywhere; }
+        .injury-progress { font-size: 0.85em; color: var(--gold-color); overflow-wrap: anywhere; margin: 6px 0; }
+        .injury-record label { margin-top: 6px; }
+        .injury-record input, .injury-record select, .injury-record textarea { min-width: 0; max-width: 100%; }
         .resource-box select { width: 80px; }
         .resource-box { gap: 6px; }
         .resource-box label { flex: 1; }
@@ -556,10 +562,7 @@
             <textarea id="appearance" onchange="app.saveState()"></textarea>
         </div>
         <div class="backstory-section"><label for="backstory">Backstory</label><textarea id="backstory" rows="8" maxlength="20000" onchange="app.saveState()" placeholder="Your character’s history, motivations and relationships…"></textarea><label for="backstory-visibility">Backstory visibility</label><select id="backstory-visibility" onchange="app.saveState()"><option>Owner and GM</option><option>Party Known</option></select><p class="save-note">Player-authored background; connections are proposals until established in play. Private text is excluded from shared GM replies.</p></div>
-        <div>
-            <label>Critical Injuries</label>
-            <textarea id="critical-injuries" onchange="app.saveState()"></textarea>
-        </div>
+
 
     </div>
 
@@ -580,9 +583,20 @@
         <button class="btn-add" onclick="app.addTalentRow()">+ Add Talent</button>
     </div>
 
-    <!-- Consumables & Purse -->
-    <div class="panel col-4">
-        <h3>Consumables & Purse</h3>
+    <!-- Critical Injuries occupy the former resources slot beside Talents. -->
+    <section class="panel col-4" id="injuries-section" aria-labelledby="injuries-heading">
+        <h3 id="injuries-heading">Critical Injuries</h3>
+        <label for="critical-injuries">Injury notes &amp; effects</label>
+        <textarea id="critical-injuries" onchange="app.saveState()"></textarea>
+        <p class="save-note" id="injury-legacy-status"></p>
+        <div id="injury-records"></div>
+        <button type="button" class="btn-add" onclick="app.addInjuryRecord()">+ Add dated injury</button>
+        <p class="save-note">Record established dates and healing results only. Countdowns use campaign quarter-days; recovery requires confirmation. Lethal deadlines remain separate.</p>
+    </section>
+
+    <!-- Resources & Coin beside Gear. -->
+    <div class="panel col-4" id="resources-section">
+        <h3>Resources &amp; Coin</h3>
         <p class="save-note">Roll when a resource is used. On 1–2, step down one die; D6 becomes None.</p>
         <div class="resource-box">
             <label>Food</label>
@@ -1232,6 +1246,7 @@ class ForbiddenLandsApp {
     }
 
     resetForm() {
+        this.injuries=undefined;this.renderInjuries();
         document.getElementById('spells-list').replaceChildren();
         this.artifactDice = [];
         this.currentRoll = null;
@@ -1313,6 +1328,7 @@ class ForbiddenLandsApp {
         }));
 
         if(this.creatures!==undefined)data.creatures=structuredClone(this.creatures);
+        if(this.injuries!==undefined)data.injuries=structuredClone(this.injuries);
         data.spells = Array.from(document.querySelectorAll('.spell-entry')).map(entry => {
             const spell = {};
             for (const key of ['mode','wp','name','talent','rank','type','range','duration','ingredients','description']) spell[key] = entry.querySelector('.spell-' + key).value;
@@ -1373,6 +1389,7 @@ class ForbiddenLandsApp {
 
         document.querySelector('#gear-table tbody').innerHTML = '';
         this.creatures=data.creatures?structuredClone(data.creatures):undefined;this.renderCreatures();
+        this.injuries=data.injuries?structuredClone(data.injuries):undefined;this.renderInjuries();
         if (Array.isArray(data.spells)) data.spells.forEach(spell=>{if(spell && typeof spell === 'object') this.addSpell(spell);});
         if (data.gear) data.gear.forEach(g => this.addGearRow(g.item, g.weight===undefined?'':g.weight, g.notes, g.quantity===undefined?'':g.quantity, g.itemId));
         this.renderAttributes();
@@ -1770,6 +1787,132 @@ window.addEventListener('message',event=>{if(event.origin!==location.origin||eve
 window.addEventListener('message',event=>{if(event.origin!==location.origin||event.source!==window.parent||event.data?.type!=='ravenland:creature-result')return;app.creaturePending=false;const message=document.getElementById('creature-message');if(message)message.textContent=event.data.text??'';});
 
 // END GENERATED CREATURES
+    // BEGIN GENERATED INJURIES
+const ordinal = (n) => n + ([11, 12, 13].includes(n % 100) ? 'th' : { 1: 'st', 2: 'nd', 3: 'rd' }[n % 10] ?? 'th');
+function namedDate(value) { const m = /^(\d+)(?:st|nd|rd|th)( of)? ([^,]+), (\d+)(?: \(\+(\d+) days?\))?$/.exec(value); return m ? { day: Number(m[1]), of: m[2] ?? '', phase: m[3], year: Number(m[4]), offset: Number(m[5] ?? 0) } : null; }
+function resolveNamedDate(value, calendar, extra = 0) {
+    const d = namedDate(value);
+    if (!d)
+        return null;
+    let day = d.day + d.offset + extra, phase = d.phase, year = d.year;
+    const index = calendar?.phases.findIndex(p => p.name.toLowerCase() === phase.toLowerCase()) ?? -1;
+    if (index >= 0) {
+        let i = index;
+        for (let count = 0; day > calendar.phases[i].days && count < 10000; count++) {
+            day -= calendar.phases[i].days;
+            i++;
+            if (i === calendar.phases.length) {
+                i = 0;
+                year++;
+            }
+        }
+        phase = calendar.phases[i].name;
+    }
+    else if (day > 45 || day < 1)
+        return null;
+    return `${ordinal(day)}${d.of} ${phase}, ${year}`;
+}
+function displayDate(value, calendar) { return resolveNamedDate(value, calendar) ?? value; }
+function fantasyDayDistance(before, after, calendar) {
+    const a = namedDate(before), b = namedDate(after);
+    if (!a || !b)
+        return null;
+    if (a.phase.toLowerCase() === b.phase.toLowerCase() && a.year === b.year)
+        return b.day + b.offset - a.day - a.offset;
+    if (!calendar)
+        return null;
+    const index = (p) => calendar.phases.findIndex(x => x.name.toLowerCase() === p.toLowerCase()), i = index(a.phase), j = index(b.phase);
+    if (i < 0 || j < 0)
+        return null;
+    const yearDays = calendar.phases.reduce((n, p) => n + p.days, 0), absolute = (d, k) => d.year * yearDays + calendar.phases.slice(0, k).reduce((n, p) => n + p.days, 0) + d.day + d.offset;
+    return absolute(b, j) - absolute(a, i);
+}
+// Stable period identity ignores optional "of" and legacy elapsed-day spelling.
+function dateKey(value, calendar) {
+    const resolved = displayDate(value, calendar), parsed = namedDate(resolved);
+    return parsed ? `${parsed.year}:${parsed.phase.toLowerCase()}:${parsed.day + parsed.offset}` : resolved;
+}
+
+
+const injuryQuarters = ['Morning', 'Day', 'Evening', 'Night'];
+function injuryProgress(injury, clock) {
+    if (injury.permanent)
+        return 'Permanent';
+    if (injury.status === 'healed')
+        return 'Healing confirmed manually';
+    if (!injury.sustainedDate.trim() || !injury.sustainedQuarter)
+        return 'Date unknown';
+    const duration = Number(injury.duration);
+    if (!injury.duration.trim() || !Number.isFinite(duration) || duration <= 0 || injury.unit === 'review')
+        return 'Healing time requires review';
+    if (!clock)
+        return 'Campaign clock unavailable';
+    const valid = (date) => { const d = namedDate(date); if (!d || d.day < 1)
+        return false; const phase = clock.calendar?.phases.find(p => p.name.toLowerCase() === d.phase.toLowerCase()); return d.day <= (phase?.days ?? 45); };
+    if (!valid(injury.sustainedDate) || !valid(clock.date))
+        return 'Calendar requires review';
+    const days = fantasyDayDistance(injury.sustainedDate, clock.date, clock.calendar);
+    if (days === null)
+        return 'Calendar requires review';
+    const elapsed = days * 4 + injuryQuarters.indexOf(clock.quarter) - injuryQuarters.indexOf(injury.sustainedQuarter);
+    if (elapsed < 0)
+        return 'Clock precedes injury · review required';
+    const total = duration * (injury.unit === 'days' ? 4 : injury.unit === 'hours' ? 1 / 6 : 1);
+    const remaining = total - elapsed;
+    if (remaining <= 0)
+        return 'Healing due · confirm recovery';
+    const remainingHours = remaining * 6, remainingDays = remainingHours / 24;
+    const text = remainingHours >= 24 ? `${Number(remainingDays.toFixed(2))} days` : `${Number(remainingHours.toFixed(2))} hours`;
+    const dueQuarters = injuryQuarters.indexOf(injury.sustainedQuarter) + total;
+    const date = Number.isInteger(dueQuarters) ? resolveNamedDate(injury.sustainedDate, clock.calendar, Math.floor(dueQuarters / 4)) : null;
+    return `${text} remaining${date ? ' · due ' + date + ' ' + injuryQuarters[dueQuarters % 4] : ''}`;
+}
+
+app.addInjuryRecord=function(){
+ this.injuries??=[];if(this.injuries.length>=100)return;
+ this.injuries.push({id:crypto.randomUUID(),name:'',sustainedDate:'',sustainedQuarter:'',duration:'',unit:'review',permanent:false,status:'active',source:'',treatment:'',recordedAt:new Date().toISOString()});
+ this.renderInjuries();this.saveState();
+ document.querySelector('#injury-records article:last-child input')?.focus();
+};
+app.renderInjuryProgress=function(){
+ for(const injury of this.injuries??[]){
+  const card=document.getElementById('injury-'+injury.id);if(!card)continue;
+  card.querySelector('summary').textContent=injury.name||'Unnamed injury';
+  const progress=injuryProgress(injury,this.injuryClock);
+  const date=injury.sustainedDate?'Sustained '+injury.sustainedDate+' '+(injury.sustainedQuarter||'quarter unknown')+' · ':progress==='Date unknown'?'':'Date unknown · ';
+  card.querySelector('.injury-progress').textContent=date+progress;
+ }
+ document.getElementById('injury-legacy-status').textContent=document.getElementById('critical-injuries').value.trim()?'Existing notes retained · Date unknown unless recorded below.':'';
+};
+app.renderInjuries=function(){
+ const list=document.getElementById('injury-records');list.replaceChildren();
+ for(const injury of this.injuries??[]){
+  const card=document.createElement('article');card.className='injury-record';card.id='injury-'+injury.id;
+  const details=document.createElement('details');details.open=!injury.name;details.append(document.createElement('summary'));card.append(details);const progress=document.createElement('p');progress.className='injury-progress';progress.setAttribute('role','status');card.append(progress);
+  const field=(key,label,options)=>{
+   const wrapper=document.createElement('label');wrapper.textContent=label;
+   const input=document.createElement(options?'select':key==='source'||key==='treatment'?'textarea':'input');
+   input.setAttribute('aria-label',label);if(options)for(const [value,text] of options){const option=document.createElement('option');option.value=value;option.textContent=text;input.append(option)}
+   if(key==='permanent'){input.type='checkbox';input.checked=injury[key]}else input.value=injury[key];
+   if(key==='duration'){input.inputMode='decimal';input.placeholder='Unknown until established'}
+   if(key==='sustainedDate')input.placeholder='e.g. 13th Springrise, 1165';
+   if(!options&&key!=='permanent')input.maxLength=key==='name'?300:key==='sustainedDate'?160:key==='duration'?30:1600;
+   input.onchange=()=>{if(key==='status'&&input.value==='healed'&&!confirm('Confirm this injury has healed? This records your ruling without changing attributes, effects or lethal deadlines.')){input.value=injury.status;return}injury[key]=key==='permanent'?input.checked:input.value;app.renderInjuryProgress();app.saveState()};
+   wrapper.append(input);details.append(wrapper);
+  };
+  field('name','Injury name / reference');field('sustainedDate','Sustained date');
+  field('sustainedQuarter','Sustained quarter',[['','Unknown'],...['Morning','Day','Evening','Night'].map(q=>[q,q])]);
+  field('duration','Established healing duration');field('unit','Healing unit',[['review','Requires review'],['days','Days'],['hours','Hours'],['quarter_days','Quarter-days']]);
+  field('permanent','Permanent injury');field('status','Recovery status',[['active','Active — effects remain'],['healed','Healing confirmed manually']]);
+  field('source','Rule / roll / ruling reference');field('treatment','Treatment / correction notes');
+  const receipt=document.createElement('p');receipt.className='save-note';receipt.textContent='Record created '+injury.recordedAt+' (real time; not the injury date).';details.append(receipt);list.append(card);
+ }
+ this.renderInjuryProgress();
+};
+document.getElementById('critical-injuries').addEventListener('input',()=>app.renderInjuryProgress());
+
+// END GENERATED INJURIES
+
     app.init();
     document.addEventListener('input', event => {
         if (!event.target.closest('#dice-panel') && event.target.matches('input:not([type=file]), textarea')) app.saveState();
