@@ -1,3 +1,4 @@
+import {pathOfForest} from '../quarter-resolution/talents';
 import {activitySeason,campaignSeason} from '../../lib/campaign-calendar';
 import {sameDay} from '../../lib/calendar';
 import {weatherModifier} from '../../lib/weather-context';
@@ -103,7 +104,7 @@ export function afterActivityDice(repo: SqliteCampaignRepository, id: string, s:
     if (!e || !a)
         throw Error('This activity result no longer has its original request.');
     a.request!.rollId = card.id;
-    if (card.result.successes === 0 && canPush(card) && !card.result.pushed) {
+    if (card.result.successes === 0 && ((canPush(card) && !card.result.pushed)||['forage','hunt-search'].includes(a.request!.context.step)&&!!pathOfForest(repo,id,s,a.characterId,a.activity))) {
         a.status = 'Awaiting Push/keep decision';
         a.summary = 'Saved ' + a.request!.skill + ' failed. Push legally from the sheet or keep this exact result.';
         return;
@@ -115,7 +116,7 @@ export function historicalEligibility(s: Session, request: ActivityRequest, card
         return 'Different character';
     if (card.metadata.utility || card.result.skill.toLowerCase() !== request.skill.toLowerCase())
         return 'Different skill or procedure';
-    if (card.creatureContext || card.combatContext || card.procedureContext || card.journeyContext || card.narrativeRequestId || card.activityContext)
+    if (card.quarterRequestId || card.creatureContext || card.combatContext || card.procedureContext || card.journeyContext || card.narrativeRequestId || card.activityContext)
         return 'Already bound to another procedure';
     if (card.status !== 'Pending')
         return 'Already finalized';

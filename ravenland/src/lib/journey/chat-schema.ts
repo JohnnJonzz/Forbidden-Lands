@@ -1,3 +1,4 @@
+import {assistedSubmissionSchema} from '../quarter-resolution';
 import {routeReviewSchema,expeditionUpdateFields} from './expedition';
 import {travelIntentSchema,sceneEstimateSchema,rumorSchema} from './workflow';
 import {z} from 'zod';
@@ -12,14 +13,14 @@ const env={campaignId:z.string().uuid(),revision:z.number().int().positive(),act
 export const chatCommandSchema=z.discriminatedUnion('type',[
  z.object({...env,type:z.literal('quarter-chat-plan-route'),entryId:z.string().uuid(),review:routeReviewSchema,confirmed:z.literal(true)}).strict(),
  z.object({...env,type:z.literal('quarter-chat-enter-hex'),entryId:z.string().uuid(),routeId:z.string().uuid(),step:z.number().int().min(0).max(2),navigationRollId:z.string().uuid().nullable(),adjudication:text.trim().min(1),confirmed:z.literal(true)}).strict(),
- z.object({...env,type:z.literal('quarter-chat-expedition-review'),entryId:z.string().uuid(),kind:z.enum(['encounter','interruption','resume','mishap']),result:z.enum(['none','encounter','resolved','stop','resume','adjudicate']),reason:text.trim().min(1),encounterId:z.string().nullable(),rollId:z.string().uuid().nullable(),navigationRollId:z.string().uuid().nullable(),confirmed:z.literal(true)}).strict(),
+ z.object({...env,type:z.literal('quarter-chat-expedition-review'),entryId:z.string().uuid(),kind:z.enum(['encounter','interruption','resume','mishap']),result:z.enum(['none','encounter','resolved','waived','skipped','scene-resolved','stop','resume','adjudicate']),reason:text.trim().min(1),encounterId:z.string().nullable(),rollId:z.string().uuid().nullable(),navigationRollId:z.string().uuid().nullable(),confirmed:z.literal(true)}).strict(),
  z.object({...env,type:z.literal('quarter-chat-intent'),intent:travelIntentSchema,confirmed:z.literal(true)}).strict(),
  z.object({...env,type:z.literal('quarter-chat-estimate'),estimate:sceneEstimateSchema,confirmed:z.literal(true)}).strict(),
  z.object({...env,type:z.literal('quarter-chat-rumor'),rumor:rumorSchema,confirmed:z.literal(true)}).strict(),
  z.object({...env,type:z.literal('quarter-chat-prepare'),intentId:z.string().uuid(),destination:z.string().min(1).max(50),confirmed:z.literal(true)}).strict(),
  z.object({...env,type:z.literal('quarter-chat-request')}).strict(),
  z.object({...env,type:z.literal('quarter-chat-draft'),formId:id,draft:chatDraftSchema}).strict(),
- z.object({...env,type:z.literal('quarter-chat-submit'),routineActivities:z.literal(true).optional(),navigationNotRequired:z.literal(true).optional(),watchNotRequired:z.literal(true).optional(),formId:id,actorId:id,draft:chatDraftSchema}).strict(),
+ z.object({...env,type:z.literal('quarter-chat-submit'),assisted:assistedSubmissionSchema.optional(),routineActivities:z.literal(true).optional(),navigationNotRequired:z.literal(true).optional(),watchNotRequired:z.literal(true).optional(),formId:id,actorId:id,draft:chatDraftSchema}).strict(),
  z.object({...env,type:z.enum(['quarter-chat-question','quarter-chat-response','quarter-chat-narrative']),entryId:z.string().uuid(),text:text.trim().min(1)}).strict(),
  z.object({...env,type:z.literal('quarter-chat-propose'),entryId:z.string().uuid(),resolution:resolutionSchema}).strict(),
  z.object({...env,type:z.literal('quarter-chat-complete'),entryId:z.string().uuid(),actorId:id,resolution:resolutionSchema,confirmed:z.literal(true)}).strict()

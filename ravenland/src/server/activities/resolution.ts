@@ -1,3 +1,4 @@
+import {outcomeFor} from '../../lib/quarter-resolution';
 import {projectCamp} from '../continuity/camps';
 import { randomInt } from 'node:crypto';
 import type { Session } from '../../lib/types';
@@ -62,7 +63,7 @@ export function huntingKillRequest(s: Session, entryId: string, a: RoutineActivi
     a.summary = 'Found ' + prey.name + '. Resolve ' + a.request.skill + ' (' + prey.difficulty + ' prey modifier) to obtain actual Meat/Pelts.';
 }
 export function resolveActivityRoll(repo: SqliteCampaignRepository, id: string, s: Session, entryId: string, a: RoutineActivity, card: PendingDice) {
-    const step = a.request!.context.step, utility = card.metadata.utility, success = card.result.successes;
+    const step = a.request!.context.step, utility = card.metadata.utility, success = outcomeFor(s,entryId,a.characterId,card.id,a.request!.context.requestId)?.finalSuccesses??card.result.successes;
     a.rollIds.push(card.id);
     card.status = 'Submitted';
     card.submittedAt = new Date().toISOString();

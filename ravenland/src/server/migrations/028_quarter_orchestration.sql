@@ -1,0 +1,3 @@
+CREATE TABLE quarter_resolution_flows(campaign_id TEXT NOT NULL REFERENCES campaigns(id) ON DELETE CASCADE,entry_id TEXT NOT NULL,state_json TEXT NOT NULL,PRIMARY KEY(campaign_id,entry_id));
+CREATE TABLE quarter_encounter_checks(campaign_id TEXT NOT NULL REFERENCES campaigns(id) ON DELETE CASCADE,id TEXT NOT NULL,entry_id TEXT NOT NULL,state_json TEXT NOT NULL,PRIMARY KEY(campaign_id,id));
+CREATE TABLE quarter_resolution_commands(campaign_id TEXT NOT NULL REFERENCES campaigns(id) ON DELETE CASCADE,request_id TEXT NOT NULL,fingerprint TEXT NOT NULL,result_json TEXT NOT NULL,PRIMARY KEY(campaign_id,request_id));

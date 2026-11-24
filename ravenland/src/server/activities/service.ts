@@ -26,7 +26,7 @@ export function executeActivity(repo: SqliteCampaignRepository, raw: unknown, pr
     const { revision: expectedRevision, ...identity } = c;
     void expectedRevision;
     const db = repo.db, hash = createHash('sha256').update(JSON.stringify(identity)).digest('hex');
-    db.exec('BEGIN IMMEDIATE');
+    const ownTransaction=!db.isTransaction;if(ownTransaction)db.exec('BEGIN IMMEDIATE');
     try {
         const record = repo.get(c.campaignId);
         if (!record)
@@ -35,7 +35,7 @@ export function executeActivity(repo: SqliteCampaignRepository, raw: unknown, pr
         if (prior) {
             if (prior.fingerprint !== hash)
                 throw Error('Activity request reused with different choices.');
-            db.exec('COMMIT');
+            if(ownTransaction)db.exec('COMMIT');
             return { record, replayed: true };
         }
         if (record.revision !== c.revision)
@@ -263,7 +263,7 @@ export function executeActivity(repo: SqliteCampaignRepository, raw: unknown, pr
             const result = executeJourney({ type: 'quarter-chat-complete', campaignId: record.id, revision: updated.revision, actionId: c.requestId, entryId: entry.entryId, actorId: c.actorId, resolution: prepared, confirmed: true }, repo, { routineCompletion: true,previousSession });
             entry.completed = true;
             db.prepare('UPDATE journey_actions SET fingerprint=? WHERE campaign_id=? AND action_id=?').run(hash, record.id, c.requestId);
-            db.exec('COMMIT');
+            if(ownTransaction)db.exec('COMMIT');
             return { record: result.record, replayed: false };
         }
         else {
@@ -434,11 +434,11 @@ export function executeActivity(repo: SqliteCampaignRepository, raw: unknown, pr
         s.journal.push({ id: c.requestId + ':activity', title: 'Activity: ' + c.operation, text });
         const updated = repo.update(record.id, record.revision, s, { activitiesValidated: true, workflowValidated: true });
         db.prepare('INSERT INTO journey_actions VALUES (?,?,?,?)').run(record.id, c.requestId, hash, new Date().toISOString());
-        db.exec('COMMIT');
+        if(ownTransaction)db.exec('COMMIT');
         return { record: updated, replayed: false, text };
     }
     catch (e) {
-        db.exec('ROLLBACK');
+        if(ownTransaction)db.exec('ROLLBACK');
         throw e;
     }
 }

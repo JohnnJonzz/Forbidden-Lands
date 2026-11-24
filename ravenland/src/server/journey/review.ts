@@ -1,3 +1,4 @@
+import {pathfinder} from '../quarter-resolution/talents';
 import {expeditionFor,navigationContext} from '../../lib/journey/expedition';
 import type {SqliteCampaignRepository} from '../sqlite';
 import {publicQuarterPacket} from '../../lib/journey/chat-engine';
@@ -7,15 +8,16 @@ import {combatPages,citation} from '../combat/sources';
 import {SqliteMapStore} from '../map/store';
 import {AIError} from '../ai/config';
 const attributes=['strength','agility','wits','empathy'] as const;
-export function restReview(s:Session,entryId:string){
- const view=publicQuarterPacket(s,entryId),resting=view.entry.assignments.filter(a=>['Rest','Sleep'].includes(a.activity));
+export function restReview(s:Session,entryId:string,additional:string[]=[]){
+ const view=publicQuarterPacket(s,entryId),resting=view.entry.assignments.filter(a=>['Rest','Sleep'].includes(a.activity)||additional.includes(a.characterId)&&a.activity==='Lead the Way');
  return resting.map(a=>{const ch=s.characters.find(c=>c.id===a.characterId);if(!ch)return {characterId:a.characterId,name:a.characterName,missing:['Character no longer in party'],changes:[]};const sheet=sheetFor(ch),missing:string[]=[],changes:{attribute:string;before:number;after:number}[]=[];
  for(const attr of attributes){const current=sheet[`attr-${attr}`],base=sheet[`attr-${attr}-regular`];if(typeof current!=='string'||typeof base!=='string'||!/^\d+$/.test(current)||!/^\d+$/.test(base)||Number(current)>Number(base))missing.push('Review '+attr+' current/base values');else if(Number(current)===0)missing.push('Broken '+attr+' requires its recovery procedure before quarter-day Rest recovery');else if(Number(current)<Number(base))changes.push({attribute:attr,before:Number(current),after:Number(base)});}
  for(const [key,value] of Object.entries(sheet))if(key.startsWith('cond-')&&value===true)missing.push('Review active '+key.slice(5)+' condition; its recovery restrictions are not inferred');
  return {characterId:ch.id,name:ch.name,missing,changes};});
 }
 export function applyReviewedRest(repo:SqliteCampaignRepository,id:string,s:Session,entryId:string){
- const review=restReview(s,entryId);if(!review.length)throw new AIError('rest_activity','This activity contains no Rest or Sleep assignment; recovery is not applicable.',409);if(review.some(r=>r.missing.length))throw new AIError('rest_review',review.flatMap(r=>r.missing.map(m=>r.name+': '+m)).join('; '),409);
+ const additional=s.dayTracker?.find(e=>e.id===entryId)?.assignments.filter(a=>a.activity==='Lead the Way'&&pathfinder(repo,id,s,a.characterId).rank>=2).map(a=>a.characterId)??[];
+ const review=restReview(s,entryId,additional);if(!review.length)throw new AIError('rest_activity','This activity contains no Rest or Sleep assignment; recovery is not applicable.',409);if(review.some(r=>r.missing.length))throw new AIError('rest_review',review.flatMap(r=>r.missing.map(m=>r.name+': '+m)).join('; '),409);
  const house=repo.db.prepare("SELECT override_scope FROM applicable_curated_rules WHERE campaign_id=? AND document_type='House Rule'").all(id).some(r=>/rest|sleep|recover|heal|journey/i.test(String(r.override_scope)));
  const pdf=repo.db.prepare("SELECT 1 FROM source_chunks c JOIN applicable_source_documents d ON d.id=c.document_id WHERE d.campaign_id=? AND d.category='House Rules' AND (lower(c.text) LIKE '%recovery%' OR lower(c.text) LIKE '%rest%') LIMIT 1").get(id);
  if(house||pdf)throw new AIError('rest_house_rule','Review the applicable Rest/recovery house rule before automatic recovery.',409);

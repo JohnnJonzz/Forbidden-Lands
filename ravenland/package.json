@@ -104,7 +104,10 @@
     "test:sheet-layout": "node tests/sheet-layout-browser.cjs",
     "test:calendar": "tsx --test tests/calendar.test.ts tests/injury-timeline.test.ts",
     "test:calendar:real": "tsx --test tests/calendar-sourcebooks.integration.ts",
-    "test:calendar:browser": "node --import tsx tests/calendar-browser.cjs"
+    "test:calendar:browser": "node --import tsx tests/calendar-browser.cjs",
+    "test:quarter-orchestration": "tsx --test tests/quarter-orchestration.test.ts",
+    "test:quarter-orchestration:real": "tsx --test tests/quarter-orchestration.integration.ts",
+    "test:quarter-orchestration:browser": "node --import tsx tests/quarter-orchestration-browser.cjs"
   },
   "dependencies": {
     "exceljs": "^4.4.0",
