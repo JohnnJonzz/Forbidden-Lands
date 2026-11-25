@@ -1,3 +1,4 @@
+import {isPhase7Campaign} from './gameplay/boundary';
 import {momentDistance} from '../lib/campaign-calendar';
 import {departCamps} from '../lib/campsites';
 import {observeClockChange} from './time/service';
@@ -33,6 +34,11 @@ export class SqliteCampaignRepository implements CampaignRepository {
  create(session:Session){const data=sessionSchema.parse(session);this.normalizeExploration(data);const id=randomUUID(),now=new Date().toISOString(),own=!this.db.isTransaction;for(const camp of data.campsites??[]){const sourceCampaign=camp.campaignId;camp.campaignId=id;camp.id=randomUUID();camp.revision++;camp.audit.push({eventId:'copy:'+id,kind:'campaign_copy',date:data.campaign.date,quarter:data.campaign.quarter,reason:'Independent imported/test campaign snapshot from '+sourceCampaign+'. Original source history is preserved.'});}if(own)this.db.exec('BEGIN IMMEDIATE');try{this.db.prepare('INSERT INTO campaigns VALUES (?,1,?,?,?)').run(id,JSON.stringify(data),now,now);for(const character of data.characters){if(character.portraitId)this.db.prepare('INSERT OR IGNORE INTO campaign_images(campaign_id,image_id,name,category) SELECT ?,image_id,name,category FROM campaign_images WHERE image_id=? LIMIT 1').run(id,character.portraitId)}const record=this.select(id);if(own)this.db.exec('COMMIT');return record}catch(e){if(own)this.db.exec('ROLLBACK');throw e}}
  update(id:string,revision:number,session:Session,options?:{orchestrationValidated?:boolean;calendarValidated?:boolean;environmentValidated?:boolean;activitiesValidated?:boolean;workflowValidated?:boolean;explorationValidated?:boolean;locationsValidated?:boolean;elapsedQuarters?:number;timeEventId?:string}){
   const data=sessionSchema.parse(session),previous=this.get(id);
+  if(previous&&isPhase7Campaign(this,id)){
+   const fields=['chatJourney','dayTracker','dayCorrections','quarterDays','journey','activityState','activityOutcomes','dice','diceGroups','calendarState','environment','campsites','exploration'] as const;
+   if(fields.some(k=>JSON.stringify(data[k])!==JSON.stringify(previous.session[k]))||['date','quarter','hex','location','terrain','weather'].some(k=>data.campaign[k as keyof typeof data.campaign]!==previous.session.campaign[k as keyof typeof data.campaign]))throw new ConflictError('Phase 7 owns this campaign activity. Legacy workflow, dice, clock and location changes are blocked in 7.0A.');
+   if(JSON.stringify(data.characters.map(c=>({id:c.id,name:c.name})))!==JSON.stringify(previous.session.characters.map(c=>({id:c.id,name:c.name}))))throw new ConflictError('Party membership changes need a Phase 7 plan review. Character sheet fields remain editable.');
+  }
   if(data.campsites?.some(c=>c.campaignId!==id))throw new ConflictError('Campsite campaign association does not match this campaign.');
   if(previous&&data.campaign.hex!==previous.session.campaign.hex&&!this.db.prepare('SELECT 1 FROM geography_hexes WHERE coordinate=?').get(data.campaign.hex))throw new ConflictError('Unknown canonical hex on the configured map.');
   if(!previous||previous.revision!==revision)throw new ConflictError('This campaign changed in another tab. Export your local changes, then reload the campaign.');

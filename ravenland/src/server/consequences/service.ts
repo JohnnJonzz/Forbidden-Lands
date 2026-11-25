@@ -1,3 +1,4 @@
+import {assertLegacyGameplayAllowed} from '../gameplay/boundary';
 import {assertCurrentRequest} from '../request-epoch';
 import {advanceTime} from '../time/service';
 import {makeRuling,rulingHash} from '../rulings/store';
@@ -13,7 +14,7 @@ import {newConsequence,readConsequences,saveConsequence,visibleConsequence} from
 import {nextConsequenceStep,syncConsequences,injurySource} from './registry';
 import {treatmentPool,applyTreatmentResult} from './treatment';
 const fingerprint=(value:unknown)=>createHash('sha256').update(JSON.stringify(value)).digest('hex');
-export function syncConsequenceRecords(repo:SqliteCampaignRepository,campaignId:string){const own=!repo.db.isTransaction;if(own)repo.db.exec('BEGIN IMMEDIATE');try{syncConsequences(repo,campaignId);if(own)repo.db.exec('COMMIT')}catch(error){if(own)repo.db.exec('ROLLBACK');throw error}}
+export function syncConsequenceRecords(repo:SqliteCampaignRepository,campaignId:string){assertLegacyGameplayAllowed(repo,campaignId);const own=!repo.db.isTransaction;if(own)repo.db.exec('BEGIN IMMEDIATE');try{syncConsequences(repo,campaignId);if(own)repo.db.exec('COMMIT')}catch(error){if(own)repo.db.exec('ROLLBACK');throw error}}
 export function findConsequence(repo:SqliteCampaignRepository,campaignId:string,id:string,principal:CharacterPrincipal|null){const c=readConsequences(repo,campaignId).find(c=>c.id===id);if(!c||!visibleConsequence(c,principal))throw new AIError('consequence_missing','This consequence is unavailable to this player.',404);return c;}
 function localController(principal:CharacterPrincipal|null){if(principal?.mode!=='trusted-local')throw new AIError('consequence_controller','This adjudication requires the trusted local controller until a hosted GM role is implemented.',403);}
 export function validateNarrativeSource(repo:SqliteCampaignRepository,campaignId:string,source:Consequence['source']){

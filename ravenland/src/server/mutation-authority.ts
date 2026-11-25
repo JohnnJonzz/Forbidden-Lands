@@ -31,6 +31,7 @@ export function requireControllerRequest(
   return p!;
 }
 const playerPaths = new Set([
+  "/api/gameplay",
   "/api/gm",
   "/api/dice",
   "/api/characters",
@@ -51,8 +52,11 @@ const playerPaths = new Set([
 // Fail closed for every mutating API path, including newly added routes.
 export function authorizeMutationRequest(request: Request) {
   if (["GET", "HEAD", "OPTIONS"].includes(request.method)) return;
-  if (isTrustedLocalRequest(request)) return;
   const path = new URL(request.url).pathname;
+  // This explicit launcher serves a synthetic development database only. Until later
+  // milestones wire their services, no legacy administrative endpoint may start gameplay.
+  if(process.env.RAVENLAND_PHASE7_PROFILE && !['/api/gameplay','/api/player-access','/api/characters','/api/images'].includes(path))throw new AIError('phase7_boundary','This isolated 7.0A profile supports planning and character editing only. Legacy gameplay mutations are disabled.',409);
+  if (isTrustedLocalRequest(request)) return;
   if (path === "/api/player-access") return;
   if (playerPaths.has(path)) {
     if (!requestPrincipal(request))

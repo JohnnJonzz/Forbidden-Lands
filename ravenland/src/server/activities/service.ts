@@ -1,3 +1,4 @@
+import {assertLegacyGameplayAllowed} from '../gameplay/boundary';
 import {checkFor} from '../quarter-resolution/director';
 import {mishapBlockers} from '../quarter-resolution/recovery';
 import {activitySeason,campaignSeason} from '../../lib/campaign-calendar';
@@ -23,7 +24,7 @@ import { executeJourney } from '../journey/service';
 export const activityCommand = z.object({ campaignId: z.string().uuid(), revision: z.number().int().positive(), requestId: z.string().uuid(), actorId: z.string(), operation: z.enum(['configure', 'prepare', 'keep', 'bind', 'prey-keep', 'prey-reroll', 'cook', 'review', 'reveal-camp', 'interrupt', 'complete', 'consume', 'resource', 'share', 'share-item', 'stock', 'unmet', 'review-need', 'cancel-consumption', 'meal-review', 'watch-threat']), assignmentId: z.string().optional(), entryId: z.string().optional(), target: z.enum(['food', 'water']).optional(), sourceId: z.string().optional(), recipientId: z.string().optional(), itemId: z.string().uuid().optional(), quantity: z.number().int().min(1).max(100).optional(), prey: z.number().int().min(1).max(6).optional(), rollId: z.string().uuid().optional(), choice: z.string().max(500).optional(), fire: z.boolean().optional(), kitchen: z.boolean().optional(), checkpoint: z.enum(['Morning', 'Day', 'Evening', 'Night']).optional(), season: z.enum(['Spring', 'Summer', 'Autumn', 'Winter']).optional(), reason: z.string().trim().max(5000).optional(), confirmed: z.literal(true) }).strict();
 export type ActivityCommand = z.infer<typeof activityCommand>;
 export function executeActivity(repo: SqliteCampaignRepository, raw: unknown, principal: CharacterPrincipal | null) {
-    const c = activityCommand.parse(raw);
+    const c = activityCommand.parse(raw);assertLegacyGameplayAllowed(repo,c.campaignId);
     requireCharacterAccess(principal, c.campaignId, c.actorId);
     const { revision: expectedRevision, ...identity } = c;
     void expectedRevision;

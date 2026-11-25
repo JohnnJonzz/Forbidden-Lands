@@ -110,7 +110,12 @@
     "test:quarter-orchestration:browser": "node --import tsx tests/quarter-orchestration-browser.cjs",
     "test:stationary-quarter": "tsx --test tests/stationary-quarter.test.ts",
     "test:stationary-quarter:real": "tsx --test tests/stationary-quarter.integration.ts",
-    "test:stationary-quarter:browser": "node --import tsx tests/stationary-quarter-browser.cjs"
+    "test:stationary-quarter:browser": "node --import tsx tests/stationary-quarter-browser.cjs",
+    "phase7:setup": "tsx scripts/phase7-setup.ts",
+    "phase7:backup": "tsx scripts/phase7-backup.ts",
+    "dev:phase7": "tsx scripts/dev-phase7.ts",
+    "test:gameplay": "tsx --test tests/gameplay.test.ts",
+    "test:gameplay:browser": "node --import tsx tests/gameplay-browser.cjs"
   },
   "dependencies": {
     "exceljs": "^4.4.0",

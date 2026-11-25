@@ -1,3 +1,4 @@
+import {assertLegacyGameplayAllowed} from '../gameplay/boundary';
 import {guardQuarterNarration} from '../quarter-resolution/narration';
 import {executeQuarterResolution} from '../quarter-resolution/service';
 import {readFlow} from '../quarter-resolution/store';
@@ -96,7 +97,7 @@ export class AIService {
   db.exec('COMMIT');return {cached:null,attempt:(prior?.attempts??0)+1,roll};
  }catch(e){db.exec('ROLLBACK');throw e}}
  private usage(campaignId:string,id:string,result:Pick<ProviderResult,'provider'|'model'|'inputTokens'|'outputTokens'>,errorCode:string|null){this.repo.db.prepare('INSERT INTO ai_usage VALUES (?,?,?,?,?,?,?,?,?,?)').run(randomUUID(),campaignId,id,result.provider,result.model,result.inputTokens,result.outputTokens,result.provider==='mock'?0:estimatedCost(result.inputTokens,result.outputTokens),errorCode,new Date().toISOString())}
- async run(raw:unknown,emit:(e:GMStreamEvent)=>void=()=>{}):Promise<AIReply>{const c=gmTurnSchema.parse(raw);const setup=genesis(this.repo,c.campaignId),replay=this.repo.db.prepare('SELECT 1 FROM genesis_receipts WHERE campaign_id=? AND request_id=?').get(c.campaignId,c.requestId);if(setup&&(setup.state.phase!=='adventure_started'||replay)){const reply=await genesisTurn(this.repo,c,this.principal,serverAIConfig().provider==='openai'?this.provider.genesis?.bind(this.provider):undefined);emit({type:'text',text:reply.narration});emit({type:'done',reply});return reply;}const diagnostics=new AIRequestDiagnostics(c.requestId,serverAIConfig());let claim:ReturnType<AIService['claim']>|undefined,result:ProviderResult|undefined;
+ async run(raw:unknown,emit:(e:GMStreamEvent)=>void=()=>{}):Promise<AIReply>{const c=gmTurnSchema.parse(raw);assertLegacyGameplayAllowed(this.repo,c.campaignId);const setup=genesis(this.repo,c.campaignId),replay=this.repo.db.prepare('SELECT 1 FROM genesis_receipts WHERE campaign_id=? AND request_id=?').get(c.campaignId,c.requestId);if(setup&&(setup.state.phase!=='adventure_started'||replay)){const reply=await genesisTurn(this.repo,c,this.principal,serverAIConfig().provider==='openai'?this.provider.genesis?.bind(this.provider):undefined);emit({type:'text',text:reply.narration});emit({type:'done',reply});return reply;}const diagnostics=new AIRequestDiagnostics(c.requestId,serverAIConfig());let claim:ReturnType<AIService['claim']>|undefined,result:ProviderResult|undefined;
  try{
  if(c.kind==='quarter'&&activeCombat(this.repo,c.campaignId))throw new AIError('combat_in_progress','Resolve the encounter before submitting quarter-day activities to the GM.',409);
  const manual=c.kind==='chat'?parseAttackAdjudication(c.action,playerId(c.requestId)):null;if(manual)requireCharacterAccess(this.principal,c.campaignId,c.characterId);

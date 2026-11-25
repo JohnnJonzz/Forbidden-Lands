@@ -1,3 +1,4 @@
+import {assertLegacyGameplayAllowed} from '../gameplay/boundary';
 import {eligibleWatchCards} from "./watch-evidence";
 import {avoidEncounter} from "./avoidance";
 import {mishapBlockers,reviewForagingMishap} from "./recovery";
@@ -121,6 +122,7 @@ export function executeQuarterResolution(
 ) {
   const c = quarterResolutionCommand.parse(raw),
     db = repo.db;
+  assertLegacyGameplayAllowed(repo,c.campaignId);
   requireCharacterAccess(p, c.campaignId, c.actorId);
   if (["start", "continue", "complete", "avoid"].includes(c.operation))
     controller(repo, c.campaignId, c.entryId, c.actorId, p);
