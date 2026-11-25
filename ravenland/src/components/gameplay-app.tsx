@@ -1,4 +1,6 @@
 "use client";
+import { GameplayRolls } from "./gameplay-rolls";
+import { SourcebookLibraryPanel } from "./sourcebook-library";
 import { useEffect, useState, useRef } from "react";
 import {
   stationaryActivities,
@@ -9,7 +11,7 @@ import type { gameplayView } from "@/server/gameplay/service";
 import styles from "./gameplay-app.module.css";
 type View = ReturnType<typeof gameplayView>;
 const example =
-  "Grogahx makes camp, Edrus forages, Elyanna keeps watch, and Rose rests.";
+  "Edrus makes camp, Grogahx forages, Rose keeps watch, and Elyanna rests.";
 export function GameplayApp({ campaignId }: { campaignId: string }) {
   const [view, setView] = useState<View | null>(null),
     [error, setError] = useState(""),
@@ -103,7 +105,10 @@ export function GameplayApp({ campaignId }: { campaignId: string }) {
           Ravenland Chronicles · Isolated Phase 7 development
         </p>
         <h1>The party’s next quarter</h1>
-        <p>7.0A · Stationary planning. {phase7Capability}</p>
+        <p>
+          {view?.milestone ?? "Phase 7"} · Stationary activities.{" "}
+          {phase7Capability}
+        </p>
         <a href="/">Reload saved campaign</a>
       </header>
       {error && (
@@ -232,6 +237,17 @@ export function GameplayApp({ campaignId }: { campaignId: string }) {
               </form>
             </details>
           </section>
+          {view.rolls && view.activity && (
+            <GameplayRolls
+              campaignId={campaignId}
+              activity={view.activity}
+              party={view.party}
+              actorId={view.actorId}
+              isTableGM={view.isTableGM}
+              initial={view.rolls}
+              onChanged={() => void load()}
+            />
+          )}
           <aside>
             <section
               className={styles.panel}
@@ -281,12 +297,24 @@ export function GameplayApp({ campaignId }: { campaignId: string }) {
                 <p key={i}>{b}</p>
               ))}
               <p>
-                No roll has been requested. No activity is mechanically
-                resolved. Time has not advanced.
+                {view.rolls
+                  ? "Rolls and decisions appear in Pending Rolls. Activity consequences remain unapplied; time has not advanced."
+                  : "No roll has been requested. No activity is mechanically resolved. Time has not advanced."}
               </p>
             </section>
           </aside>
         </div>
+      )}
+      {view?.rolls && view.isTableGM && (
+        <details className={styles.panel}>
+          <summary>Existing Rules Library administration</summary>
+          <p>
+            Use the existing private Handbook already indexed for this profile.
+            This panel retains the application’s separate GM administration
+            token. Upgrading never uploads, moves or copies sourcebook files.
+          </p>
+          <SourcebookLibraryPanel campaignId={campaignId} />
+        </details>
       )}
     </main>
   );

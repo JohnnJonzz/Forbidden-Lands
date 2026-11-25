@@ -88,7 +88,7 @@ export const gameplayCommandSchema = z.discriminatedUnion("type", [
 export type GameplayCommand = z.infer<typeof gameplayCommandSchema>;
 export const phase7Baseline = "41a274aeb15e66aeb86c7eff3f4a8322084fa15d";
 export const phase7Capability =
-  "Roll resolution arrives in 7.0B; mechanical completion and time advancement are not enabled in 7.0A.";
+  "Quarter-Day completion is not enabled until 7.0C. Mechanical results are determined separately from durable activity consequences.";
 
 export const gameplayAnswerSchema = z
   .object({

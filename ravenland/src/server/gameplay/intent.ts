@@ -24,7 +24,7 @@ export function interpretStationaryPlan(
       assignments: previous,
       recognized: false,
       question:
-        "7.0A supports stationary planning only. Travel, resolution, exceptional actions and completion are not enabled; no state or time has changed.",
+        "This conversation accepts stationary plans. Travel, exceptional actions and Quarter-Day completion are not enabled here. Use Pending Rolls for dice in upgraded profiles. No time has changed.",
     };
   const mentioned = new Set<string>(),
     found = new Map(previous.map((a) => [a.characterId, a])),

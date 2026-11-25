@@ -10,7 +10,7 @@ export function countSuccesses(r:StructuredRoll){return Math.max(0,r.attribute.f
 export function hasEligibleDice(r:StructuredRoll){return r.attribute.some(v=>v>1&&v<6)||r.skillDice.some(v=>v<6)||r.gear.some(v=>v>1&&v<6)||r.artifacts.some(d=>d.value>1&&d.value<6)}
 // Skill ones are reported for reference, but never cause push damage or Willpower.
 export function baneCounts(r:StructuredRoll){const attribute=r.attribute.filter(v=>v===1).length,skill=r.skillDice.filter(v=>v===1).length,gear=r.gear.filter(v=>v===1).length;return {attribute,skill,gear,total:attribute+skill+gear}}
-export function canPush(r:PendingDice){return !(r.procedureContext?.step==='treatment'&&r.result.successes>0)&&r.status==='Pending'&&!r.result.pushed&&!r.metadata.isArmor&&!r.metadata.utility&&hasEligibleDice(r.result)}
+export function canPush(r:PendingDice){return (!r.phase7||r.phase7.pushAllowed===true)&&!(r.procedureContext?.step==='treatment'&&r.result.successes>0)&&r.status==='Pending'&&!r.result.pushed&&!r.metadata.isArmor&&!r.metadata.utility&&hasEligibleDice(r.result)}
 export function applyDiceCommand(input:Session,c:DiceCommand,geo:JourneyGeography,now:string,die:(sides:number)=>number):Session{
  let s=structuredClone(input);s.dice??=[];
  if(c.type==='group-coordinator'){

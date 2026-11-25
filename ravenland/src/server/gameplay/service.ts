@@ -1,3 +1,6 @@
+import { ensureRollQueue } from "./roll-store";
+import { rollQueueView } from "./roll-engine";
+import { hasRollQueue } from "./upgrade";
 import { randomUUID, createHash } from "node:crypto";
 import type { SqliteCampaignRepository } from "../sqlite";
 import type { CharacterPrincipal } from "../character-access";
@@ -88,8 +91,10 @@ export function gameplayView(
       elapsedQuarters: s.calendarState?.elapsedQuarters ?? null,
     },
     stale = !!state && hash(state.clockRef) !== hash(clock);
+  const queue = rollQueueView(repo, id);
   return {
-    milestone: "7.0A" as const,
+    milestone: hasRollQueue(repo) ? "7.0B" : "7.0A",
+    rolls: queue,
     campaignId: id,
     campaignRevision: r.revision,
     activity: state,
@@ -115,9 +120,16 @@ export function gameplayView(
       ? [
           "The authoritative clock changed outside this plan. This activity cannot be continued or replayed.",
         ]
-      : (state?.obligations.map((o) => o.question) ?? [
-          "Declare the party’s stationary activities or open the optional planner.",
-        ]),
+      : queue && state?.status === "planned"
+        ? [
+            ...queue.packet.outstanding.map(
+              (r) => r.review ?? r.status.replaceAll("_", " "),
+            ),
+            phase7Capability,
+          ]
+        : (state?.obligations.map((o) => o.question) ?? [
+            "Declare the party’s stationary activities or open the optional planner.",
+          ]),
     events: repo.db
       .prepare(
         "SELECT id,kind,payload_json,created_at FROM phase7_events WHERE campaign_id=? ORDER BY rowid DESC LIMIT 30",
@@ -132,7 +144,7 @@ export function gameplayView(
       })),
     capabilities: {
       planning: true,
-      dice: false,
+      dice: hasRollQueue(repo),
       completion: false,
       encounters: false,
       travel: false,
@@ -258,6 +270,7 @@ export function executeGameplay(
         activityId: current.id,
         text: "This is the same saved activity plan. " + phase7Capability,
       };
+      ensureRollQueue(repo, r.id);
       saveReceipt(answer);
       db.exec("COMMIT");
       return {
@@ -348,6 +361,7 @@ export function executeGameplay(
       principal!.playerId,
       now,
     );
+    ensureRollQueue(repo, r.id);
     saveReceipt(answer);
     db.exec("COMMIT");
     return {

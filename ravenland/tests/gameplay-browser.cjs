@@ -196,7 +196,7 @@ const { createSyntheticProfile } = require("../scripts/phase7-setup.ts"),
       return { status: r.status, body: await r.json() };
     });
     assert.equal(denied.status, 409);
-    assert.match(denied.body.error, /7.0A/);
+    assert.match(denied.body.error, /Phase 7/);
     const output =
       process.env.RAVENLAND_BROWSER_ARTIFACT_DIR ||
       path.join(folder, "screenshots");

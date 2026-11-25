@@ -115,7 +115,10 @@
     "phase7:backup": "tsx scripts/phase7-backup.ts",
     "dev:phase7": "tsx scripts/dev-phase7.ts",
     "test:gameplay": "tsx --test tests/gameplay.test.ts",
-    "test:gameplay:browser": "node --import tsx tests/gameplay-browser.cjs"
+    "test:gameplay:browser": "node --import tsx tests/gameplay-browser.cjs",
+    "phase7:upgrade": "tsx scripts/phase7-upgrade.ts",
+    "test:gameplay-rolls": "tsx --test tests/gameplay-rolls.test.ts tests/gameplay-rolls.integration.ts",
+    "test:gameplay-rolls:browser": "node --import tsx tests/gameplay-rolls-browser.cjs"
   },
   "dependencies": {
     "exceljs": "^4.4.0",
