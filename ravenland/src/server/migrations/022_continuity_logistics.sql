@@ -1,0 +1,4 @@
+CREATE TABLE campaign_arrangements(campaign_id TEXT NOT NULL REFERENCES campaigns(id),id TEXT NOT NULL,status TEXT NOT NULL,revision INTEGER NOT NULL,state_json TEXT NOT NULL,PRIMARY KEY(campaign_id,id));
+CREATE TABLE campaign_stocks(campaign_id TEXT NOT NULL REFERENCES campaigns(id),id TEXT NOT NULL,revision INTEGER NOT NULL,state_json TEXT NOT NULL,PRIMARY KEY(campaign_id,id));
+CREATE TABLE logistics_receipts(campaign_id TEXT NOT NULL REFERENCES campaigns(id),request_id TEXT NOT NULL,fingerprint TEXT NOT NULL,result_json TEXT NOT NULL,PRIMARY KEY(campaign_id,request_id));
+CREATE TABLE encumbrance_checks(campaign_id TEXT NOT NULL REFERENCES campaigns(id),roll_id TEXT NOT NULL,character_id TEXT NOT NULL,scope TEXT NOT NULL,fingerprint TEXT NOT NULL,permitted INTEGER NOT NULL,consumed_by TEXT,result_json TEXT NOT NULL,PRIMARY KEY(campaign_id,roll_id));

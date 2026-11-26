@@ -1,0 +1,131 @@
+// Generated from character-rules.json. Edit the root JSON, not this file.
+export const characterRegistry = {
+  "attributes": [
+    {
+      "id": "strength",
+      "name": "Strength",
+      "origin": "official",
+      "regularMinimum": 1,
+      "maximum": 6
+    },
+    {
+      "id": "agility",
+      "name": "Agility",
+      "origin": "official",
+      "regularMinimum": 1,
+      "maximum": 6
+    },
+    {
+      "id": "wits",
+      "name": "Wits",
+      "origin": "official",
+      "regularMinimum": 1,
+      "maximum": 6
+    },
+    {
+      "id": "empathy",
+      "name": "Empathy",
+      "origin": "official",
+      "regularMinimum": 1,
+      "maximum": 6
+    }
+  ],
+  "skills": [
+    {
+      "id": "animalhandling",
+      "name": "Animal Handling",
+      "attribute": "empathy",
+      "origin": "official"
+    },
+    {
+      "id": "crafting",
+      "name": "Crafting",
+      "attribute": "strength",
+      "origin": "official"
+    },
+    {
+      "id": "endurance",
+      "name": "Endurance",
+      "attribute": "strength",
+      "origin": "official"
+    },
+    {
+      "id": "healing",
+      "name": "Healing",
+      "attribute": "empathy",
+      "origin": "official"
+    },
+    {
+      "id": "insight",
+      "name": "Insight",
+      "attribute": "wits",
+      "origin": "official"
+    },
+    {
+      "id": "lore",
+      "name": "Lore",
+      "attribute": "wits",
+      "origin": "official"
+    },
+    {
+      "id": "manipulation",
+      "name": "Manipulation",
+      "attribute": "empathy",
+      "origin": "official"
+    },
+    {
+      "id": "marksmanship",
+      "name": "Marksmanship",
+      "attribute": "agility",
+      "origin": "official"
+    },
+    {
+      "id": "melee",
+      "name": "Melee",
+      "attribute": "strength",
+      "origin": "official"
+    },
+    {
+      "id": "might",
+      "name": "Might",
+      "attribute": "strength",
+      "origin": "official"
+    },
+    {
+      "id": "move",
+      "name": "Move",
+      "attribute": "agility",
+      "origin": "official"
+    },
+    {
+      "id": "performance",
+      "name": "Performance",
+      "attribute": "empathy",
+      "origin": "official"
+    },
+    {
+      "id": "scouting",
+      "name": "Scouting",
+      "attribute": "wits",
+      "origin": "official"
+    },
+    {
+      "id": "sleightofhand",
+      "name": "Sleight of Hand",
+      "attribute": "agility",
+      "origin": "official"
+    },
+    {
+      "id": "stealth",
+      "name": "Stealth",
+      "attribute": "agility",
+      "origin": "official"
+    },
+    {
+      "id": "survival",
+      "name": "Survival",
+      "attribute": "wits",
+      "origin": "official"
+    }
+  ]
+} as const;

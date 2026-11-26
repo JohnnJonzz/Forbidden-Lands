@@ -1,0 +1,16 @@
+import type {CombatEncounter} from '../../lib/combat/types';
+import type {Session} from '../../lib/types';
+// Evidence is classified by its saved role, never by a single dice-count gate.
+export function recoveryEvidence(e:CombatEncounter,session?:Session){
+ const p=e.pending,related=p?e.rolls.filter(r=>r.actionId===p.id):[],cards=p?(session?.dice??[]).filter(d=>d.combatContext?.encounterId===e.id&&d.combatContext.actionId===p.id||p.playerRolls.includes(d.id)||[...Object.values(p.attackRolls),...Object.values(p.defenseRolls),...Object.values(p.armorRolls)].includes(d.id)):[];
+ const table=related.filter(r=>r.type==='table'),attacks=related.filter(r=>r.type==='attack'),defenses=related.filter(r=>r.type==='defense'),armor=related.filter(r=>r.type==='armor'),movement=related.filter(r=>r.type==='movement');
+ const referenced=new Set(p?[...p.playerRolls,...Object.values(p.attackRolls),...Object.values(p.defenseRolls),...Object.values(p.armorRolls)]:[]);
+ const otherCards=cards.filter(d=>!d.metadata?.utility&&!d.combatContext?.step&&!referenced.has(d.id)&&/^(?:Survival|Scouting)$/.test(d.result?.skill??''));
+ const bound=cards.filter(d=>!d.metadata?.utility&&!otherCards.includes(d)),utilities=cards.filter(d=>d.metadata?.utility);
+ const missing=p?[...Object.values(p.attackRolls),...Object.values(p.defenseRolls),...Object.values(p.armorRolls),...p.playerRolls].filter(id=>!e.rolls.some(r=>r.id===id)&&!session?.dice?.some(d=>d.id===id)):[];
+ const decisions=p?Object.entries(p.defenses).filter(([,d])=>d!==null).map(([characterId,defense])=>({characterId,defense})):[];
+ const results=p?.results??[],committed=attacks.length>0||defenses.length>0||armor.length>0||movement.length>0||bound.length>0||missing.length>0||results.length>0;
+ const stages:string[]=[];if(table.length)stages.push('Attack table selected');if(attacks.length||bound.some(d=>d.combatContext?.step==='attack'))stages.push('Attack dice rolled');if(decisions.length)stages.push('Defense declared');if(p&&decisions.some(d=>d.defense!=='none'&&!p.defenseRolls[d.characterId]))stages.push('Defense dice pending');if(defenses.length||bound.some(d=>d.combatContext?.step==='defense'))stages.push('Defense dice rolled');if(p?.phase==='armor_roll'||results.some(r=>r.afterArmor===null&&r.beforeArmor>0))stages.push('Armor pending');if(results.some(r=>(r.afterArmor??0)>0||r.effects.length))stages.push('Damage or consequences recorded');if(p?.phase==='adjudication')stages.push('Mandatory adjudication pending');if(p?.phase==='completed'||!p)stages.push('Action complete');if(!stages.length)stages.push('No roll committed');
+ const describe=(rows:typeof related)=>rows.map(r=>({id:r.id,actorId:r.combatantId,type:r.type,successes:r.result?.successes??null,value:r.table?.value??null}));
+ return {stages,table:describe(table),attacks:describe(attacks),defenses:describe(defenses),armor:describe(armor),movement:describe(movement),boundCards:bound.map(d=>({id:d.id,characterId:d.characterId,step:d.combatContext?.step,skill:d.result?.skill,status:d.status})),otherCards:otherCards.map(d=>({id:d.id,skill:d.result.skill,reason:'Independent navigation/scouting result; not a requested combat reaction or attack.'})),utilityCards:utilities.map(d=>({id:d.id,kind:d.metadata.utility?.kind})),decisions,missingReferences:missing,results:structuredClone(results),committed};
+}

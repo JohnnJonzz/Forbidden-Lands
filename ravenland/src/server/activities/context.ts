@@ -1,0 +1,17 @@
+import {activitySeason} from '../../lib/campaign-calendar';
+import {occupiedCamp} from '../../lib/campsites';
+import type { SqliteCampaignRepository } from '../sqlite';
+import type { Session } from '../../lib/types';
+import type { ActivityRequest } from '../../lib/activities';
+import { currentRoutine, needsSummary, dueNeeds } from '../../lib/activities';
+import { requestsFor, historicalEligibility } from './dice';
+import { activityBlockers } from './state';
+export function activityContext(s: Session) { const entry = currentRoutine(s); return { campsite:occupiedCamp(s),entry: entry ? { ...entry, activities: entry.activities.map(a => ({ characterId: a.characterId, name: s.characters.find(ch => ch.id === a.characterId)?.name, activity: a.activity, status: a.status, summary: a.summary, stage: a.stage, rollIds: a.rollIds, yield: a.yield })) } : null, recent: s.activityState?.entries.filter(e => e.completed).slice(-2).map(e => ({ date: e.date, quarter: e.quarter, hex: e.hex, activities: e.activities.map(a => ({ characterId: a.characterId, activity: a.activity, status: a.status, summary: a.summary, yield: a.yield })) })) ?? [], dailyNeeds: needsSummary(s), checkpoint: s.activityState?.settings.checkpoint ?? 'Night', policy: 'Submitted menu assignments are authoritative. A declaration is not a result. Narrate only recorded activity summaries and transactions. No camp success, food yield, consumption, recovery, Sleep or time advancement before engine commitment. Completed activity summaries, not earlier chat assignments, establish what actually happened.' }; }
+export function requestedActivityRoll(s: Session, characterId: string) {
+    const requests = requestsFor(s, characterId);
+    if (!requests.length)
+        return null;
+    const r = requests[0];
+    return { context: r.context, label: r.skill, purpose: r.utility === 'Resource' ? 'daily ' + r.resource : r.context.step, attribute: r.attribute, base: r.base, skill: r.skillDice, gear: r.gear, artifacts: r.artifactAllowed ? [0] : [], modifier: r.modifier, isArmor: false, instructions: 'For ' + r.context.step + ' on ' + r.context.date + ' ' + r.context.quarter + '. This exact saved result links automatically; no chat attachment is required. ' + r.evidence.slice(0, 1).join(''), ...(r.utility ? { utility: r.utility === 'D66' ? { kind: 'D66' as const } : r.utility === 'Resource' ? { kind: 'Resource' as const, resource: r.resource!, sides: r.sides! } : { kind: 'D6' as const, dice: r.dice } } : {}) };
+}
+export function activityStatus(repo: SqliteCampaignRepository, id: string, actorId: string) { const s = repo.get(id)!.session, entry = currentRoutine(s); return { entry, settings: {...(s.activityState?.settings ?? { checkpoint: 'Night' }),season:activitySeason(s)}, needs: needsSummary(s), due: dueNeeds(s), blockers: entry ? activityBlockers(s, entry.entryId) : [], requestedRoll: requestedActivityRoll(s, actorId), eligible: entry?.activities.flatMap(a => a.request ? [{ assignmentId: a.assignmentId, cards: (s.dice ?? []).slice(-50).map(card => ({ id: card.id, label: card.result.skill, characterId: card.characterId, reason: historicalEligibility(s, a.request!, card) })) }] : []) ?? [], provisions: s.activityState?.provisions.filter(p => p.ownerId === actorId).map(p => ({ itemId: p.itemId, kind: p.kind, quantity: s.characters.find(ch => ch.id === p.ownerId)?.sheet?.gear?.find(g => g.itemId === p.itemId)?.quantity ?? '0', date: p.date })) ?? [] }; }

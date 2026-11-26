@@ -1,0 +1,10 @@
+'use client';
+import {useEffect,useState} from 'react';
+import type {nextRequiredAction} from '@/server/next-action';
+export function NextRequiredAction({campaignId,characterId,revision,busy,onOpenCharacter,onActAs}:{campaignId:string;characterId:string;revision:number;busy:boolean;onOpenCharacter:(id:string)=>void;onActAs:(id:string)=>void}){
+ const [next,setNext]=useState<ReturnType<typeof nextRequiredAction>|null>(null);
+ useEffect(()=>{let alive=true;const refresh=()=>fetch('/api/next-action?'+new URLSearchParams({campaignId,characterId}),{cache:'no-store'}).then(r=>r.ok?r.json():null).then(v=>{if(alive)setNext(v)}).catch(()=>{});void refresh();window.addEventListener('ravenland:ai-refresh',refresh);return()=>{alive=false;window.removeEventListener('ravenland:ai-refresh',refresh)}},[campaignId,characterId,revision]);
+ if(!next)return null;
+ function open(){if(!next)return;if(next.target==='combat'||next.target==='consequence'){if(next.characterId&&next.characterId!==characterId)onActAs(next.characterId);window.dispatchEvent(new CustomEvent('ravenland:notebook-select',{detail:next.target==='combat'?1:3}));if(/Submit .* roll|Resolve Armor/.test(next.label)&&next.characterId)onOpenCharacter(next.characterId);setTimeout(()=>{document.getElementById(next.target==='combat'?'combat-panel':'notebook-panel-3')?.scrollIntoView({block:'nearest'})},50)}else if(next.target==='quarter'){const cards=[...document.querySelectorAll('.chat-quarter-card')];const card=cards.find(c=>c.querySelector('summary[aria-label="Quarter-Day Activities"]'));const details=card?.querySelector('details');if(details instanceof HTMLDetailsElement)details.open=true;card?.scrollIntoView({block:'center'})}else document.querySelector<HTMLTextAreaElement>('[aria-label="Player action"]')?.focus()}
+ return <div className="next-required-action"><button type="button" disabled={busy} onClick={open}>Continue · {next.label}</button><details><summary>Why this step?</summary><p>{next.detail}</p><small>This opens the required control; confirmation and saved dice remain with the existing procedure.</small></details></div>;
+}

@@ -1,0 +1,40 @@
+'use client';
+import {CalendarSettings} from './calendar-settings';
+import {TableGMSettings} from './table-gm';
+import {PlayerAccess} from './player-access';
+import {usePanelDraftGuard} from './rule-draft-guard';
+import {RulesLibrary} from './rules-library';
+import {SourcebookLibraryPanel} from './sourcebook-library';
+import {AIGMSettings} from './ai-settings';
+import {GMMemory} from './gm-memory';
+import {SessionRecaps} from './session-recaps';
+import {DiscoveryRegistry} from './location-editor';
+import {DayTracker} from './day-tracker';
+import { useState, type ReactNode } from 'react';
+import { BookOpen, Dice5, Plus, Save } from 'lucide-react';
+import type { Session, Panel, Campaign, JournalEntry } from '@/lib/types';
+import {JourneySettings} from './quarter-day';
+import type {JourneyInput} from '@/lib/journey/schema';
+import type {DiceAction} from './dice-card';
+import {ImageLibraryPanel} from './image-library-panel';
+import {HexMap} from './hex-map';
+import type {CampaignRecord} from '@/lib/types';
+import {CharacterPanel,DicePanel} from './character-panel';
+import type {SheetChange} from './sheet-embed';
+type Props={onOpenJournal:(id:string)=>void;selectedCharacter?:string|null;onDice:DiceAction;actorId:string;record:CampaignRecord;proposed:string;onJourney:(input:JourneyInput,actionId:string)=>Promise<void>;onPlanJourney:(coordinate:string)=>void;onSheet:SheetChange;manager:ReactNode;panel:Panel;session:Session;onCampaign:(patch:Partial<Campaign>)=>void;onJournal:(entry:JournalEntry)=>void;onReset:()=>void};
+export function PanelContent({onOpenJournal,selectedCharacter,onDice,actorId,record,proposed,onJourney,onPlanJourney,onSheet,manager,panel,session,onCampaign,onJournal,onReset}:Props){
+ const [note,setNote]=useState(''),[title,setTitle]=useState(''),[saved,setSaved]=useState(false);
+ const [description,setDescription]=useState(session.campaign.description),[tone,setTone]=useState(session.campaign.settings.tone),[houseRules,setHouseRules]=useState(session.campaign.settings.houseRules);
+ const [name,setName]=useState(session.campaign.name),[objective,setObjective]=useState(session.campaign.objective);
+ const campaignDirty=panel==='Campaign Settings'&&JSON.stringify({name,objective,description,tone,houseRules})!==JSON.stringify({name:session.campaign.name,objective:session.campaign.objective,description:session.campaign.description,tone:session.campaign.settings.tone,houseRules:session.campaign.settings.houseRules});
+ usePanelDraftGuard(panel==='Journal'&&!!(note.trim()||title.trim()),'journal entry');usePanelDraftGuard(campaignDirty,'campaign settings');
+ if(panel==='Journey Settings') return <JourneySettings record={record} onCommand={onJourney} actorId={actorId}/>;
+ if(panel==='Quarter-Day Activities') return <p>Quarter-day activities are in the main chat.</p>;
+ if(panel==='Rules Library') return <RulesLibrary key={record.id} campaignId={record.id}/>;
+ if(panel==='Image Library') return <ImageLibraryPanel campaignId={record.id}/>;
+ if(panel==='Map') return <HexMap record={record} onPlanJourney={onPlanJourney} onOpenJournal={onOpenJournal}/>;
+ if(panel==='Dice Roller') return <DicePanel dice={session.dice} onDice={onDice} campaignId={record.id} characters={session.characters} onChange={onSheet}/>;
+ if(panel==='Characters') return <CharacterPanel initialSelected={selectedCharacter} dice={session.dice} onDice={onDice} campaignId={record.id} characters={session.characters} onChange={onSheet}/>;
+ if(panel==='Journal') return <div><DayTracker session={session} actorId={actorId} onCommand={onJourney}/><details className="ai-section"><summary>GM Memory</summary><GMMemory record={record}/></details><SessionRecaps campaignId={record.id}/><DiscoveryRegistry record={record}/><p className="panel-intro">Some things should not be forgotten.</p><div className="journal-list">{session.journal.map(n=><article key={n.id} id={"journal-"+n.id} tabIndex={-1}><BookOpen size={18}/><div><h3>{n.title}</h3><p>{n.text}</p></div></article>)}</div><form className="note-form" onSubmit={e=>{e.preventDefault();if(!title.trim()||!note.trim())return;onJournal({id:crypto.randomUUID(),title:title.trim(),text:note.trim()});setTitle('');setNote('')}}><label>Entry title<input required maxLength={100} value={title} onChange={e=>setTitle(e.target.value)} placeholder="A discovery, a promise, a warning…"/></label><label>Notes<textarea aria-label="Notes" required value={note} onChange={e=>setNote(e.target.value)} placeholder="Write what the party learned…"/></label><button className="gold-button" type="submit"><Plus size={16}/>Add entry</button></form></div>;
+ return <>{manager}<TableGMSettings campaignId={record.id} characterId={session.characters[0]?.id??''}/><PlayerAccess campaignId={record.id} characters={session.characters.map(c=>({id:c.id,name:c.name}))}/><AIGMSettings campaignId={record.id}/><SourcebookLibraryPanel key={record.id} campaignId={record.id}/><form onSubmit={e=>{e.preventDefault();onCampaign({name:name.trim()||session.campaign.name,objective:objective.trim(),description,settings:{tone,houseRules}});setSaved(true)}} className="settings-form"><p className="panel-intro">Set the scene for your table.</p><label>Campaign name<input value={name} required maxLength={100} onChange={e=>{setName(e.target.value);setSaved(false)}}/></label><label>Description<textarea aria-label="Description" maxLength={5000} value={description} onChange={e=>setDescription(e.target.value)}/></label><label>Campaign tone<select aria-label="Campaign tone" value={tone} onChange={e=>setTone(e.target.value as Campaign['settings']['tone'])}><option>Grim</option><option>Balanced</option><option>Heroic</option></select></label><label>House rules<textarea aria-label="House rules" value={houseRules} maxLength={5000} onChange={e=>setHouseRules(e.target.value)}/></label><label>Journey objective<textarea aria-label="Journey objective" value={objective} onChange={e=>{setObjective(e.target.value);setSaved(false)}}/></label><button className="gold-button" type="submit"><Save size={16}/>Apply changes</button>{saved&&<p role="status" className="muted">Changes queued for saving. Check the save status in the main view.</p>}<div className="demo-notice"><strong>Local persistent campaign</strong><p>Messages, notes, party profiles, and settings are stored in SQLite on this server. GM chat uses configured AI or offline mock narration; no accounts or multiplayer yet. Do not put credentials or private GM secrets in public campaign fields.</p></div><p>Use Reset Current Campaign in the campaign library above to review the deletion preview and select a verified village.</p></form><CalendarSettings record={record} actorId={actorId} mode="starting"/></>
+}

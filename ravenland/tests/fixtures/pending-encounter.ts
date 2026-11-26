@@ -1,0 +1,2 @@
+export const pendingEncounterRequest="Edrus Braveheart is traveling along a muddy forest road near The Hollow Watch. A lone bandit armed with a sword emerges from behind a fallen tree and threatens him.\n\nBegin combat with exactly two participants: Edrus Braveheart and one bandit. They start at NEAR range. No companions are present.\n\nRun the encounter naturally, and let me make Edrus's decisions and rolls.";
+export const pendingEncounterAnswer='Yes, the muddy forest road is a local scene near The Hollow Watch. Proceed with the encounter as described.';
