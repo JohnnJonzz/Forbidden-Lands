@@ -118,7 +118,9 @@
     "test:gameplay:browser": "node --import tsx tests/gameplay-browser.cjs",
     "phase7:upgrade": "tsx scripts/phase7-upgrade.ts",
     "test:gameplay-rolls": "tsx --test tests/gameplay-rolls.test.ts tests/gameplay-rolls.integration.ts",
-    "test:gameplay-rolls:browser": "node --import tsx tests/gameplay-rolls-browser.cjs"
+    "test:gameplay-rolls:browser": "node --import tsx tests/gameplay-rolls-browser.cjs",
+    "test:sourcebook-upload": "tsx --test tests/sourcebook-upload-size.test.ts tests/sourcebooks.test.ts",
+    "test:sourcebook-upload:browser": "node --import tsx tests/sourcebook-upload-size-browser.cjs"
   },
   "dependencies": {
     "exceljs": "^4.4.0",

@@ -1,3 +1,4 @@
+import {inspectPdfUploadHeaders} from '@/lib/sourcebook-upload-limits';
 import {mutationDenial} from '@/server/mutation-authority';
 import {NextResponse} from 'next/server';
 import {z,ZodError} from 'zod';
@@ -12,11 +13,12 @@ function libraryFailure(error:unknown){return aiFailure(error instanceof AIError
 const id=z.string().uuid(),headers={'Cache-Control':'private, no-store','Vary':'x-ravenland-gm-token'};
 export async function GET(request:Request){try{requireGM(request.headers.get('x-ravenland-gm-token'));const p=new URL(request.url).searchParams,campaignId=id.parse(p.get('campaignId')),library=new SourcebookLibrary(getLocalRepository());const query=p.get('query'),chunkId=p.get('chunkId');return NextResponse.json(chunkId?{passages:library.passage(campaignId,chunkId)}:query!==null?{passages:library.search({campaignId,query,...(p.get('category')?{category:p.get('category')}:{}),...(p.get('documentId')?{documentId:p.get('documentId')}:{})},'admin')}:{documents:library.list(campaignId),maxUploadBytes:maxPDFBytes()},{headers})}catch(error){const r=libraryFailure(error);r.headers.set('Cache-Control','private, no-store');return r}}
 export async function POST(request:Request){const denied=mutationDenial(request);if(denied)return denied;try{requireGM(request.headers.get('x-ravenland-gm-token'));const library=new SourcebookLibrary(getLocalRepository());
- if(request.headers.get('content-type')?.split(';')[0]==='application/pdf'){
+ if(request.headers.get('content-type')?.split(';')[0].trim().toLowerCase()==='application/pdf'){
   const origin=request.headers.get('origin');if(origin&&new URL(origin).host!==request.headers.get('host'))throw new AIError('origin','Origin mismatch',403);
   const p=new URL(request.url).searchParams,campaignId=id.parse(p.get('campaignId')),metadata=sourceMetadataSchema.parse({title:p.get('title'),category:p.get('category'),...(p.get('visibility')?{visibility:p.get('visibility')}:{})});
-  const length=Number(request.headers.get('content-length'));if(length>maxPDFBytes())throw new AIError('size','PDF exceeds the configured upload limit.',413);if(!request.body)throw new AIError('pdf','Choose a PDF file.');return NextResponse.json(await library.upload(campaignId,metadata,p.get('filename')??'document.pdf',request.body),{headers});
+  const size=inspectPdfUploadHeaders(request.headers);if(!size.ok)throw new AIError('pdf_upload_size',size.error,size.status);if(!request.body)throw new AIError('pdf','Choose a PDF file.');return NextResponse.json(await library.upload(campaignId,metadata,p.get('filename')??'document.pdf',request.body,size.expectedBytes),{headers});
  }
+ if(request.headers.get('content-type')?.startsWith('multipart/'))throw new AIError('pdf_content_type','Upload the raw PDF using the Sourcebook Library; multipart uploads are not supported.',415);
  const c=z.discriminatedUnion('type',[
   z.object({type:z.literal('index'),campaignId:id,documentId:id}).strict(),
   z.object({type:z.literal('classify'),campaignId:id,documentId:id,revision:z.number().int().positive(),metadata:sourceMetadataSchema}).strict(),
