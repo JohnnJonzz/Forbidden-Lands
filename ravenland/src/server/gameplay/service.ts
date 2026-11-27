@@ -1,3 +1,5 @@
+import { assertRun, testRun } from "./test-runs";
+import { requests, putRequest } from "./roll-store";
 import { ensureRollQueue } from "./roll-store";
 import { rollQueueView } from "./roll-engine";
 import { hasRollQueue } from "./upgrade";
@@ -93,7 +95,14 @@ export function gameplayView(
     stale = !!state && hash(state.clockRef) !== hash(clock);
   const queue = rollQueueView(repo, id);
   return {
-    milestone: hasRollQueue(repo) ? "7.0B" : "7.0A",
+    run: testRun(repo, id),
+    campaignName: s.campaign.name,
+    objective: s.campaign.objective,
+    milestone: testRun(repo, id)
+      ? "7.0B.2"
+      : hasRollQueue(repo)
+        ? "7.0B"
+        : "7.0A",
     rolls: queue,
     campaignId: id,
     campaignRevision: r.revision,
@@ -149,6 +158,7 @@ export function gameplayView(
       encounters: false,
       travel: false,
     },
+    canRevise: !!state && !queue?.savedRolls.length,
     stale,
   };
 }
@@ -174,6 +184,7 @@ export function executeGameplay(
     db = repo.db;
   db.exec("BEGIN IMMEDIATE");
   try {
+    assertRun(repo, c.campaignId, c.runId);
     const receipt = db
       .prepare(
         "SELECT fingerprint,result_json FROM phase7_commands WHERE campaign_id=? AND operation_id=?",
@@ -257,6 +268,45 @@ export function executeGameplay(
       throw Error(
         "Describe an Other activity without inventing its mechanical effects.",
       );
+    if (c.type === "revise") {
+      if (!testRun(repo, r.id) || !tableGM(repo, r.id, principal).isTableGM)
+        throw Error(
+          "Revise Activity Plan requires the actual Table GM in an upgraded synthetic profile.",
+        );
+      if (!current) throw Error("There is no current activity to revise.");
+      if (
+        (s.dice ?? []).some((d) => d.phase7?.activityId === current.id) ||
+        requests(repo, r.id).some(
+          (q) => q.activityId === current.id && q.savedRollId,
+        )
+      )
+        throw Error(
+          "Saved dice or Push consequences already exist. Retain this plan, use the reviewed binding correction, or explicitly reset the test quarter. Plan revision cannot erase or reuse rolled results.",
+        );
+      db.prepare("INSERT INTO phase7_test_archives VALUES (?,?,?,?,?,?,?)").run(
+        randomUUID(),
+        r.id,
+        c.runId!,
+        "plan_revision",
+        JSON.stringify({
+          activity: current,
+          queue: requests(repo, r.id).filter(
+            (q) => q.activityId === current.id,
+          ),
+        }),
+        principal!.playerId,
+        new Date().toISOString(),
+      );
+      for (const q of requests(repo, r.id).filter(
+        (q) => q.activityId === current.id && q.status !== "superseded",
+      ))
+        putRequest(repo, {
+          ...q,
+          status: "superseded",
+          revision: q.revision + 1,
+        });
+      current.status = "clarification";
+    }
     if (current?.status === "planned") {
       if (
         hash(normalize(current.assignments)) !== hash(assignments) ||
@@ -353,7 +403,11 @@ export function executeGameplay(
       c.operationId,
       r.id,
       id,
-      question ? "planning_clarification" : "plan_created",
+      c.type === "revise"
+        ? "plan_revised"
+        : question
+          ? "planning_clarification"
+          : "plan_created",
       JSON.stringify({
         input: c.type === "declare" ? c.text : "Optional activity planner",
         text: answer.text,

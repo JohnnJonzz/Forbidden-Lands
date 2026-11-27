@@ -66,10 +66,12 @@ const envelope = {
   campaignId: id,
   actorId: z.string().min(1).max(100),
   operationId: id,
+  runId: z.string().uuid().optional(),
   campaignRevision: z.number().int().positive(),
   activityRevision: z.number().int().positive().nullable(),
 };
 export const gameplayCommandSchema = z.discriminatedUnion("type", [
+  z.object({...envelope,type:z.literal("revise"),assignments:z.array(assignmentSchema).min(1).max(20)}).strict(),
   z
     .object({
       ...envelope,

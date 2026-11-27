@@ -1,3 +1,4 @@
+import { assertRun, testRun } from "./test-runs";
 import { randomUUID, randomInt } from "node:crypto";
 import { isDeepStrictEqual } from "node:util";
 import type { SqliteCampaignRepository } from "../sqlite";
@@ -50,6 +51,7 @@ export function rollQueueView(repo: SqliteCampaignRepository, id: string) {
     cards = s.dice?.filter((d) => d.phase7?.activityId === a?.id) ?? [],
     pending = current.filter((r) => r.status !== "resolved");
   return {
+    runId: testRun(repo,id)?.id ?? null,
     requests: list.map((r) => ({
       ...r,
       availableWillpower: Number(
@@ -525,6 +527,7 @@ export function executeRoll(
     fp = digest({ ...c, revision: undefined, playerId: principal!.playerId });
   db.exec("BEGIN IMMEDIATE");
   try {
+    assertRun(repo,c.campaignId,c.runId);
     const old = db
       .prepare(
         "SELECT * FROM phase7_roll_commands WHERE campaign_id=? AND operation_id=?",

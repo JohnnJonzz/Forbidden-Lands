@@ -988,3 +988,9 @@ Combat now reconciles Broken sheet values, skips ineligible turns and concludes 
 The GM now recognizes source-linked unresolved injuries and aftermath when combat ends. The compact **Unresolved situations** panel guides verified deadlines and actual Healing attempts through the existing character sheet, attachment and Send workflow. Chat does not advance time, and lifesaving Healing preserves Broken attributes and lasting injury effects. Existing campaign records are not reset.
 
 See [Phase 6.5: charter, architecture, treatment controls, verification and manual smoke test](docs/phase6-5-gm-charter-consequences.md). Migration 017 applies through normal SQLite startup. Use `npm run test:consequences` with `RAVENLAND_REAL_SOURCEBOOK_DIR` pointing to the two actual private fifth-printing PDFs; this acceptance test uses a temporary campaign and controlled model transport, never the live campaign.
+
+### Phase 7.0B.2: familiar dashboard and safe test reset
+
+The Phase 7 route uses the established campaign header/sidebar, read-only map, Journal/history, roster and character sheets with the Phase 7 planning/dice controller. Actual Table GMs in enrolled synthetic profiles can revise unrolled plans and explicitly establish/reset a reviewed test checkpoint. Updating never resets saved dice or creates a checkpoint automatically.
+
+Use the **existing** profile: stop the server, back it up with `npm run phase7:backup -- --directory <existing-profile> --output <new-backup-directory> --quiesced`, then run `npm run phase7:upgrade -- --directory <existing-profile>`. Do not rerun setup. See the [full report, screenshots and Windows commands](docs/phase7-0b2-familiar-interface.md).

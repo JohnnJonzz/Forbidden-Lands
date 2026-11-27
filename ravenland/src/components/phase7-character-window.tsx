@@ -51,6 +51,10 @@ export function Phase7CharacterWindow({
         { cache: "no-store" },
       ),
       v = (await response.json()) as ReturnType<typeof gameplayView>;
+    if (view?.run?.id !== v.run?.id)
+      throw Error(
+        "This test run changed. Reload this character window before rolling or editing the new run.",
+      );
     if (!v.activity || !v.rolls)
       throw Error("Save the current Phase 7 activity first.");
     let request = null,
@@ -122,6 +126,7 @@ export function Phase7CharacterWindow({
       activityId: v.activity.id,
       actorId: characterId,
       operationId,
+      runId: v.run?.id,
       requestId: request?.id ?? null,
       revision: request?.revision ?? null,
       operation,
@@ -180,7 +185,9 @@ export function Phase7CharacterWindow({
           character={character}
           campaignId={campaignId}
           mode="sheet"
-          onChange={storage.saveSheet}
+          onChange={(id, sheet, before) =>
+            storage.saveSheet(id, sheet, before, view?.run?.id)
+          }
           dice={storage.record?.session.dice ?? []}
           onDice={onDice}
           onPhase7Roll={(expression, rollId, operationId) =>

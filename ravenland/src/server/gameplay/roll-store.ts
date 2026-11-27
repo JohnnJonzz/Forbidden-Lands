@@ -51,6 +51,7 @@ export function ensureRollQueue(repo: SqliteCampaignRepository, id: string) {
         ["Rest", "Sleep"].includes(assignment.activity) ||
         all.some(
           (r) =>
+            r.status !== "superseded" &&
             r.activityId === a.id &&
             r.characterId === assignment.characterId &&
             r.dependencyId === null,

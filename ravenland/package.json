@@ -120,7 +120,10 @@
     "test:gameplay-rolls": "tsx --test tests/gameplay-rolls.test.ts tests/gameplay-rolls.integration.ts",
     "test:gameplay-rolls:browser": "node --import tsx tests/gameplay-rolls-browser.cjs",
     "test:sourcebook-upload": "tsx --test tests/sourcebook-upload-size.test.ts tests/sourcebooks.test.ts",
-    "test:sourcebook-upload:browser": "node --import tsx tests/sourcebook-upload-size-browser.cjs"
+    "test:sourcebook-upload:browser": "node --import tsx tests/sourcebook-upload-size-browser.cjs",
+    "test:gameplay-interface": "tsx --test tests/gameplay-interface.integration.ts",
+    "test:gameplay-interface:browser": "node --import tsx tests/gameplay-interface-browser.cjs",
+    "test:gameplay-interface:security-browser": "node --import tsx tests/gameplay-interface-security-browser.cjs"
   },
   "dependencies": {
     "exceljs": "^4.4.0",

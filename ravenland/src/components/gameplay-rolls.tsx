@@ -13,6 +13,7 @@ export function GameplayRolls({
   isTableGM,
   initial,
   characterId,
+  compact = false,
   onChanged,
 }: {
   campaignId: string;
@@ -22,6 +23,7 @@ export function GameplayRolls({
   isTableGM: boolean;
   initial: Queue;
   characterId?: string;
+  compact?: boolean;
   onChanged?: () => void;
 }) {
   const [queue, setQueue] = useState(initial),
@@ -70,6 +72,7 @@ export function GameplayRolls({
     setError("");
     const body = {
         campaignId,
+        runId: queue.runId ?? undefined,
         activityId: activity.id,
         actorId: ["correct", "review"].includes(operation)
           ? actorId
@@ -112,6 +115,7 @@ export function GameplayRolls({
   const pending = queue.requests.filter(
     (r) =>
       r.status !== "superseded" &&
+      (!compact || r.status !== "resolved") &&
       (!characterId || r.characterId === characterId),
   );
   function faces(r: RollRequest) {
@@ -145,6 +149,19 @@ export function GameplayRolls({
         consequences remain unapplied.
       </p>
       {error && <p role="alert">{error}</p>}
+      {compact && queue.requests.some((r) => r.status === "resolved") && (
+        <details>
+          <summary>Resolved rolls</summary>
+          {queue.requests
+            .filter((r) => r.status === "resolved")
+            .map((r) => (
+              <p key={r.id}>
+                {party.find((p) => p.id === r.characterId)?.name} — {r.activity}
+                : {r.final?.summary}. {faces(r)}
+              </p>
+            ))}
+        </details>
+      )}
       {pending.map((r) => {
         const owned = party.find((p) => p.id === r.characterId)?.mayAct;
         return (
@@ -269,7 +286,7 @@ export function GameplayRolls({
               </button>
             )}
             <details>
-              <summary>Inspect roll binding and source references</summary>
+              <summary>Advanced Diagnostics · binding and sources</summary>
               <p>
                 Request {r.id} · revision {r.revision}; saved roll{" "}
                 {r.savedRollId ?? "none"} · revision{" "}
@@ -433,7 +450,7 @@ export function GameplayRolls({
         </details>
       )}
       <details>
-        <summary>Consolidated mechanical result</summary>
+        <summary>Advanced Diagnostics · mechanical packet</summary>
         <p>
           {queue.packet.fullyResolved
             ? "All supported procedures mechanically determined."

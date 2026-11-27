@@ -278,7 +278,7 @@ const { readProfile } = require("../src/server/gameplay/profile.ts"),
       ),
     );
     await page
-      .getByText("Existing Rules Library administration", { exact: true })
+      .getByRole("button", { name: "Rules Library", exact: true })
       .click();
     const library = page.getByRole("region", {
       name: "Sourcebook Library",
@@ -443,6 +443,7 @@ const { readProfile } = require("../src/server/gameplay/profile.ts"),
       ).search({ campaignId: id, query: "FORAGING MISHAPS" }, "player"),
       [],
     );
+    await page.getByRole("button",{name:"Conversation",exact:true}).click();
     for (const procedure of ["camp", "forage", "watch"]) {
       await page
         .locator("[data-procedure=" + procedure + "]")

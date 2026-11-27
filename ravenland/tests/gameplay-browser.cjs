@@ -96,7 +96,7 @@ const { createSyntheticProfile } = require("../scripts/phase7-setup.ts"),
         process.env.PLAYWRIGHT_EXECUTABLE_PATH || "/usr/bin/chromium",
       args: ["--no-sandbox"],
     });
-    const page = await browser.newPage({
+    let page = await browser.newPage({
       viewport: { width: 1440, height: 1000 },
     });
     page.on("pageerror", (e) => errors.push(e.message));
@@ -207,7 +207,7 @@ const { createSyntheticProfile } = require("../scripts/phase7-setup.ts"),
     });
     await page.setViewportSize({ width: 390, height: 844 });
     await page.reload();
-    await page.getByTestId("activity-id").waitFor();
+    await page.getByTestId("activity-id").waitFor({state:"attached"});
     assert.equal(await page.getByTestId("activity-id").innerText(), id);
     assert.equal(
       await page.evaluate(
@@ -219,10 +219,14 @@ const { createSyntheticProfile } = require("../scripts/phase7-setup.ts"),
       path: path.join(output, "phase7-mobile.png"),
       fullPage: true,
     });
+    await page.close();
     await stop();
     await start();
-    await page.reload();
-    await page.getByTestId("activity-id").waitFor();
+    // Reopen a tab after dev-server HMR teardown; assert the same persisted activity.
+    page=await browser.newPage({viewport:{width:390,height:844}});
+    page.on('pageerror',e=>errors.push(e.message));
+    await page.goto(url+'/campaigns/'+p.campaignId+'/play');
+    await page.getByTestId("activity-id").waitFor({state:"attached"});
     assert.equal(await page.getByTestId("activity-id").innerText(), id);
     assert.equal(
       await page.getByTestId("current-quarter").innerText(),

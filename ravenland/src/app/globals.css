@@ -129,3 +129,28 @@ button.party-member{width:100%;padding:4px 0;border:0;background:transparent;tex
 .environment-review input[type=checkbox]{display:inline-block;width:auto;margin-right:.4rem;vertical-align:middle}
 
 .calendar-settings { overflow-wrap: anywhere; }
+
+/* Phase 7 composes the familiar presentation; no legacy controllers are mounted. */
+.phase7-main { overflow-y:auto; }
+.phase7-content {padding:24px; min-width:0;}
+.phase7-content section {max-width:100%;}
+.phase7-content h2 {font-size:1.35rem; margin:12px 0;}
+.phase7-content article {padding:12px 0;border-bottom:1px solid var(--border,#39352d);}
+.phase7-content details {margin:16px 0;padding:12px;border:1px solid #39352d;border-radius:6px;}
+.phase7-content summary {cursor:pointer;color:#c8b888;}
+.phase7-content pre {max-height:350px;overflow:auto;white-space:pre-wrap;overflow-wrap:anywhere;}
+.phase7-content select,.phase7-content input:not([type=checkbox]) {max-width:100%;background:#211f1b;color:#e0d8c8;border:1px solid #514a3d;padding:8px;margin:8px;}
+.phase7-content label {display:block;margin:8px 0;}
+.phase7-conversation {height:auto;max-height:none;padding:16px 0;overflow:visible;}
+.phase7-quarter {background:#24231d;border:1px solid #494233;padding:16px;border-radius:6px;}
+.phase7-quarter ul {display:flex;flex-wrap:wrap;gap:8px 20px;list-style:none;padding:0;}
+.phase7-content .composer-area {padding:16px 0;}
+.phase7-content .composer textarea {min-height:65px;}
+.phase7-development {border-color:#75633b!important;}
+.phase7-readonly-map .fog-opacity,.phase7-readonly-map .map-toggle:has(input[aria-label="GM Reveal Mode"]),.phase7-readonly-map .map-toggle:has(input[aria-label="Fog of War"]),.phase7-readonly-map .developer-panel {display:none;}
+@media(max-width:760px){.phase7-content{padding:12px}.phase7-main .nav-tabs{flex-wrap:wrap}.phase7-main .tool-tabs{flex-wrap:wrap}.phase7-quarter ul{display:block}.phase7-content select{display:block;margin-left:0}.phase7-content .quiet-button{max-width:100%;white-space:normal}}
+.phase7-content section[aria-label="Pending Rolls"] {background:#24231d;border:1px solid #494233;padding:16px;margin-top:16px;}
+.phase7-content section[aria-label="Pending Rolls"] article {padding:12px 0;}
+.phase7-content section[aria-label="Pending Rolls"] button {background:#36372b;border:1px solid #5c5a43;border-radius:4px;color:#ddd3b7;padding:7px 10px;margin:4px;cursor:pointer;}
+.phase7-content button:disabled {opacity:.5;cursor:default;}
+.phase7-content details:not([open])>summary {list-style:revert;}

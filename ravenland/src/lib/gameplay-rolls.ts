@@ -119,6 +119,7 @@ export const rollRequestSchema = z
 export type RollRequest = z.infer<typeof rollRequestSchema>;
 const command = {
   campaignId: id,
+  runId: z.string().uuid().optional(),
   activityId: id,
   actorId: z.string().min(1).max(100),
   operationId: id,

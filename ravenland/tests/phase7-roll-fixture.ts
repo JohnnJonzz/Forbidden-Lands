@@ -1,4 +1,4 @@
-import { mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { randomUUID } from "node:crypto";
@@ -14,6 +14,7 @@ import { requests } from "../src/server/gameplay/roll-store";
 import type { CharacterPrincipal } from "../src/server/character-access";
 let shared:
   | Promise<{
+      asset: { key: string; bytes: Buffer };
       documents: Record<string, unknown>[];
       chunks: Record<string, unknown>[];
     }>
@@ -51,6 +52,13 @@ function original() {
       );
       await library.index(p.campaignId, upload.document.id);
       return {
+        asset: {
+          key: String(
+            repo.db.prepare("SELECT storage_key FROM source_documents").get()!
+              .storage_key,
+          ),
+          bytes,
+        },
         documents: repo.db
           .prepare("SELECT * FROM source_documents")
           .all() as Record<string, unknown>[],
@@ -72,6 +80,9 @@ export async function rollFixture(directory?: string) {
     repo = new SqliteCampaignRepository(p.database),
     id = p.campaignId;
   const book = await original();
+  writeFileSync(join(p.sourcebooks, book.asset.key), book.asset.bytes, {
+    mode: 0o600,
+  });
   for (const [table, rows] of [
     ["source_documents", book.documents],
     ["source_chunks", book.chunks],

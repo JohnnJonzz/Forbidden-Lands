@@ -1,3 +1,4 @@
+import { readProfile, profileFile } from "../src/server/gameplay/profile";
 import { DatabaseSync, backup } from "node:sqlite";
 import {
   mkdirSync,
@@ -102,9 +103,19 @@ if (process.argv[1]?.endsWith("phase7-backup.ts"))
         if (i < 0 || !args[i + 1]) throw Error("Required " + key);
         return args[i + 1];
       };
-    const assets: Record<string, string> = JSON.parse(get("--assets-json"));
+    const file = args.includes("--directory")
+      ? profileFile(resolve(get("--directory")))
+      : null;
+    const profile = file ? readProfile(file) : null;
+    const assets: Record<string, string> = profile
+      ? {
+          images: profile.images,
+          sourcebooks: profile.sourcebooks,
+          manifest: file!,
+        }
+      : JSON.parse(get("--assets-json"));
     await backupCampaign({
-      database: get("--database"),
+      database: profile?.database ?? get("--database"),
       output: get("--output"),
       assets,
       quiesced: args.includes("--quiesced"),
